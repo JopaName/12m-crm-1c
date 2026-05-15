@@ -1,0 +1,651 @@
+// Prisma schema for 12M ERP/CRM
+// Based on Technical Specification - Entity Dictionary (Section 2.2)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions String?  // JSON string of permissions
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isArchived  Boolean  @default(false)
+}
+
+model User {
+  id            String              @id @default(cuid())
+  email         String              @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  roleId        String
+  role          Role                @relation(fields: [roleId], references: [id])
+  isActive      Boolean             @default(true)
+  isArchived    Boolean             @default(false)
+  assignedLeads Lead[]              @relation("AssignedAgent")
+  assignedDeals Deal[]              @relation("ResponsibleAgent")
+  createdTasks  Task[]              @relation("TaskCreator")
+  assignedTasks Task[]              @relation("TaskAssignee")
+
+  createdClients Client[]
+  warehouseMovements WarehouseMovement[]
+  reserves Reserve[]
+  defectRecords DefectRecord[]
+  purchaseRequests PurchaseRequest[]
+  supplierOrders SupplierOrder[]
+  legalDocuments LegalDocument[]    @relation("ResponsibleLawyer")
+  confirmedPayments Payment[]       @relation("ConfirmedPayments")
+  cashOrders CashOrder[]
+  installationTasks InstallationTask[] @relation("Installer")
+  calendarEvents InstallationCalendarEvent[] @relation("CalendarInstaller")
+  verifiedReadings TelemetryReading[] @relation("VerifiedReadings")
+  auditLogs AuditLog[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Agent commissions
+  commissions AgentCommissionRecord[]
+
+  // Integration logs
+  integrationLogs IntegrationLog[]
+}
+
+model Client {
+  id           String           @id @default(cuid())
+  name         String
+  phone        String?
+  email        String?
+  inn          String?          @unique
+  kpp          String?
+  ogrn         String?
+  legalAddress String?
+  actualAddress String?
+  contactPerson String?
+  notes        String?
+  createdById  String?
+  createdBy    User?            @relation(fields: [createdById], references: [id])
+  isArchived   Boolean          @default(false)
+
+  leads        Lead[]
+  deals        Deal[]
+  rentContracts RentContract[]
+  legalDocuments LegalDocument[]
+  invoices     Invoice[]
+  payments     Payment[]
+  serviceCases ServiceCase[]
+  telemetryReadings TelemetryReading[]
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Lead {
+  id              String   @id @default(cuid())
+  clientName      String
+  clientPhone     String
+  clientEmail     String?
+  source          String   // Web-form, Agent, Channel, Import
+  status          String   // New, Contacted, Qualified, Converted, Lost
+  assignedAgentId String
+  assignedAgent   User     @relation("AssignedAgent", fields: [assignedAgentId], references: [id])
+  deal            Deal?
+  notes           String?
+  isArchived      Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Deal {
+  id                String       @id @default(cuid())
+  dealNumber        String       @unique
+  dealType          String       // Sale, ProjectSale, Rent
+  status            String       // Current state in funnel
+  clientId          String
+  client            Client       @relation(fields: [clientId], references: [id])
+  clientInn         String?
+  responsibleAgentId String
+  responsibleAgent  User         @relation("ResponsibleAgent", fields: [responsibleAgentId], references: [id])
+  expectedAmount    Float
+  actualAmount      Float?
+  description       String?
+  isArchived        Boolean      @default(false)
+
+  // Linked entities
+  lead              Lead?
+  project           Project?
+  rentContract      RentContract?
+  legalDocuments    LegalDocument[]
+  invoices          Invoice[]
+  payments          Payment[]
+  productionOrders  ProductionOrder[]
+  installationTasks InstallationTask[]
+  serviceCases      ServiceCase[]
+  commissions       AgentCommissionRecord[]
+  reserves          Reserve[]
+  purchaseRequests  PurchaseRequest[]
+  cashOrders        CashOrder[]
+  tasks             Task[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  sku         String        @unique
+  description String?
+  category    String?
+  unit        String        // pcs, kg, m, etc
+  purchasePrice Float?
+  salePrice   Float?
+  rentPrice   Float?
+  isArchived  Boolean       @default(false)
+
+  items       ProductItem[]
+  specifications Specification[]
+  inventoryBalances InventoryBalance[]
+  purchaseRequests PurchaseRequest[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ProductItem {
+  id                String             @id @default(cuid())
+  productId         String
+  product           Product            @relation(fields: [productId], references: [id])
+  serialNumber      String?            @unique
+  status            String             // Stock, InProduction, InRent, Sold, Maintenance, Returned, Repair, Defect, WrittenOff
+  warehouseCellId   String?
+  warehouseCell     WarehouseCell?     @relation(fields: [warehouseCellId], references: [id])
+  rentContracts     RentContract[]     @relation("RentedEquipment")
+  isArchived        Boolean            @default(false)
+
+  movements         WarehouseMovement[]
+  reserves          Reserve[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model WarehouseCell {
+  id        String        @id @default(cuid())
+  name      String
+  zone      String?
+  items     ProductItem[]
+  inventoryBalances InventoryBalance[]
+  movementsFrom WarehouseMovement[] @relation("FromCell")
+  movementsTo WarehouseMovement[] @relation("ToCell")
+  isArchived Boolean      @default(false)
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model InventoryBalance {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  cellId    String?
+  cell      WarehouseCell? @relation(fields: [cellId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WarehouseMovement {
+  id            String       @id @default(cuid())
+  type          String       // Receipt, WriteOff, Transfer, Reserve, Unreserve
+  productItemId String
+  productItem   ProductItem  @relation(fields: [productItemId], references: [id])
+  dealId        String?
+  deal          Deal?        @relation(fields: [dealId], references: [id])
+  fromCellId    String?
+  fromCell      WarehouseCell? @relation("FromCell", fields: [fromCellId], references: [id])
+  toCellId      String?
+  toCell        WarehouseCell? @relation("ToCell", fields: [toCellId], references: [id])
+  quantity      Int
+  createdById   String
+  createdBy     User         @relation(fields: [createdById], references: [id])
+  notes         String?
+
+  createdAt     DateTime     @default(now())
+}
+
+model Reserve {
+  id            String       @id @default(cuid())
+  productItemId String
+  productItem   ProductItem  @relation(fields: [productItemId], references: [id])
+  dealId        String
+  deal          Deal         @relation(fields: [dealId], references: [id])
+  quantity      Int
+  status        String       // Active, Released, Used
+  createdById   String
+  createdBy     User         @relation(fields: [createdById], references: [id])
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Project {
+  id                  String   @id @default(cuid())
+  dealId              String   @unique
+  deal                Deal     @relation(fields: [dealId], references: [id])
+  specificationId     String?
+  projectFile         String?  // Path to CAD/BIM file
+  installTimeDays     Int?
+  workersCount        Int?
+  installCost         Float?
+  chiefEngineerApproval String? // Pending, Approved, Rejected
+  gpsCoordinates      String?
+  photoBefore         String?
+  photoAfter          String?
+  isArchived          Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Specification {
+  id        String   @id @default(cuid())
+  name      String
+  project   Project?
+  products  Product[]
+  isArchived Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductionOrder {
+  id                  String   @id @default(cuid())
+  dealId              String
+  deal                Deal     @relation(fields: [dealId], references: [id])
+  specificationId     String?
+  productionRouteId   String?
+  productionRoute     ProductionRoute? @relation(fields: [productionRouteId], references: [id])
+  status              String   // New, MaterialsWrittenOff, InProgress, QualityCheck, Completed
+  materialsWrittenOff Boolean  @default(false)
+  qualityCheckStatus  String?  // Pending, Passed, Failed
+  startedAt           DateTime?
+  completedAt         DateTime?
+  isArchived          Boolean  @default(false)
+
+  defectRecords       DefectRecord[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ProductionRoute {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  steps       String?  // JSON array of steps
+  productionOrders ProductionOrder[]
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DefectRecord {
+  id                String   @id @default(cuid())
+  productionOrderId String
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  description       String
+  severity          String   // Minor, Major, Critical
+  photoUrl          String?
+  createdById       String
+  createdBy         User     @relation(fields: [createdById], references: [id])
+  isArchived        Boolean  @default(false)
+
+  createdAt         DateTime @default(now())
+}
+
+model PurchaseRequest {
+  id            String   @id @default(cuid())
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  status        String   // New, Approved, Ordered, Received, Cancelled
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  isArchived    Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactPerson String?
+  phone       String?
+  email       String?
+  inn         String?
+  address     String?
+  isArchived  Boolean  @default(false)
+
+  orders      SupplierOrder[]
+  purchaseRequests PurchaseRequest[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SupplierOrder {
+  id            String   @id @default(cuid())
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  orderNumber   String   @unique
+  status        String   // New, Confirmed, Shipped, Received, Cancelled
+  totalAmount   Float?
+  expectedDate  DateTime?
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  isArchived    Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RentContract {
+  id                String             @id @default(cuid())
+  contractNumber    String             @unique
+  clientId          String
+  client            Client             @relation(fields: [clientId], references: [id])
+  dealId            String?            @unique
+  deal              Deal?              @relation(fields: [dealId], references: [id])
+  equipmentIds      String             // JSON array of ProductItem IDs
+  equipment         ProductItem[]      @relation("RentedEquipment")
+  billingFormula    String             // JSON: formula configuration
+  startDate         DateTime
+  endDate           DateTime?
+  monthlyPayment    Float?
+  status            String             // Active, Suspended, Closed
+  telemetryDeviceId String?
+  isArchived        Boolean            @default(false)
+
+  billingRecords    BillingRecord[]
+  telemetryReadings TelemetryReading[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model BillingRecord {
+  id              String   @id @default(cuid())
+  rentContractId  String
+  rentContract    RentContract @relation(fields: [rentContractId], references: [id])
+  period          String   // YYYY-MM
+  amount          Float
+  formulaSnapshot String   // JSON: formula used for calculation
+  dataSource      String   // API, Client_App, Agent_Input, Excel_Import, Photo
+  energyProduced  Float?
+  uptime          Float?
+  coefficient     Float?
+  status          String   // Calculated, Invoiced, Paid, Overdue
+  invoiceId       String?
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LegalDocument {
+  id                  String   @id @default(cuid())
+  documentType        String
+  dealId              String?
+  deal                Deal?    @relation(fields: [dealId], references: [id])
+  clientId            String?
+  client              Client?  @relation(fields: [clientId], references: [id])
+  responsibleLawyerId String?
+  responsibleLawyer   User?    @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id])
+  documentNumber      String?
+  documentDate        DateTime?
+  versionNumber       Int      @default(1)
+  status              String   // Draft, Approved, Sent, Signed, Archived
+  fileDraft           String?  // Path to draft file
+  fileSigned          String?  // Path to signed file
+  signatureMethod     String?  // UNEP, PEP, Paper
+  commentLog          String?  // JSON array of comments
+  isArchived          Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+  approvedAt          DateTime?
+  signedAt            DateTime?
+  updatedAt           DateTime @updatedAt
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  invoiceNumber String @unique
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  amount      Float
+  status      String   // Draft, Sent, Paid, Overdue, Cancelled
+  dueDate     DateTime?
+  paidAt      DateTime?
+  isArchived  Boolean  @default(false)
+
+  payments    Payment[]
+  billingRecords BillingRecord[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  paymentNumber String @unique
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  amount      Float
+  method      String   // BankTransfer, Cash, Card, Other
+  status      String   // Pending, Confirmed, Reversed
+  confirmedById String?
+  confirmedBy User?    @relation("ConfirmedPayments", fields: [confirmedById], references: [id])
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CashOrder {
+  id          String   @id @default(cuid())
+  type        String   // Incoming, Outgoing
+  amount      Float
+  category    String
+  description String?
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+model InstallationTask {
+  id              String   @id @default(cuid())
+  dealId          String
+  deal            Deal     @relation(fields: [dealId], references: [id])
+  installerId     String
+  installer       User     @relation("Installer", fields: [installerId], references: [id])
+  installDate     DateTime
+  plannedEndDate  DateTime?
+  status          String   // Scheduled, InProgress, Completed, Cancelled, Rescheduled
+  gpsStart        String?
+  gpsEnd          String?
+  photoBefore     String?
+  photoAfter      String?
+  clientSignature String?  // Path to signature file
+  notes           String?
+  rescheduleReason String?
+  isArchived      Boolean  @default(false)
+
+  calendarEvents  InstallationCalendarEvent[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InstallationCalendarEvent {
+  id                  String   @id @default(cuid())
+  installationTaskId  String
+  installationTask    InstallationTask @relation(fields: [installationTaskId], references: [id])
+  title               String
+  startDate           DateTime
+  endDate             DateTime
+  installerId         String
+  installer           User     @relation("CalendarInstaller", fields: [installerId], references: [id])
+  status              String   // Scheduled, InProgress, Completed, Missed
+  isArchived          Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ServiceCase {
+  id          String   @id @default(cuid())
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  type        String   // Warranty, Service, Complaint
+  status      String   // New, InProgress, Resolved, Closed
+  description String?
+  resolution  String?
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TelemetryDevice {
+  id            String   @id @default(cuid())
+  serialNumber  String   @unique
+  model         String?
+  nominalCapacity Float? // kW
+  rentContractId String?
+  isArchived    Boolean  @default(false)
+
+  readings      TelemetryReading[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TelemetryReading {
+  id                  String   @id @default(cuid())
+  rentContractId      String?
+  rentContract        RentContract? @relation(fields: [rentContractId], references: [id])
+  clientId            String?
+  client              Client?  @relation(fields: [clientId], references: [id])
+  deviceId            String?
+  device              TelemetryDevice? @relation(fields: [deviceId], references: [id])
+  inverterSerialNumber String?
+  measurementPeriod   String   // YYYY-MM
+  energyProduced      Float?
+  uptime              Float?
+  dataSource          String   // API, Client_App, Agent_Input, Excel_Import, Photo
+  verificationStatus  String   // Unverified, Confirmed, Rejected
+  verifiedById        String?
+  verifiedBy          User?    @relation("VerifiedReadings", fields: [verifiedById], references: [id])
+  isArchived          Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+  receivedAt          DateTime @default(now())
+}
+
+model AgentCommissionRecord {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       User     @relation(fields: [agentId], references: [id])
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id])
+  amount      Float
+  status      String   // Calculated, Approved, Paid
+  paidAt      DateTime?
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   // General, Legal, Technical, Service, Procurement
+  status      String   // New, InProgress, Completed, Cancelled
+  priority    String   // Low, Medium, High, Critical
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  createdById String
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id])
+  assigneeId  String?
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  completedAt DateTime?
+  isArchived  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String   // CREATE, UPDATE, DELETE, VIEW, EXPORT
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  oldValue    String?  // JSON
+  newValue    String?  // JSON
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+}
+
+model IntegrationLog {
+  id          String   @id @default(cuid())
+  direction   String   // Incoming, Outgoing
+  system      String   // 1C, FinanceTable, Telemetry, KEDO, Weather
+  entityType  String?
+  entityId    String?
+  status      String   // Success, Error, Pending
+  request     String?  // JSON
+  response    String?  // JSON
+  errorMessage String?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime @default(now())
+}
