@@ -1,0 +1,13 @@
+{
+  "name": "12m-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "12M ERP/CRM - Production and Engineering Enterprise Management System",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "seed": "cd backend && npx ts-node src/seed.ts",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build"
+  }
+}
