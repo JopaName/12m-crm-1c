@@ -16,6 +16,8 @@ const menuItems = [
   { path: "/legal", label: "Договоры", icon: "📄" },
   { path: "/service", label: "Сервис", icon: "🛠️" },
   { path: "/tasks", label: "Задачи", icon: "✅" },
+  { path: "/users", label: "Пользователи", icon: "👤" },
+  { path: "/roles", label: "Роли", icon: "🔐" },
   { path: "/audit", label: "Журнал", icon: "📝" },
 ];
 
