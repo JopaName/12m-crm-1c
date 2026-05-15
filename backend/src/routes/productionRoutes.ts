@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { autoCalculateProductionCost } from "../services/salaryService";
 
 const router = Router();
 
@@ -9,8 +10,10 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
     const orders = await prisma.productionOrder.findMany({
       where: { isArchived: false },
       include: {
-        deal: { include: { client: true } },
-        productionRoute: true,
+        deal: { include: { client: true, responsibleAgent: true } },
+        productionRoute: {
+          include: { steps: { orderBy: { orderIndex: "asc" } } },
+        },
         defectRecords: true,
       },
       orderBy: { createdAt: "desc" },
@@ -42,7 +45,16 @@ router.put("/:id/status", async (req: AuthRequest, res: Response) => {
       where: { id: req.params.id },
       data: { status: req.body.status },
     });
-    res.json(order);
+
+    if (req.body.status === "Completed") {
+      await autoCalculateProductionCost(req.params.id);
+    }
+
+    const updated = await prisma.productionOrder.findUnique({
+      where: { id: req.params.id },
+      include: { productionRoute: true },
+    });
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: "Failed to update production order" });
   }
