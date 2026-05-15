@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { autoCalculateInstallationCost } from "../services/salaryService";
 
 const router = Router();
 
@@ -10,7 +11,9 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
       where: { isArchived: false },
       include: {
         deal: { include: { client: true } },
-        installer: { select: { firstName: true, lastName: true } },
+        installer: {
+          select: { firstName: true, lastName: true, roleId: true },
+        },
         calendarEvents: true,
       },
       orderBy: { installDate: "desc" },
@@ -38,7 +41,15 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
       where: { id: req.params.id },
       data: req.body,
     });
-    res.json(task);
+
+    if (req.body.status === "Completed") {
+      await autoCalculateInstallationCost(req.params.id);
+    }
+
+    const updated = await prisma.installationTask.findUnique({
+      where: { id: req.params.id },
+    });
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: "Failed to update installation task" });
   }

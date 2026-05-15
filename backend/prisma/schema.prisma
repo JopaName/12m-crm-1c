@@ -21,11 +21,27 @@ model Role {
   id          String           @id @default(cuid())
   name        String           @unique
   description String?
-  permissions RolePermission[]
-  users       User[]
-  createdAt   DateTime         @default(now())
+  permissions  RolePermission[]
+  tariffRates  TariffRate[]
+  users        User[]
+  createdAt    DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   isArchived  Boolean          @default(false)
+}
+
+model TariffRate {
+  id          String   @id @default(cuid())
+  roleId      String
+  role        Role     @relation(fields: [roleId], references: [id])
+  taskType    String   // INSTALLATION, PRODUCTION, SERVICE
+  ratePerUnit Float    // Amount per task/unit
+  unit        String   // task, hour, sqm
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([roleId, taskType])
+  @@index([taskType])
 }
 
 model User {
@@ -88,7 +104,7 @@ model Client {
   legalDocuments LegalDocument[]
   invoices       Invoice[]
   payments       Payment[]
-  serviceCases   ServiceCase[]
+  serviceCases  ServiceCase[]
   telemetryReadings TelemetryReading[]
 
   createdAt DateTime @default(now())
@@ -256,6 +272,7 @@ model WarehouseMovement {
   createdById   String
   createdBy     User         @relation(fields: [createdById], references: [id])
   notes         String?
+  defectRecords DefectRecord[]
 
   createdAt DateTime @default(now())
 
@@ -354,6 +371,7 @@ model ProductionOrder {
   completedAt         DateTime?
   isArchived          Boolean  @default(false)
 
+  laborCost   Float?   // Auto-calculated from TariffRate on completion
   defectRecords DefectRecord[]
 
   createdAt DateTime @default(now())
@@ -364,20 +382,26 @@ model ProductionOrder {
 }
 
 model DefectRecord {
-  id                String   @id @default(cuid())
-  productionOrderId String
-  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id])
-  description       String
-  severity          String
-  photoUrl          String?
-  createdById       String
-  createdBy         User     @relation(fields: [createdById], references: [id])
-  isArchived        Boolean  @default(false)
+  id                  String   @id @default(cuid())
+  productionOrderId   String?
+  productionOrder     ProductionOrder? @relation(fields: [productionOrderId], references: [id])
+  serviceCaseId       String?
+  serviceCase         ServiceCase?     @relation(fields: [serviceCaseId], references: [id])
+  warehouseMovementId String?
+  warehouseMovement   WarehouseMovement? @relation(fields: [warehouseMovementId], references: [id])
+  description         String
+  severity            String
+  photoUrl            String?
+  createdById         String
+  createdBy           User     @relation(fields: [createdById], references: [id])
+  isArchived          Boolean  @default(false)
 
   createdAt DateTime @default(now())
 
   @@index([severity])
   @@index([productionOrderId])
+  @@index([serviceCaseId])
+  @@index([warehouseMovementId])
 }
 
 model PurchaseRequest {
@@ -618,6 +642,7 @@ model InstallationTask {
   clientSignature String?
   notes           String?
   rescheduleReason String?
+  laborCost       Float?   // Auto-calculated from TariffRate on completion
   isArchived      Boolean  @default(false)
 
   calendarEvents InstallationCalendarEvent[]
@@ -661,6 +686,7 @@ model ServiceCase {
   status      String
   description String?
   resolution  String?
+  defectRecords DefectRecord[]
   isArchived  Boolean  @default(false)
 
   createdAt DateTime @default(now())

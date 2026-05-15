@@ -605,6 +605,53 @@ async function seed() {
     }
   }
 
+  // Create tariff rates (skip if already exist)
+  const existingRates = await prisma.tariffRate.findFirst();
+  if (!existingRates) {
+    const rateConfigs = [
+      {
+        roleName: "AT_Engineer",
+        taskType: "INSTALLATION",
+        ratePerUnit: 5000,
+        unit: "task",
+      },
+      {
+        roleName: "Production_Mgr",
+        taskType: "PRODUCTION",
+        ratePerUnit: 3000,
+        unit: "task",
+      },
+      {
+        roleName: "Installer_IP",
+        taskType: "INSTALLATION",
+        ratePerUnit: 4000,
+        unit: "task",
+      },
+      {
+        roleName: "Agent",
+        taskType: "SERVICE",
+        ratePerUnit: 2000,
+        unit: "deal",
+      },
+    ];
+
+    for (const cfg of rateConfigs) {
+      const role = await prisma.role.findUnique({
+        where: { name: cfg.roleName },
+      });
+      if (role) {
+        await prisma.tariffRate.create({
+          data: {
+            roleId: role.id,
+            taskType: cfg.taskType,
+            ratePerUnit: cfg.ratePerUnit,
+            unit: cfg.unit,
+          },
+        });
+      }
+    }
+  }
+
   console.log("Seed completed successfully!");
 }
 
