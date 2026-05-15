@@ -185,18 +185,21 @@ async function seed() {
     rolesData.map((r) =>
       prisma.role.upsert({
         where: { name: r.name },
-        update: {
-          description: r.description,
-          permissions: JSON.stringify(rolePermissions[r.name] || []),
-        },
-        create: {
-          name: r.name,
-          description: r.description,
-          permissions: JSON.stringify(rolePermissions[r.name] || []),
-        },
+        update: { description: r.description },
+        create: { name: r.name, description: r.description },
       }),
     ),
   );
+
+  for (const r of roles) {
+    const perms = rolePermissions[r.name] || [];
+    await prisma.rolePermission.deleteMany({ where: { roleId: r.id } });
+    if (perms.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: perms.map((p) => ({ roleId: r.id, permission: p })),
+      });
+    }
+  }
 
   const hash = await bcrypt.hash("admin123", 10);
 
@@ -381,19 +384,25 @@ async function seed() {
   // Create production routes (skip if already exist)
   const existingRoutes = await prisma.productionRoute.findFirst();
   if (!existingRoutes) {
+    const stepNames = [
+      "Подготовка стекла",
+      "Укладка фотоэлементов",
+      "Пайка шин",
+      "Ламинация",
+      "Установка рамки",
+      "Тестирование EL",
+      "Маркировка",
+    ];
     await prisma.productionRoute.create({
       data: {
         name: "Сборка солнечной панели",
         description: "Стандартный процесс сборки",
-        steps: JSON.stringify([
-          "Подготовка стекла",
-          "Укладка фотоэлементов",
-          "Пайка шин",
-          "Ламинация",
-          "Установка рамки",
-          "Тестирование EL",
-          "Маркировка",
-        ]),
+        steps: {
+          create: stepNames.map((name, idx) => ({
+            name,
+            orderIndex: idx + 1,
+          })),
+        },
       },
     });
   }
