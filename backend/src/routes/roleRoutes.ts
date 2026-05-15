@@ -6,15 +6,19 @@ const router = Router();
 
 router.use(authMiddleware);
 
+function parsePermissions(role: any): string[] {
+  return (role.permissions || []).map((p: any) => p.permission);
+}
+
 router.get("/", async (_req: AuthRequest, res: Response) => {
   const roles = await prisma.role.findMany({
     where: { isArchived: false },
-    include: { _count: { select: { users: true } } },
+    include: { _count: { select: { users: true } }, permissions: true },
     orderBy: { name: "asc" },
   });
   const mapped = roles.map((r) => ({
     ...r,
-    permissions: r.permissions ? JSON.parse(r.permissions) : [],
+    permissions: parsePermissions(r),
   }));
   res.json(mapped);
 });
@@ -22,16 +26,25 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
 router.get("/:id", async (req: AuthRequest, res: Response) => {
   const role = await prisma.role.findUnique({
     where: { id: req.params.id },
-    include: { _count: { select: { users: true } } },
+    include: { _count: { select: { users: true } }, permissions: true },
   });
   if (!role || role.isArchived) {
     return res.status(404).json({ error: "Role not found" });
   }
   res.json({
     ...role,
-    permissions: role.permissions ? JSON.parse(role.permissions) : [],
+    permissions: parsePermissions(role),
   });
 });
+
+async function setRolePermissions(roleId: string, permissions: string[]) {
+  await prisma.rolePermission.deleteMany({ where: { roleId } });
+  if (permissions.length > 0) {
+    await prisma.rolePermission.createMany({
+      data: permissions.map((p) => ({ roleId, permission: p })),
+    });
+  }
+}
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
@@ -44,15 +57,18 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Role already exists" });
     }
     const role = await prisma.role.create({
-      data: {
-        name,
-        description,
-        permissions: permissions ? JSON.stringify(permissions) : "[]",
-      },
+      data: { name, description },
+    });
+    if (permissions) {
+      await setRolePermissions(role.id, permissions);
+    }
+    const updated = await prisma.role.findUnique({
+      where: { id: role.id },
+      include: { permissions: true },
     });
     res.status(201).json({
-      ...role,
-      permissions: JSON.parse(role.permissions || "[]"),
+      ...updated,
+      permissions: parsePermissions(updated),
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to create role" });
@@ -65,15 +81,23 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
     const data: any = {};
     if (name) data.name = name;
     if (description !== undefined) data.description = description;
-    if (permissions) data.permissions = JSON.stringify(permissions);
 
-    const role = await prisma.role.update({
+    await prisma.role.update({
       where: { id: req.params.id },
       data,
     });
+
+    if (permissions) {
+      await setRolePermissions(req.params.id, permissions);
+    }
+
+    const role = await prisma.role.findUnique({
+      where: { id: req.params.id },
+      include: { permissions: true },
+    });
     res.json({
       ...role,
-      permissions: JSON.parse(role.permissions || "[]"),
+      permissions: parsePermissions(role),
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to update role" });
