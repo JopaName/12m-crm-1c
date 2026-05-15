@@ -23,7 +23,13 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.productionOrder.create({ data: req.body });
+    const order = await prisma.productionOrder.create({
+      data: {
+        dealId: req.body.dealId,
+        productionRouteId: req.body.productionRouteId || null,
+        status: "New",
+      },
+    });
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ error: "Failed to create production order" });
