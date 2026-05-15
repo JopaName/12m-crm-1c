@@ -1,24 +1,31 @@
-// Prisma schema for 12M ERP/CRM
-// Based on Technical Specification - Entity Dictionary (Section 2.2)
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model RolePermission {
+  id         String @id @default(cuid())
+  roleId     String
+  role       Role   @relation(fields: [roleId], references: [id])
+  permission String
+
+  @@unique([roleId, permission])
+  @@index([permission])
+}
+
 model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String           @id @default(cuid())
+  name        String           @unique
   description String?
-  permissions String?  // JSON string of permissions
+  permissions RolePermission[]
   users       User[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isArchived  Boolean  @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  isArchived  Boolean          @default(false)
 }
 
 model User {
@@ -36,58 +43,59 @@ model User {
   assignedDeals Deal[]              @relation("ResponsibleAgent")
   createdTasks  Task[]              @relation("TaskCreator")
   assignedTasks Task[]              @relation("TaskAssignee")
-
-  createdClients Client[]
-  warehouseMovements WarehouseMovement[]
-  reserves Reserve[]
-  defectRecords DefectRecord[]
-  purchaseRequests PurchaseRequest[]
-  supplierOrders SupplierOrder[]
-  legalDocuments LegalDocument[]    @relation("ResponsibleLawyer")
-  confirmedPayments Payment[]       @relation("ConfirmedPayments")
-  cashOrders CashOrder[]
-  installationTasks InstallationTask[] @relation("Installer")
-  calendarEvents InstallationCalendarEvent[] @relation("CalendarInstaller")
-  verifiedReadings TelemetryReading[] @relation("VerifiedReadings")
-  auditLogs AuditLog[]
-
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
-  // Agent commissions
-  commissions AgentCommissionRecord[]
-
-  // Integration logs
-  integrationLogs IntegrationLog[]
+  commissions           AgentCommissionRecord[]
+  integrationLogs       IntegrationLog[]
+  createdClients        Client[]                   @relation("ClientCreator")
+  warehouseMovements    WarehouseMovement[]
+  reserves              Reserve[]
+  defectRecords         DefectRecord[]
+  purchaseRequests      PurchaseRequest[]
+  supplierOrders        SupplierOrder[]
+  legalDocuments        LegalDocument[]            @relation("ResponsibleLawyer")
+  confirmedPayments     Payment[]
+  cashOrders            CashOrder[]
+  installationTasks     InstallationTask[]
+  calendarEvents        InstallationCalendarEvent[]
+  verifiedReadings      TelemetryReading[]         @relation("VerifiedReadings")
+  auditLogs             AuditLog[]
+  sentMessages          ChatMessage[]              @relation("SentMessages")
+  receivedMessages      ChatMessage[]              @relation("ReceivedMessages")
+  legalDocumentComments LegalDocumentComment[]
 }
 
 model Client {
-  id           String           @id @default(cuid())
-  name         String
-  phone        String?
-  email        String?
-  inn          String?          @unique
-  kpp          String?
-  ogrn         String?
-  legalAddress String?
+  id            String           @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  inn           String?          @unique
+  kpp           String?
+  ogrn          String?
+  legalAddress  String?
   actualAddress String?
   contactPerson String?
-  notes        String?
-  createdById  String?
-  createdBy    User?            @relation(fields: [createdById], references: [id])
-  isArchived   Boolean          @default(false)
+  notes         String?
+  createdById   String?
+  createdBy     User?            @relation("ClientCreator", fields: [createdById], references: [id])
+  isArchived    Boolean          @default(false)
 
-  leads        Lead[]
-  deals        Deal[]
-  rentContracts RentContract[]
+  leads          Lead[]
+  deals          Deal[]
+  rentContracts  RentContract[]
   legalDocuments LegalDocument[]
-  invoices     Invoice[]
-  payments     Payment[]
-  serviceCases ServiceCase[]
+  invoices       Invoice[]
+  payments       Payment[]
+  serviceCases   ServiceCase[]
   telemetryReadings TelemetryReading[]
 
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([inn])
 }
 
 model Lead {
@@ -95,34 +103,41 @@ model Lead {
   clientName      String
   clientPhone     String
   clientEmail     String?
-  source          String   // Web-form, Agent, Channel, Import
-  status          String   // New, Contacted, Qualified, Converted, Lost
+  source          String
+  status          String
   assignedAgentId String
   assignedAgent   User     @relation("AssignedAgent", fields: [assignedAgentId], references: [id])
-  deal            Deal?
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id])
+  dealId          String?  @unique
+  deal            Deal?    @relation(fields: [dealId], references: [id])
   notes           String?
   isArchived      Boolean  @default(false)
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([assignedAgentId])
+  @@index([status, assignedAgentId])
+  @@index([source])
 }
 
 model Deal {
-  id                String       @id @default(cuid())
-  dealNumber        String       @unique
-  dealType          String       // Sale, ProjectSale, Rent
-  status            String       // Current state in funnel
-  clientId          String
-  client            Client       @relation(fields: [clientId], references: [id])
-  clientInn         String?
-  responsibleAgentId String
-  responsibleAgent  User         @relation("ResponsibleAgent", fields: [responsibleAgentId], references: [id])
-  expectedAmount    Float
-  actualAmount      Float?
-  description       String?
-  isArchived        Boolean      @default(false)
+  id                  String       @id @default(cuid())
+  dealNumber          String       @unique
+  dealType            String
+  status              String
+  clientId            String
+  client              Client       @relation(fields: [clientId], references: [id])
+  clientInn           String?
+  responsibleAgentId  String
+  responsibleAgent    User         @relation("ResponsibleAgent", fields: [responsibleAgentId], references: [id])
+  expectedAmount      Float
+  actualAmount        Float?
+  description         String?
+  isArchived          Boolean      @default(false)
 
-  // Linked entities
   lead              Lead?
   project           Project?
   rentContract      RentContract?
@@ -133,52 +148,66 @@ model Deal {
   installationTasks InstallationTask[]
   serviceCases      ServiceCase[]
   commissions       AgentCommissionRecord[]
+  warehouseMovements WarehouseMovement[]
   reserves          Reserve[]
   purchaseRequests  PurchaseRequest[]
   cashOrders        CashOrder[]
   tasks             Task[]
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([clientId, status])
+  @@index([responsibleAgentId])
+  @@index([dealType])
 }
 
 model Product {
-  id          String        @id @default(cuid())
-  name        String
-  sku         String        @unique
-  description String?
-  category    String?
-  unit        String        // pcs, kg, m, etc
+  id            String        @id @default(cuid())
+  name          String
+  sku           String        @unique
+  description   String?
+  category      String?
+  unit          String
   purchasePrice Float?
-  salePrice   Float?
-  rentPrice   Float?
-  isArchived  Boolean       @default(false)
+  salePrice     Float?
+  rentPrice     Float?
+  isArchived    Boolean       @default(false)
 
-  items       ProductItem[]
-  specifications Specification[]
-  inventoryBalances InventoryBalance[]
-  purchaseRequests PurchaseRequest[]
+  items              ProductItem[]
+  specifications     Specification[]
+  inventoryBalances  InventoryBalance[]
+  purchaseRequests   PurchaseRequest[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([name])
 }
 
 model ProductItem {
-  id                String             @id @default(cuid())
-  productId         String
-  product           Product            @relation(fields: [productId], references: [id])
-  serialNumber      String?            @unique
-  status            String             // Stock, InProduction, InRent, Sold, Maintenance, Returned, Repair, Defect, WrittenOff
-  warehouseCellId   String?
-  warehouseCell     WarehouseCell?     @relation(fields: [warehouseCellId], references: [id])
-  rentContracts     RentContract[]     @relation("RentedEquipment")
-  isArchived        Boolean            @default(false)
+  id              String             @id @default(cuid())
+  productId       String
+  product         Product            @relation(fields: [productId], references: [id])
+  serialNumber    String?            @unique
+  status          String
+  warehouseCellId String?
+  warehouseCell   WarehouseCell?     @relation(fields: [warehouseCellId], references: [id])
+  rentContracts   RentContract[]     @relation("RentedEquipment")
+  isArchived      Boolean            @default(false)
 
-  movements         WarehouseMovement[]
-  reserves          Reserve[]
+  movements WarehouseMovement[]
+  reserves  Reserve[]
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([productId])
+  @@index([warehouseCellId])
 }
 
 model WarehouseCell {
@@ -187,12 +216,14 @@ model WarehouseCell {
   zone      String?
   items     ProductItem[]
   inventoryBalances InventoryBalance[]
-  movementsFrom WarehouseMovement[] @relation("FromCell")
-  movementsTo WarehouseMovement[] @relation("ToCell")
+  movementsFrom     WarehouseMovement[] @relation("FromCell")
+  movementsTo       WarehouseMovement[] @relation("ToCell")
   isArchived Boolean      @default(false)
 
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([zone])
 }
 
 model InventoryBalance {
@@ -205,11 +236,14 @@ model InventoryBalance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([cellId])
 }
 
 model WarehouseMovement {
   id            String       @id @default(cuid())
-  type          String       // Receipt, WriteOff, Transfer, Reserve, Unreserve
+  type          String
   productItemId String
   productItem   ProductItem  @relation(fields: [productItemId], references: [id])
   dealId        String?
@@ -223,7 +257,13 @@ model WarehouseMovement {
   createdBy     User         @relation(fields: [createdById], references: [id])
   notes         String?
 
-  createdAt     DateTime     @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([dealId])
+  @@index([productItemId])
+  @@index([createdAt])
+  @@index([createdById])
 }
 
 model Reserve {
@@ -233,39 +273,67 @@ model Reserve {
   dealId        String
   deal          Deal         @relation(fields: [dealId], references: [id])
   quantity      Int
-  status        String       // Active, Released, Used
+  status        String
   createdById   String
   createdBy     User         @relation(fields: [createdById], references: [id])
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([dealId])
+  @@index([productItemId])
 }
 
 model Project {
   id                  String   @id @default(cuid())
   dealId              String   @unique
   deal                Deal     @relation(fields: [dealId], references: [id])
-  specificationId     String?
-  projectFile         String?  // Path to CAD/BIM file
+  specificationId     String?  @unique
+  specification       Specification? @relation(fields: [specificationId], references: [id])
+  projectFile         String?
   installTimeDays     Int?
   workersCount        Int?
   installCost         Float?
-  chiefEngineerApproval String? // Pending, Approved, Rejected
+  chiefEngineerApproval String?
   gpsCoordinates      String?
   photoBefore         String?
   photoAfter          String?
   isArchived          Boolean  @default(false)
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Specification {
   id        String   @id @default(cuid())
   name      String
-  project   Project?
-  products  Product[]
-  isArchived Boolean @default(false)
+  project          Project?
+  products         Product[]
+  productionOrders ProductionOrder[]
+  isArchived       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductionStep {
+  id               String         @id @default(cuid())
+  productionRouteId String
+  productionRoute  ProductionRoute @relation(fields: [productionRouteId], references: [id])
+  name             String
+  orderIndex       Int
+
+  @@index([productionRouteId])
+}
+
+model ProductionRoute {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  steps       ProductionStep[]
+  productionOrders ProductionOrder[]
+  isArchived  Boolean          @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -276,31 +344,23 @@ model ProductionOrder {
   dealId              String
   deal                Deal     @relation(fields: [dealId], references: [id])
   specificationId     String?
+  specification       Specification? @relation(fields: [specificationId], references: [id])
   productionRouteId   String?
   productionRoute     ProductionRoute? @relation(fields: [productionRouteId], references: [id])
-  status              String   // New, MaterialsWrittenOff, InProgress, QualityCheck, Completed
+  status              String
   materialsWrittenOff Boolean  @default(false)
-  qualityCheckStatus  String?  // Pending, Passed, Failed
+  qualityCheckStatus  String?
   startedAt           DateTime?
   completedAt         DateTime?
   isArchived          Boolean  @default(false)
 
-  defectRecords       DefectRecord[]
+  defectRecords DefectRecord[]
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-model ProductionRoute {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  steps       String?  // JSON array of steps
-  productionOrders ProductionOrder[]
-  isArchived  Boolean  @default(false)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  @@index([status])
+  @@index([dealId])
 }
 
 model DefectRecord {
@@ -308,13 +368,16 @@ model DefectRecord {
   productionOrderId String
   productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id])
   description       String
-  severity          String   // Minor, Major, Critical
+  severity          String
   photoUrl          String?
   createdById       String
   createdBy         User     @relation(fields: [createdById], references: [id])
   isArchived        Boolean  @default(false)
 
-  createdAt         DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([severity])
+  @@index([productionOrderId])
 }
 
 model PurchaseRequest {
@@ -324,32 +387,39 @@ model PurchaseRequest {
   productId     String
   product       Product  @relation(fields: [productId], references: [id])
   quantity      Int
-  status        String   // New, Approved, Ordered, Received, Cancelled
+  status        String
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   createdById   String
   createdBy     User     @relation(fields: [createdById], references: [id])
   isArchived    Boolean  @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([dealId])
+  @@index([productId])
 }
 
 model Supplier {
-  id          String   @id @default(cuid())
-  name        String
+  id            String   @id @default(cuid())
+  name          String
   contactPerson String?
-  phone       String?
-  email       String?
-  inn         String?
-  address     String?
-  isArchived  Boolean  @default(false)
+  phone         String?
+  email         String?
+  inn           String?
+  address       String?
+  isArchived    Boolean  @default(false)
 
-  orders      SupplierOrder[]
+  orders           SupplierOrder[]
   purchaseRequests PurchaseRequest[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([inn])
 }
 
 model SupplierOrder {
@@ -357,15 +427,18 @@ model SupplierOrder {
   supplierId    String
   supplier      Supplier @relation(fields: [supplierId], references: [id])
   orderNumber   String   @unique
-  status        String   // New, Confirmed, Shipped, Received, Cancelled
+  status        String
   totalAmount   Float?
   expectedDate  DateTime?
   createdById   String
   createdBy     User     @relation(fields: [createdById], references: [id])
   isArchived    Boolean  @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([supplierId])
 }
 
 model RentContract {
@@ -375,40 +448,58 @@ model RentContract {
   client            Client             @relation(fields: [clientId], references: [id])
   dealId            String?            @unique
   deal              Deal?              @relation(fields: [dealId], references: [id])
-  equipmentIds      String             // JSON array of ProductItem IDs
   equipment         ProductItem[]      @relation("RentedEquipment")
-  billingFormula    String             // JSON: formula configuration
+  billingFormula    Json
   startDate         DateTime
   endDate           DateTime?
   monthlyPayment    Float?
-  status            String             // Active, Suspended, Closed
+  status            String
   telemetryDeviceId String?
   isArchived        Boolean            @default(false)
 
   billingRecords    BillingRecord[]
   telemetryReadings TelemetryReading[]
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([clientId])
 }
 
 model BillingRecord {
   id              String   @id @default(cuid())
   rentContractId  String
   rentContract    RentContract @relation(fields: [rentContractId], references: [id])
-  period          String   // YYYY-MM
+  period          String
   amount          Float
-  formulaSnapshot String   // JSON: formula used for calculation
-  dataSource      String   // API, Client_App, Agent_Input, Excel_Import, Photo
+  formulaSnapshot Json
+  dataSource      String
   energyProduced  Float?
   uptime          Float?
   coefficient     Float?
-  status          String   // Calculated, Invoiced, Paid, Overdue
+  status          String
   invoiceId       String?
   invoice         Invoice? @relation(fields: [invoiceId], references: [id])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rentContractId])
+  @@index([period])
+  @@index([status])
+}
+
+model LegalDocumentComment {
+  id               String        @id @default(cuid())
+  legalDocumentId  String
+  legalDocument    LegalDocument  @relation(fields: [legalDocumentId], references: [id])
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  content          String
+  createdAt        DateTime      @default(now())
+
+  @@index([legalDocumentId])
 }
 
 model LegalDocument {
@@ -423,62 +514,78 @@ model LegalDocument {
   documentNumber      String?
   documentDate        DateTime?
   versionNumber       Int      @default(1)
-  status              String   // Draft, Approved, Sent, Signed, Archived
-  fileDraft           String?  // Path to draft file
-  fileSigned          String?  // Path to signed file
-  signatureMethod     String?  // UNEP, PEP, Paper
-  commentLog          String?  // JSON array of comments
+  status              String
+  fileDraft           String?
+  fileSigned          String?
+  signatureMethod     String?
+  comments            LegalDocumentComment[]
   isArchived          Boolean  @default(false)
 
-  createdAt           DateTime @default(now())
-  approvedAt          DateTime?
-  signedAt            DateTime?
-  updatedAt           DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  approvedAt DateTime?
+  signedAt   DateTime?
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+  @@index([dealId])
+  @@index([clientId])
+  @@index([documentType])
+  @@index([responsibleLawyerId])
 }
 
 model Invoice {
-  id          String   @id @default(cuid())
-  invoiceNumber String @unique
-  dealId      String?
-  deal        Deal?    @relation(fields: [dealId], references: [id])
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id])
-  amount      Float
-  status      String   // Draft, Sent, Paid, Overdue, Cancelled
-  dueDate     DateTime?
-  paidAt      DateTime?
-  isArchived  Boolean  @default(false)
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  amount        Float
+  status        String
+  dueDate       DateTime?
+  paidAt        DateTime?
+  isArchived    Boolean  @default(false)
 
-  payments    Payment[]
+  payments      Payment[]
   billingRecords BillingRecord[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([dealId])
 }
 
 model Payment {
-  id          String   @id @default(cuid())
-  paymentNumber String @unique
-  invoiceId   String?
-  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
-  dealId      String?
-  deal        Deal?    @relation(fields: [dealId], references: [id])
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id])
-  amount      Float
-  method      String   // BankTransfer, Cash, Card, Other
-  status      String   // Pending, Confirmed, Reversed
+  id            String   @id @default(cuid())
+  paymentNumber String   @unique
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  amount        Float
+  method        String
+  status        String
   confirmedById String?
-  confirmedBy User?    @relation("ConfirmedPayments", fields: [confirmedById], references: [id])
-  isArchived  Boolean  @default(false)
+  confirmedBy   User?    @relation(fields: [confirmedById], references: [id])
+  paidAt        DateTime?
+  isArchived    Boolean  @default(false)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([dealId])
+  @@index([method])
 }
 
 model CashOrder {
   id          String   @id @default(cuid())
-  type        String   // Incoming, Outgoing
+  type        String
   amount      Float
   category    String
   description String?
@@ -488,7 +595,11 @@ model CashOrder {
   createdBy   User     @relation(fields: [createdById], references: [id])
   isArchived  Boolean  @default(false)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([category])
+  @@index([dealId])
 }
 
 model InstallationTask {
@@ -496,23 +607,28 @@ model InstallationTask {
   dealId          String
   deal            Deal     @relation(fields: [dealId], references: [id])
   installerId     String
-  installer       User     @relation("Installer", fields: [installerId], references: [id])
+  installer       User     @relation(fields: [installerId], references: [id])
   installDate     DateTime
   plannedEndDate  DateTime?
-  status          String   // Scheduled, InProgress, Completed, Cancelled, Rescheduled
+  status          String
   gpsStart        String?
   gpsEnd          String?
   photoBefore     String?
   photoAfter      String?
-  clientSignature String?  // Path to signature file
+  clientSignature String?
   notes           String?
   rescheduleReason String?
   isArchived      Boolean  @default(false)
 
-  calendarEvents  InstallationCalendarEvent[]
+  calendarEvents InstallationCalendarEvent[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([installerId])
+  @@index([dealId])
+  @@index([installDate])
 }
 
 model InstallationCalendarEvent {
@@ -523,12 +639,16 @@ model InstallationCalendarEvent {
   startDate           DateTime
   endDate             DateTime
   installerId         String
-  installer           User     @relation("CalendarInstaller", fields: [installerId], references: [id])
-  status              String   // Scheduled, InProgress, Completed, Missed
+  installer           User     @relation(fields: [installerId], references: [id])
+  status              String
   isArchived          Boolean  @default(false)
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([installerId])
+  @@index([startDate])
+  @@index([installationTaskId])
 }
 
 model ServiceCase {
@@ -537,28 +657,34 @@ model ServiceCase {
   deal        Deal?    @relation(fields: [dealId], references: [id])
   clientId    String
   client      Client   @relation(fields: [clientId], references: [id])
-  type        String   // Warranty, Service, Complaint
-  status      String   // New, InProgress, Resolved, Closed
+  type        String
+  status      String
   description String?
   resolution  String?
   isArchived  Boolean  @default(false)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([type])
 }
 
 model TelemetryDevice {
-  id            String   @id @default(cuid())
-  serialNumber  String   @unique
-  model         String?
-  nominalCapacity Float? // kW
-  rentContractId String?
-  isArchived    Boolean  @default(false)
+  id              String   @id @default(cuid())
+  serialNumber    String   @unique
+  model           String?
+  nominalCapacity Float?
+  rentContractId  String?
+  isArchived      Boolean  @default(false)
 
-  readings      TelemetryReading[]
+  readings TelemetryReading[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([serialNumber])
 }
 
 model TelemetryReading {
@@ -570,17 +696,24 @@ model TelemetryReading {
   deviceId            String?
   device              TelemetryDevice? @relation(fields: [deviceId], references: [id])
   inverterSerialNumber String?
-  measurementPeriod   String   // YYYY-MM
+  measurementPeriod   String
   energyProduced      Float?
   uptime              Float?
-  dataSource          String   // API, Client_App, Agent_Input, Excel_Import, Photo
-  verificationStatus  String   // Unverified, Confirmed, Rejected
+  dataSource          String
+  verificationStatus  String
   verifiedById        String?
   verifiedBy          User?    @relation("VerifiedReadings", fields: [verifiedById], references: [id])
   isArchived          Boolean  @default(false)
 
-  createdAt           DateTime @default(now())
-  receivedAt          DateTime @default(now())
+  createdAt  DateTime @default(now())
+  receivedAt DateTime @default(now())
+
+  @@index([rentContractId])
+  @@index([clientId])
+  @@index([measurementPeriod])
+  @@index([receivedAt])
+  @@index([verificationStatus])
+  @@index([deviceId])
 }
 
 model AgentCommissionRecord {
@@ -590,21 +723,25 @@ model AgentCommissionRecord {
   dealId      String
   deal        Deal     @relation(fields: [dealId], references: [id])
   amount      Float
-  status      String   // Calculated, Approved, Paid
+  status      String
   paidAt      DateTime?
   isArchived  Boolean  @default(false)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([dealId])
+  @@index([status])
 }
 
 model Task {
   id          String   @id @default(cuid())
   title       String
   description String?
-  type        String   // General, Legal, Technical, Service, Procurement
-  status      String   // New, InProgress, Completed, Cancelled
-  priority    String   // Low, Medium, High, Critical
+  type        String
+  status      String
+  priority    String
   dealId      String?
   deal        Deal?    @relation(fields: [dealId], references: [id])
   createdById String
@@ -615,37 +752,73 @@ model Task {
   completedAt DateTime?
   isArchived  Boolean  @default(false)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([assigneeId, status])
+  @@index([dealId])
+  @@index([type])
+  @@index([priority])
 }
 
 model AuditLog {
   id          String   @id @default(cuid())
   entityType  String
   entityId    String
-  action      String   // CREATE, UPDATE, DELETE, VIEW, EXPORT
+  action      String
   userId      String?
   user        User?    @relation(fields: [userId], references: [id])
-  oldValue    String?  // JSON
-  newValue    String?  // JSON
+  oldValue    String?
+  newValue    String?
   ipAddress   String?
   userAgent   String?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([entityType])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String
+  readAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([senderId, receiverId])
+  @@index([createdAt])
 }
 
 model IntegrationLog {
-  id          String   @id @default(cuid())
-  direction   String   // Incoming, Outgoing
-  system      String   // 1C, FinanceTable, Telemetry, KEDO, Weather
-  entityType  String?
-  entityId    String?
-  status      String   // Success, Error, Pending
-  request     String?  // JSON
-  response    String?  // JSON
+  id           String   @id @default(cuid())
+  direction    String
+  system       String
+  entityType   String?
+  entityId     String?
+  status       String
+  request      String?
+  response     String?
   errorMessage String?
-  createdById String?
-  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdById  String?
+  createdBy    User?    @relation(fields: [createdById], references: [id])
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([direction])
+  @@index([system])
+  @@index([status])
+  @@index([createdAt])
+  @@index([entityType, entityId])
 }
