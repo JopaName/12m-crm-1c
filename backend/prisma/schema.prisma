@@ -58,6 +58,8 @@ model User {
   calendarEvents       InstallationCalendarEvent[]
   verifiedReadings     TelemetryReading[]
   auditLogs            AuditLog[]
+  sentMessages         ChatMessage[] @relation("SentMessages")
+  receivedMessages     ChatMessage[] @relation("ReceivedMessages")
 }
 
 model Client {
@@ -637,6 +639,18 @@ model AuditLog {
   newValue    String?  // JSON
   ipAddress   String?
   userAgent   String?
+
+  createdAt   DateTime @default(now())
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String
+  readAt      DateTime?
 
   createdAt   DateTime @default(now())
 }

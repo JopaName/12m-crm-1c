@@ -18,6 +18,7 @@ const menuItems = [
   { path: "/tasks", label: "Задачи", icon: "✅" },
   { path: "/users", label: "Пользователи", icon: "👤" },
   { path: "/roles", label: "Роли", icon: "🔐" },
+  { path: "/chat", label: "Чат", icon: "💬" },
   { path: "/audit", label: "Журнал", icon: "📝" },
 ];
 

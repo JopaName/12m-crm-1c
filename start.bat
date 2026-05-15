@@ -12,6 +12,14 @@ if %errorlevel% neq 0 (
   exit /b 1
 )
 
+echo Синхронизация схемы БД...
+call npx prisma db push
+if %errorlevel% neq 0 (
+  echo Ошибка синхронизации схемы БД
+  pause
+  exit /b 1
+)
+
 echo Генерация Prisma клиента...
 call npx prisma generate
 if %errorlevel% neq 0 (

@@ -138,3 +138,11 @@ export const serviceAPI = {
   getAll: () => api.get("/service"),
   create: (data: any) => api.post("/service", data),
 };
+
+export const chatAPI = {
+  getConversations: () => api.get("/chat/conversations"),
+  getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),
+  send: (data: { receiverId: string; content: string }) =>
+    api.post("/chat/send", data),
+  markRead: (userId: string) => api.put(`/chat/read/${userId}`),
+};
