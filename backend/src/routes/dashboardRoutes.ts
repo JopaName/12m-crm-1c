@@ -103,4 +103,53 @@ router.get("/finance", async (_req: AuthRequest, res: Response) => {
   }
 });
 
+router.get("/pulse", async (_req: AuthRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
+    const [
+      ordersInProgress,
+      totalCells,
+      filledCells,
+      newLeadsToday,
+      overdueTasks,
+    ] = await Promise.all([
+      prisma.productionOrder.count({
+        where: { status: "InProgress", isArchived: false },
+      }),
+      prisma.warehouseCell.count({ where: { isArchived: false } }),
+      prisma.productItem.count({
+        where: { warehouseCellId: { not: null }, isArchived: false },
+      }),
+      prisma.lead.count({
+        where: { createdAt: { gte: todayStart }, isArchived: false },
+      }),
+      prisma.task.count({
+        where: {
+          status: { not: "Completed" },
+          dueDate: { lt: now },
+          isArchived: false,
+        },
+      }),
+    ]);
+
+    res.json({
+      ordersInProgress,
+      cellOccupancy:
+        totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0,
+      totalCells,
+      filledCells,
+      newLeadsToday,
+      overdueTasks,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch pulse data" });
+  }
+});
+
 export default router;
