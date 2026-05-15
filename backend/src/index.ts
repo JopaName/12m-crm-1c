@@ -88,7 +88,7 @@ async function main() {
     await ensureAdminUser();
     initializeScheduledTasks();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`12M CRM Server running on port ${PORT}`);
     });
   } catch (error) {
