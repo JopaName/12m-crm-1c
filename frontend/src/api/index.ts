@@ -73,6 +73,7 @@ export const dashboardAPI = {
   getSummary: () => api.get("/dashboard/summary"),
   getPipeline: () => api.get("/dashboard/pipeline"),
   getFinance: () => api.get("/dashboard/finance"),
+  getPulse: () => api.get("/dashboard/pulse"),
 };
 
 export const tasksAPI = {

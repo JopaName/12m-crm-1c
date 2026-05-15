@@ -13,6 +13,7 @@ const menuItems = [
   { path: "/procurement", label: "Закупки", icon: "📥" },
   { path: "/rent", label: "Аренда", icon: "🔑" },
   { path: "/installation", label: "Монтажи", icon: "🔧" },
+  { path: "/installer-mobile", label: "Монтаж (моб.)", icon: "📱" },
   { path: "/legal", label: "Договоры", icon: "📄" },
   { path: "/service", label: "Сервис", icon: "🛠️" },
   { path: "/tasks", label: "Задачи", icon: "✅" },

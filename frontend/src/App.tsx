@@ -13,6 +13,7 @@ import ProductionPage from "./pages/ProductionPage";
 import ProcurementPage from "./pages/ProcurementPage";
 import RentPage from "./pages/RentPage";
 import InstallationPage from "./pages/InstallationPage";
+import MobileInstallationPage from "./pages/MobileInstallationPage";
 import LegalPage from "./pages/LegalPage";
 import ServicePage from "./pages/ServicePage";
 import TasksPage from "./pages/TasksPage";
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="procurement" element={<ProcurementPage />} />
         <Route path="rent" element={<RentPage />} />
         <Route path="installation" element={<InstallationPage />} />
+        <Route path="installer-mobile" element={<MobileInstallationPage />} />
         <Route path="legal" element={<LegalPage />} />
         <Route path="service" element={<ServicePage />} />
         <Route path="tasks" element={<TasksPage />} />

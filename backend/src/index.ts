@@ -2,12 +2,15 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import http from "http";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { Server as SocketIOServer } from "socket.io";
 import { errorHandler } from "./middleware/errorHandler";
 import { authMiddleware } from "./middleware/auth";
 import { initializeScheduledTasks } from "./services/scheduler";
+import { setupTelemetrySocket } from "./services/telemetrySocket";
 
 import clientRoutes from "./routes/clientRoutes";
 import leadRoutes from "./routes/leadRoutes";
@@ -46,6 +49,11 @@ async function ensureAdminUser() {
 }
 
 const app = express();
+const httpServer = http.createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: { origin: process.env.CORS_ORIGIN || "*" },
+  path: "/ws",
+});
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(helmet());
@@ -89,8 +97,9 @@ async function main() {
 
     await ensureAdminUser();
     initializeScheduledTasks();
+    setupTelemetrySocket(io);
 
-    app.listen(PORT, "0.0.0.0", () => {
+    httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`12M CRM Server running on port ${PORT}`);
     });
   } catch (error) {
