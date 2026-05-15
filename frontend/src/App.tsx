@@ -19,6 +19,7 @@ import TasksPage from "./pages/TasksPage";
 import AuditPage from "./pages/AuditPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
+import ChatPage from "./pages/ChatPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="roles" element={<RolesPage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route path="chat" element={<ChatPage />} />
       </Route>
     </Routes>
   );
