@@ -398,6 +398,204 @@ async function seed() {
     });
   }
 
+  const agentRole = roles[0];
+  const engineerRole = roles[1];
+  const directorRole = roles[8];
+
+  const agents = await prisma.user.findMany({
+    where: { roleId: agentRole.id },
+  });
+  const engineers = await prisma.user.findMany({
+    where: { roleId: engineerRole.id },
+  });
+  const director = await prisma.user.findUnique({
+    where: { email: "director@12m.ru" },
+  });
+
+  const existingClients = await prisma.client.findFirst();
+  if (!existingClients) {
+    const clientsData = [
+      {
+        name: "ООО «ЭнергоСтрой»",
+        phone: "+7 (495) 123-45-67",
+        email: "info@energostroy.ru",
+        inn: "7701123456",
+        kpp: "770101001",
+        ogrn: "1027701234567",
+        legalAddress: "г. Москва, ул. Строителей, д. 10",
+        actualAddress: "г. Москва, ул. Строителей, д. 10",
+        contactPerson: "Николаев Пётр Андреевич",
+        createdById: director?.id,
+      },
+      {
+        name: "ИП «Солнечный свет»",
+        phone: "+7 (926) 555-34-21",
+        email: "ivanov@sol-svet.ru",
+        inn: "7728123456",
+        kpp: "",
+        contactPerson: "Иванов Сергей Викторович",
+        createdById: director?.id,
+      },
+      {
+        name: "АО «ПромАльтернатива»",
+        phone: "+7 (499) 234-56-78",
+        email: "info@promalt.ru",
+        inn: "7744123456",
+        kpp: "774401001",
+        ogrn: "1037701234567",
+        legalAddress: "г. Москва, ул. Промышленная, д. 5",
+        actualAddress: "г. Москва, ул. Промышленная, д. 5",
+        contactPerson: "Козлов Дмитрий Алексеевич",
+        createdById: director?.id,
+      },
+    ];
+
+    for (const c of clientsData) {
+      await prisma.client.create({ data: c });
+    }
+  }
+
+  const clients = await prisma.client.findMany();
+
+  const existingLeads = await prisma.lead.findFirst();
+  if (!existingLeads && agents.length > 0) {
+    const leadsData = [
+      {
+        clientName: "ООО «ЭнергоСтрой»",
+        clientPhone: "+7 (495) 123-45-67",
+        clientEmail: "info@energostroy.ru",
+        source: "Web-form",
+        status: "Converted",
+        assignedAgentId: agents[0].id,
+        clientId: clients[0]?.id,
+      },
+      {
+        clientName: "ИП Петров А.С.",
+        clientPhone: "+7 (903) 777-88-99",
+        clientEmail: "petrov@mail.ru",
+        source: "Channel",
+        status: "New",
+        assignedAgentId: agents[0].id,
+      },
+      {
+        clientName: "ООО «ТехноИнвест»",
+        clientPhone: "+7 (495) 333-22-11",
+        source: "Agent",
+        status: "Contacted",
+        assignedAgentId: agents[1 % agents.length].id,
+      },
+    ];
+
+    for (const l of leadsData) {
+      await prisma.lead.create({ data: l });
+    }
+  }
+
+  const existingDeals = await prisma.deal.findFirst();
+  if (!existingDeals && clients.length > 0 && agents.length > 0) {
+    const deal1 = await prisma.deal.create({
+      data: {
+        dealNumber: "D-2025-001",
+        dealType: "Sale",
+        status: "InProgress",
+        clientId: clients[0].id,
+        responsibleAgentId: agents[0].id,
+        expectedAmount: 1250000,
+        actualAmount: null,
+        description:
+          "Поставка оборудования для АЗС — 30 солнечных панелей 550W + 5 инверторов 6.2kW + 10 АКБ 5kWh",
+      },
+    });
+
+    const deal2 = await prisma.deal.create({
+      data: {
+        dealNumber: "D-2025-002",
+        dealType: "ProjectSale",
+        status: "New",
+        clientId: clients[1 % clients.length].id,
+        responsibleAgentId: agents[0].id,
+        expectedAmount: 450000,
+        description: "Монтаж солнечной станции 15kW для частного дома",
+      },
+    });
+
+    const solarPanel = await prisma.product.findUnique({
+      where: { sku: "SP-550-M" },
+    });
+    const inverter = await prisma.product.findUnique({
+      where: { sku: "INV-6.2-H" },
+    });
+    const battery = await prisma.product.findUnique({
+      where: { sku: "BAT-NI-5" },
+    });
+
+    if (solarPanel && director) {
+      const panels = await prisma.productItem.findMany({
+        where: { productId: solarPanel.id, status: "Stock" },
+        take: 5,
+      });
+      for (const item of panels) {
+        await prisma.warehouseMovement.create({
+          data: {
+            type: "Reserve",
+            productItemId: item.id,
+            dealId: deal1.id,
+            fromCellId: null,
+            toCellId: null,
+            quantity: 1,
+            createdById: director.id,
+            notes: "Резерв под сделку D-2025-001",
+          },
+        });
+        await prisma.reserve.create({
+          data: {
+            productItemId: item.id,
+            dealId: deal1.id,
+            quantity: 1,
+            status: "Active",
+            createdById: director.id,
+          },
+        });
+      }
+    }
+
+    if (engineers.length > 0) {
+      for (let i = 0; i < 3; i++) {
+        const task = await prisma.task.findFirst({
+          where: { dealId: deal1.id, type: "Technical" },
+        });
+        if (!task) {
+          await prisma.task.create({
+            data: {
+              title: `Этап ${i + 1}: ${["Разработка КД", "Закупка материалов", "Подготовка производства"][i]}`,
+              description: `Автоматически созданная задача по сделке D-2025-001`,
+              type: "Technical",
+              status: i === 0 ? "InProgress" : "New",
+              priority: "High",
+              dealId: deal1.id,
+              createdById: director!.id,
+              assigneeId: engineers[0].id,
+            },
+          });
+        }
+      }
+    }
+
+    if (inverter && battery && engineers.length > 0 && director) {
+      const prodOrder = await prisma.productionOrder.findFirst({
+        where: { dealId: deal2.id },
+      });
+      if (!prodOrder) {
+        await prisma.productionOrder.create({
+          data: {
+            dealId: deal2.id,
+            status: "New",
+          },
+        });
+      }
+    }
+  }
+
   console.log("Seed completed successfully!");
 }
 
