@@ -174,7 +174,7 @@ export async function calculateMonthlyBilling() {
       const reading = contract.telemetryReadings[0];
       if (!reading) continue;
 
-      const billingFormula = (contract.billingFormula as any) || {};
+      const billingFormula = JSON.parse(contract.billingFormula || "{}");
       const uptime = reading.uptime || 0;
       const coefficient = uptime > 0 ? Math.min(uptime / (24 * 30), 1) : 0;
       const monthlyPayment = contract.monthlyPayment || 0;
@@ -185,12 +185,12 @@ export async function calculateMonthlyBilling() {
           rentContractId: contract.id,
           period,
           amount,
-          formulaSnapshot: {
+          formulaSnapshot: JSON.stringify({
             monthlyPayment,
             uptime,
             coefficient,
             formula: billingFormula,
-          },
+          }),
           dataSource: reading.dataSource,
           energyProduced: reading.energyProduced,
           uptime: reading.uptime,

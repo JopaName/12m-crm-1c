@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -449,7 +449,7 @@ model RentContract {
   dealId            String?            @unique
   deal              Deal?              @relation(fields: [dealId], references: [id])
   equipment         ProductItem[]      @relation("RentedEquipment")
-  billingFormula    Json
+  billingFormula    String  // JSON (change to Json type for PostgreSQL)
   startDate         DateTime
   endDate           DateTime?
   monthlyPayment    Float?
@@ -473,7 +473,7 @@ model BillingRecord {
   rentContract    RentContract @relation(fields: [rentContractId], references: [id])
   period          String
   amount          Float
-  formulaSnapshot Json
+  formulaSnapshot String  // JSON (change to Json type for PostgreSQL)
   dataSource      String
   energyProduced  Float?
   uptime          Float?
