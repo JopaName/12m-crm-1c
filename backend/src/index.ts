@@ -28,6 +28,7 @@ import taskRoutes from "./routes/taskRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import integrationRoutes from "./routes/integrationRoutes";
 import auditRoutes from "./routes/auditRoutes";
+import roleRoutes from "./routes/roleRoutes";
 
 dotenv.config();
 
@@ -71,6 +72,7 @@ app.use("/api/tasks", authMiddleware, taskRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 app.use("/api/integrations", authMiddleware, integrationRoutes);
 app.use("/api/audit", authMiddleware, auditRoutes);
+app.use("/api/roles", authMiddleware, roleRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

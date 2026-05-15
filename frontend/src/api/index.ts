@@ -31,6 +31,10 @@ export const authAPI = {
     api.post("/auth/login", data),
   me: () => api.get("/auth/me"),
   getUsers: () => api.get("/auth/users"),
+  getRoles: () => api.get("/auth/roles"),
+  createUser: (data: any) => api.post("/auth/register", data),
+  updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
+  deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
 };
 
 export const clientsAPI = {
@@ -120,6 +124,14 @@ export const auditAPI = {
   getAll: () => api.get("/audit"),
   getByEntity: (type: string, id: string) =>
     api.get(`/audit/entity/${type}/${id}`),
+};
+
+export const rolesAPI = {
+  getAll: () => api.get("/roles"),
+  getById: (id: string) => api.get(`/roles/${id}`),
+  create: (data: any) => api.post("/roles", data),
+  update: (id: string, data: any) => api.put(`/roles/${id}`, data),
+  delete: (id: string) => api.delete(`/roles/${id}`),
 };
 
 export const serviceAPI = {

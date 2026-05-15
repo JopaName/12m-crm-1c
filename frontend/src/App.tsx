@@ -17,6 +17,8 @@ import LegalPage from "./pages/LegalPage";
 import ServicePage from "./pages/ServicePage";
 import TasksPage from "./pages/TasksPage";
 import AuditPage from "./pages/AuditPage";
+import UsersPage from "./pages/UsersPage";
+import RolesPage from "./pages/RolesPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -56,6 +58,8 @@ export default function App() {
         <Route path="legal" element={<LegalPage />} />
         <Route path="service" element={<ServicePage />} />
         <Route path="tasks" element={<TasksPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="roles" element={<RolesPage />} />
         <Route path="audit" element={<AuditPage />} />
       </Route>
     </Routes>
