@@ -76,6 +76,8 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       legalAddress,
       actualAddress,
       contactPerson,
+      contractDate,
+      executionDate,
       notes,
     } = req.body;
     const client = await prisma.client.create({
@@ -89,6 +91,8 @@ router.post("/", async (req: AuthRequest, res: Response) => {
         legalAddress,
         actualAddress,
         contactPerson,
+        contractDate: contractDate ? new Date(contractDate) : undefined,
+        executionDate: executionDate ? new Date(executionDate) : undefined,
         notes,
         createdById: req.user!.id,
       },

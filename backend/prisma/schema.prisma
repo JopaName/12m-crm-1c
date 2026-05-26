@@ -92,9 +92,11 @@ model Client {
   ogrn          String?
   legalAddress  String?
   actualAddress String?
-  contactPerson String?
-  notes         String?
-  createdById   String?
+  contactPerson  String?
+  contractDate   DateTime?
+  executionDate  DateTime?
+  notes          String?
+  createdById    String?
   createdBy     User?            @relation("ClientCreator", fields: [createdById], references: [id])
   isArchived    Boolean          @default(false)
 
