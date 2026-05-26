@@ -51,6 +51,22 @@ export default function ClientDetailPage() {
                 {client.legalAddress || "-"}
               </span>
             </div>
+            <div>
+              <span className="text-gray-500">Дата договора:</span>{" "}
+              <span className="text-gray-800">
+                {client.contractDate
+                  ? new Date(client.contractDate).toLocaleDateString()
+                  : "-"}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500">Дата исполнения:</span>{" "}
+              <span className="text-gray-800">
+                {client.executionDate
+                  ? new Date(client.executionDate).toLocaleDateString()
+                  : "-"}
+              </span>
+            </div>
           </div>
         </div>
 
