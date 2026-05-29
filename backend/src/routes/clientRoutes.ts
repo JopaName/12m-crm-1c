@@ -91,7 +91,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
         legalAddress,
         actualAddress,
         contactPerson,
-        contractDate: contractDate ? new Date(contractDate) : undefined,
+        contractDate: new Date(),
         executionDate: executionDate ? new Date(executionDate) : undefined,
         notes,
         createdById: req.user!.id,
