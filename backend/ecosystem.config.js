@@ -1,0 +1,1 @@
+module.exports = { apps: [{ name: "12m-backend", cwd: "/root/12m-crm-1c/backend", script: "/root/.nvm/versions/node/v16.20.2/bin/npx", args: "ts-node-dev --respawn src/index.ts", interpreter: "none", env: { DATABASE_URL: "file:./dev.db", PORT: "3000", CORS_ORIGIN: "*", JWT_SECRET: "12m-crm-secret-key-2024" } }] };

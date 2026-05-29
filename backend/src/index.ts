@@ -33,6 +33,7 @@ import integrationRoutes from "./routes/integrationRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import roleRoutes from "./routes/roleRoutes";
 import chatRoutes from "./routes/chatRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 dotenv.config();
 
@@ -82,6 +83,7 @@ app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 app.use("/api/integrations", authMiddleware, integrationRoutes);
 app.use("/api/audit", authMiddleware, auditRoutes);
 app.use("/api/roles", authMiddleware, roleRoutes);
+app.use("/api/notifications", authMiddleware, notificationRoutes);
 app.use("/api/chat", authMiddleware, chatRoutes);
 
 app.get("/api/health", (_req, res) => {

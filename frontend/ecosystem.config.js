@@ -1,0 +1,1 @@
+{"apps":[{"name":"12m-frontend","cwd":"/root/12m-crm-1c/frontend","script":"npx","args":"serve -s dist -l 5173","interpreter":"none"}]}
