@@ -1,4 +1,5 @@
 import { Router, Response } from "express";
+import { createNotification } from "../services/notificationService";
 import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
 
@@ -31,6 +32,17 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       data: { ...req.body, createdById: req.user!.id, status: "New" },
     });
     res.status(201).json(task);
+    if (task.assigneeId) {
+      await createNotification({
+        userId: task.assigneeId,
+        type: "TASK_ASSIGNED",
+        title: `Назначена задача: ${task.title}`,
+        message: task.description || "",
+        entityType: "Task",
+        entityId: task.id,
+        link: `/tasks`,
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: "Failed to create task" });
   }
