@@ -13,8 +13,6 @@ export default function ClientsPage() {
     phone: "",
     email: "",
     inn: "",
-    contractDate: "",
-    executionDate: "",
     notes: "",
   });
 
@@ -34,8 +32,6 @@ export default function ClientsPage() {
         phone: "",
         email: "",
         inn: "",
-        contractDate: "",
-        executionDate: "",
         notes: "",
       });
     },
@@ -91,24 +87,6 @@ export default function ClientsPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
-              type="date"
-              placeholder="Дата договора"
-              value={form.contractDate}
-              onChange={(e) =>
-                setForm({ ...form, contractDate: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="date"
-              placeholder="Дата исполнения"
-              value={form.executionDate}
-              onChange={(e) =>
-                setForm({ ...form, executionDate: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
               placeholder="Примечание"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -141,23 +119,20 @@ export default function ClientsPage() {
                 ИНН
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Договор
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Исполнение
+                Дата создания
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-400">
+                <td colSpan={6} className="text-center py-8 text-gray-400">
                   Загрузка...
                 </td>
               </tr>
             ) : clients?.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-400">
+                <td colSpan={6} className="text-center py-8 text-gray-400">
                   Нет клиентов
                 </td>
               </tr>
@@ -181,14 +156,7 @@ export default function ClientsPage() {
                     {client.inn || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {client.contractDate
-                      ? new Date(client.contractDate).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {client.executionDate
-                      ? new Date(client.executionDate).toLocaleDateString()
-                      : "-"}
+                    {new Date(client.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))
