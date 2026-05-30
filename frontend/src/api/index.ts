@@ -111,6 +111,8 @@ export const procurementAPI = {
   getAll: () => api.get("/procurement"),
   createRequest: (data: any) => api.post("/procurement/requests", data),
   createSupplier: (data: any) => api.post("/procurement/suppliers", data),
+  updateSupplier: (id: string, data: any) => api.put(`/procurement/suppliers/${id}`, data),
+  deleteSupplier: (id: string) => api.delete(`/procurement/suppliers/${id}`),
   createOrder: (data: any) => api.post("/procurement/orders", data),
 };
 
