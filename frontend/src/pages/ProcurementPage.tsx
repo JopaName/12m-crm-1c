@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { procurementAPI, productsAPI } from "../api";
+import { procurementAPI, warehouseAPI } from "../api";
 import toast from "react-hot-toast";
 
 export default function ProcurementPage() {
@@ -29,7 +29,7 @@ export default function ProcurementPage() {
   });
   const { data: products } = useQuery({
     queryKey: ["products"],
-    queryFn: () => productsAPI.getAll().then((r) => r.data),
+    queryFn: () => warehouseAPI.getCategories().then((r) => r.data.flatMap((c: any) => c.items || [])).then((r) => r.data),
   });
 
   const createReq = useMutation({

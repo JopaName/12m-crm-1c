@@ -67,13 +67,18 @@ router.get("/categories/:categoryId/items", async (req: AuthRequest, res: Respon
 
 router.post("/categories/:categoryId/items", async (req: AuthRequest, res: Response) => {
   try {
-    const { productName, quantity, unit, note } = req.body;
+    const { productName, sku, description, quantity, unit, purchasePrice, salePrice, categoryTag, note } = req.body;
     const item = await prisma.warehouseStockItem.create({
       data: {
         categoryId: req.params.categoryId,
         productName,
+        sku,
+        description,
         quantity: parseFloat(quantity) || 0,
         unit: unit || "шт",
+        purchasePrice: parseFloat(purchasePrice) || null,
+        salePrice: parseFloat(salePrice) || null,
+        categoryTag,
         note,
       },
     });
@@ -85,13 +90,18 @@ router.post("/categories/:categoryId/items", async (req: AuthRequest, res: Respo
 
 router.put("/items/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const { productName, quantity, unit, note } = req.body;
+    const { productName, sku, description, quantity, unit, purchasePrice, salePrice, categoryTag, note } = req.body;
     const item = await prisma.warehouseStockItem.update({
       where: { id: req.params.id },
       data: {
         productName,
+        sku,
+        description,
         quantity: parseFloat(quantity) || 0,
         unit,
+        purchasePrice: parseFloat(purchasePrice) || null,
+        salePrice: parseFloat(salePrice) || null,
+        categoryTag,
         note,
       },
     });
@@ -110,35 +120,90 @@ router.delete("/items/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Legacy routes
+// === Transfers ===
+router.post("/transfer", async (req: AuthRequest, res: Response) => {
+  try {
+    const { productItemId, quantity, fromCategoryId, toCategoryId, note } = req.body;
+    const qty = parseFloat(quantity);
+
+    // Get item
+    const item = await prisma.warehouseStockItem.findUnique({ where: { id: productItemId } });
+    if (!item) return res.status(404).json({ error: "Item not found" });
+    if (item.quantity < qty) return res.status(400).json({ error: "Недостаточно товара" });
+
+    // Create transfer record and update quantities
+    const [transfer] = await prisma.$transaction([
+      prisma.warehouseTransfer.create({
+        data: {
+          productItemId,
+          productName: item.productName,
+          quantity: qty,
+          fromCategoryId,
+          toCategoryId,
+          note,
+        },
+      }),
+      prisma.warehouseStockItem.update({
+        where: { id: productItemId },
+        data: { quantity: { decrement: qty } },
+      }),
+    ]);
+
+    // Create or find item in target category
+    const existing = await prisma.warehouseStockItem.findFirst({
+      where: { categoryId: toCategoryId, productName: item.productName },
+    });
+
+    if (existing) {
+      await prisma.warehouseStockItem.update({
+        where: { id: existing.id },
+        data: { quantity: { increment: qty } },
+      });
+    } else {
+      await prisma.warehouseStockItem.create({
+        data: {
+          categoryId: toCategoryId,
+          productName: item.productName,
+          sku: item.sku,
+          description: item.description,
+          quantity: qty,
+          unit: item.unit,
+          purchasePrice: item.purchasePrice,
+          salePrice: item.salePrice,
+          categoryTag: item.categoryTag,
+        },
+      });
+    }
+
+    res.status(201).json(transfer);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to transfer" });
+  }
+});
+
+router.get("/transfers", async (_req: AuthRequest, res: Response) => {
+  try {
+    const transfers = await prisma.warehouseTransfer.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    res.json(transfers);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch transfers" });
+  }
+});
+
+// Legacy routes (keep for compatibility)
 router.get("/", async (_req: AuthRequest, res: Response) => {
   try {
     const [movements, cells, balance] = await Promise.all([
-      prisma.warehouseMovement.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        include: {
-          productItem: { include: { product: true } },
-          createdBy: { select: { firstName: true, lastName: true } },
-        },
-      }),
+      prisma.warehouseMovement.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
       prisma.warehouseCell.findMany({ where: { isArchived: false } }),
       prisma.inventoryBalance.findMany({ include: { product: true } }),
     ]);
     res.json({ movements, cells, balance });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch warehouse data" });
-  }
-});
-
-router.post("/movement", async (req: AuthRequest, res: Response) => {
-  try {
-    const movement = await prisma.warehouseMovement.create({
-      data: { ...req.body, createdById: req.user!.id },
-    });
-    res.status(201).json(movement);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create movement" });
   }
 });
 
