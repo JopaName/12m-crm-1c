@@ -47,9 +47,11 @@ router.post("/login", async (req, res: Response) => {
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    include: { role: true },
+    include: { role: { include: { permissions: true } } },
   });
-  res.json(user);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  const permissions = user.role.permissions.map(p => p.permission);
+  res.json({ ...user, permissions });
 });
 
 router.get(

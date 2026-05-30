@@ -3,24 +3,24 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const menuItems = [
-  { path: "/", label: "Дашборд", icon: "📊" },
-  { path: "/clients", label: "Клиенты", icon: "👥" },
-  { path: "/leads", label: "Лиды", icon: "📋" },
-  { path: "/deals", label: "Сделки", icon: "🤝" },
-  { path: "/products", label: "Товары", icon: "📦" },
-  { path: "/warehouse", label: "Склад", icon: "🏭" },
-  { path: "/production", label: "Производство", icon: "⚙️" },
-  { path: "/procurement", label: "Закупки", icon: "📥" },
-  { path: "/rent", label: "Аренда", icon: "🔑" },
-  { path: "/installation", label: "Монтажи", icon: "🔧" },
-  { path: "/installer-mobile", label: "Монтаж (моб.)", icon: "📱" },
-  { path: "/legal", label: "Договоры", icon: "📄" },
-  { path: "/service", label: "Сервис", icon: "🛠️" },
-  { path: "/tasks", label: "Задачи", icon: "✅" },
-  { path: "/users", label: "Пользователи", icon: "👤" },
-  { path: "/roles", label: "Роли", icon: "🔐" },
-  { path: "/chat", label: "Чат", icon: "💬" },
-  { path: "/audit", label: "Журнал", icon: "📝" },
+  { path: "/", label: "Дашборд", icon: "📊", permission: "dashboard:view" },
+  { path: "/clients", label: "Клиенты", icon: "👥", permission: "clients:view" },
+  { path: "/leads", label: "Лиды", icon: "📋", permission: "leads:view" },
+  { path: "/deals", label: "Сделки", icon: "🤝", permission: "deals:view" },
+  { path: "/products", label: "Товары", icon: "📦", permission: "products:view" },
+  { path: "/warehouse", label: "Склад", icon: "🏭", permission: "warehouse:view" },
+  { path: "/production", label: "Производство", icon: "⚙️", permission: "production:view" },
+  { path: "/procurement", label: "Закупки", icon: "📥", permission: "procurement:view" },
+  { path: "/rent", label: "Аренда", icon: "🔑", permission: "rent:view" },
+  { path: "/installation", label: "Монтажи", icon: "🔧", permission: "installation:view" },
+  { path: "/installer-mobile", label: "Монтаж (моб.)", icon: "📱", permission: "installation:view" },
+  { path: "/legal", label: "Договоры", icon: "📄", permission: "legal:view" },
+  { path: "/service", label: "Сервис", icon: "🛠️", permission: "service:view" },
+  { path: "/tasks", label: "Задачи", icon: "✅", permission: "tasks:view" },
+  { path: "/users", label: "Пользователи", icon: "👤", permission: "users:view" },
+  { path: "/roles", label: "Роли", icon: "🔐", permission: "roles:view" },
+  { path: "/chat", label: "Чат", icon: "💬", permission: "chat:view" },
+  { path: "/audit", label: "Журнал", icon: "📝", permission: "audit:view" },
 ];
 
 export default function Layout() {
@@ -52,7 +52,9 @@ export default function Layout() {
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
-          {menuItems.map((item) => (
+          {menuItems
+            .filter((item) => !item.permission || user?.permissions?.includes(item.permission))
+            .map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

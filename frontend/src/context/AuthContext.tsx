@@ -12,7 +12,8 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: { name: string };
+  role: { name: string; permissions: { permission: string }[] };
+  permissions: string[];
 }
 
 interface AuthContextType {
