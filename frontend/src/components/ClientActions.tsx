@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ActionContextPanel from "./ActionContextPanel";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { actionsAPI } from "../api";
 import toast from "react-hot-toast";
@@ -40,6 +41,7 @@ function ActionStep({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onSelect,
   onStatusChange,
 }: {
   action: any;
@@ -50,6 +52,7 @@ function ActionStep({
   onDelete: (id: string) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onSelect?: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -138,7 +141,10 @@ function ActionStep({
             {typeInfo.icon}
           </div>
         </div>
-        <div className="flex-1 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+        <div
+          className="flex-1 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow cursor-pointer"
+          onClick={() => onSelect?.(action.id)}
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -243,6 +249,7 @@ function ActionStep({
 export default function ClientActions({ clientId }: Props) {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [newAction, setNewAction] = useState({
     type: "CALL",
     title: "",
@@ -320,10 +327,19 @@ export default function ClientActions({ clientId }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">
-          Процесс взаимодействия
+    <>
+      {selectedActionId && actions && (
+        <ActionContextPanel
+          clientId={clientId}
+          actionId={selectedActionId}
+          actionTitle={actions.find((a: any) => a.id === selectedActionId)?.title || ""}
+          onClose={() => setSelectedActionId(null)}
+        />
+      )}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Процесс взаимодействия
         </h2>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
@@ -415,11 +431,13 @@ export default function ClientActions({ clientId }: Props) {
               }}
               onMoveUp={() => handleMoveUp(index)}
               onMoveDown={() => handleMoveDown(index)}
+              onSelect={(id) => setSelectedActionId(id)}
               onStatusChange={handleStatusChange}
             />
           ))}
         </div>
       )}
     </div>
+    </>
   );
 }

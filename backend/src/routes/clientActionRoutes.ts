@@ -2,8 +2,26 @@ import { Router, Response } from "express";
 import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
 import { createAuditLog } from "../utils/helpers";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
+
+const uploadsDir = path.join(__dirname, "../../uploads/action-files");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
 
 // Get all actions for a client
 router.get("/:clientId/actions", async (req: AuthRequest, res: Response) => {
@@ -103,6 +121,9 @@ router.delete("/:clientId/actions/:actionId", async (req: AuthRequest, res: Resp
     const old = await prisma.clientAction.findUnique({ where: { id: req.params.actionId } });
     if (!old) return res.status(404).json({ error: "Action not found" });
 
+    await prisma.actionMessage.deleteMany({ where: { actionId: req.params.actionId } });
+    await prisma.actionFile.deleteMany({ where: { actionId: req.params.actionId } });
+
     await prisma.clientAction.delete({ where: { id: req.params.actionId } });
 
     await createAuditLog({
@@ -145,6 +166,91 @@ router.put("/:clientId/actions/reorder", async (req: AuthRequest, res: Response)
     res.json(actions);
   } catch (error) {
     res.status(500).json({ error: "Failed to reorder actions" });
+  }
+});
+
+// === Action Messages ===
+router.get("/:clientId/actions/:actionId/messages", async (req: AuthRequest, res: Response) => {
+  try {
+    const messages = await prisma.actionMessage.findMany({
+      where: { actionId: req.params.actionId },
+      orderBy: { createdAt: "asc" },
+      include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
+});
+
+router.post("/:clientId/actions/:actionId/messages", async (req: AuthRequest, res: Response) => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Content is required" });
+    }
+    const message = await prisma.actionMessage.create({
+      data: {
+        actionId: req.params.actionId,
+        senderId: req.user!.id,
+        content: content.trim(),
+      },
+      include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    res.status(201).json(message);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
+// === Action Files ===
+router.get("/:clientId/actions/:actionId/files", async (req: AuthRequest, res: Response) => {
+  try {
+    const files = await prisma.actionFile.findMany({
+      where: { actionId: req.params.actionId },
+      orderBy: { createdAt: "desc" },
+      include: { uploadedBy: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    res.json(files);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch files" });
+  }
+});
+
+router.post("/:clientId/actions/:actionId/files", upload.single("file"), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+    const fileRecord = await prisma.actionFile.create({
+      data: {
+        actionId: req.params.actionId,
+        fileName: req.file.originalname,
+        fileUrl: "/uploads/action-files/" + req.file.filename,
+        uploadedById: req.user!.id,
+      },
+      include: { uploadedBy: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    res.status(201).json(fileRecord);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to upload file" });
+  }
+});
+
+router.delete("/:clientId/actions/:actionId/files/:fileId", async (req: AuthRequest, res: Response) => {
+  try {
+    const file = await prisma.actionFile.findUnique({ where: { id: req.params.fileId } });
+    if (!file) return res.status(404).json({ error: "File not found" });
+
+    const filePath = path.join(__dirname, "../../../" + file.fileUrl);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await prisma.actionFile.delete({ where: { id: req.params.fileId } });
+    res.json({ message: "File deleted" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete file" });
   }
 });
 

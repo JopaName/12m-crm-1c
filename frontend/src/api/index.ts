@@ -143,6 +143,27 @@ export const serviceAPI = {
   create: (data: any) => api.post("/service", data),
 };
 
+export const actionMessagesAPI = {
+  getByAction: (clientId: string, actionId: string) =>
+    api.get(`/clients/${clientId}/actions/${actionId}/messages`),
+  send: (clientId: string, actionId: string, content: string) =>
+    api.post(`/clients/${clientId}/actions/${actionId}/messages`, { content }),
+};
+
+export const actionFilesAPI = {
+  getByAction: (clientId: string, actionId: string) =>
+    api.get(`/clients/${clientId}/actions/${actionId}/files`),
+  upload: (clientId: string, actionId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/clients/${clientId}/actions/${actionId}/files`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  delete: (clientId: string, actionId: string, fileId: string) =>
+    api.delete(`/clients/${clientId}/actions/${actionId}/files/${fileId}`),
+};
+
 export const chatAPI = {
   getConversations: () => api.get("/chat/conversations"),
   getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),
