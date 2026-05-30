@@ -94,6 +94,8 @@ export const warehouseAPI = {
   createItem: (categoryId: string, data: any) => api.post(`/warehouse/categories/${categoryId}/items`, data),
   updateItem: (id: string, data: any) => api.put(`/warehouse/items/${id}`, data),
   deleteItem: (id: string) => api.delete(`/warehouse/items/${id}`),
+  transfer: (data: any) => api.post("/warehouse/transfer", data),
+  getTransfers: () => api.get("/warehouse/transfers"),
 };
 
 export const installationAPI = {

@@ -278,15 +278,31 @@ model WarehouseCategory {
 }
 
 model WarehouseStockItem {
+  id            String   @id @default(cuid())
+  categoryId    String
+  category      WarehouseCategory @relation(fields: [categoryId], references: [id])
+  productName   String
+  sku           String?
+  description   String?
+  quantity      Float    @default(0)
+  unit          String   @default("шт")
+  purchasePrice Float?
+  salePrice     Float?
+  categoryTag   String?
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model WarehouseTransfer {
   id          String   @id @default(cuid())
-  categoryId  String
-  category    WarehouseCategory @relation(fields: [categoryId], references: [id])
+  productItemId String
   productName String
-  quantity    Float    @default(0)
-  unit        String   @default("шт")
+  quantity    Float
+  fromCategoryId String
+  toCategoryId   String
   note        String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 
