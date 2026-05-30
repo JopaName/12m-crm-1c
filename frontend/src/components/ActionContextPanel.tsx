@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { actionMessagesAPI, actionFilesAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import mammoth from "mammoth";
+import * as XLSX from "xlsx";
 
 interface Props {
   clientId: string;
@@ -47,7 +49,8 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
   const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext);
   const isPdf = ext === "pdf";
   const isText = ["txt", "csv", "json", "xml", "md"].includes(ext);
-  const isOffice = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext);
+  const isDocx = ["doc", "docx"].includes(ext);
+  const isXlsx = ["xls", "xlsx"].includes(ext);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -74,14 +77,107 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
           {!loading && blobUrl && isText && (
             <TextPreview url={blobUrl} token={token} />
           )}
-          {!loading && !error && isOffice && (
-            <div className="text-center">
-              <p className="text-gray-500 text-sm mb-4">Предпросмотр недоступен для файлов Office</p>
-<DownloadLinkButton file={file} token={token} />
-            </div>
-          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DocxPreview({ blobUrl, token }: { blobUrl: string; token?: string | null }) {
+  const [html, setHtml] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  React.useEffect(() => {
+    fetch(blobUrl)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        mammoth.convertToHtml({ arrayBuffer: buf })
+          .then((result) => {
+            setHtml(result.value);
+            setLoading(false);
+          })
+          .catch(() => {
+            setError(true);
+            setLoading(false);
+          });
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, [blobUrl]);
+
+  if (loading) return <p className="text-gray-400 text-sm">Загрузка...</p>;
+  if (error) return <p className="text-red-500 text-sm">Ошибка чтения файла</p>;
+
+  return (
+    <div
+      className="w-full text-sm text-gray-700 prose prose-sm max-h-[70vh] overflow-auto bg-white p-6 rounded border border-gray-200"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function XlsxPreview({ blobUrl, token }: { blobUrl: string; token?: string | null }) {
+  const [sheets, setSheets] = useState<{ name: string; rows: any[][] }[]>([]);
+  const [activeSheet, setActiveSheet] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  React.useEffect(() => {
+    fetch(blobUrl)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        const wb = XLSX.read(buf, { type: "array" });
+        const result = wb.SheetNames.map((name) => {
+          const ws = wb.Sheets[name];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
+          return { name, rows };
+        });
+        setSheets(result);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, [blobUrl]);
+
+  if (loading) return <p className="text-gray-400 text-sm">Загрузка...</p>;
+  if (error) return <p className="text-red-500 text-sm">Ошибка чтения файла</p>;
+  if (sheets.length === 0) return <p className="text-gray-400 text-sm">Файл пуст</p>;
+
+  const sheet = sheets[activeSheet];
+
+  return (
+    <div className="w-full max-h-[70vh] overflow-auto bg-white rounded border border-gray-200">
+      {sheets.length > 1 && (
+        <div className="flex gap-1 p-2 border-b border-gray-200 bg-gray-50">
+          {sheets.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveSheet(i)}
+              className={`px-3 py-1.5 text-xs rounded ${i === activeSheet ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"}`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <table className="w-full text-xs">
+        <tbody>
+          {sheet.rows.map((row, ri) => (
+            <tr key={ri} className={ri === 0 ? "bg-gray-100 font-semibold" : ""}>
+              {row.map((cell, ci) => (
+                <td key={ci} className="border border-gray-200 px-2 py-1 whitespace-nowrap">
+                  {String(cell ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
