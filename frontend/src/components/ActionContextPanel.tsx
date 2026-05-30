@@ -55,12 +55,7 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-800 truncate">{file.fileName}</h3>
           <div className="flex items-center gap-2">
-            <a
-              href={file.downloadUrl || file.fileUrl}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
-            >
-              Скачать
-            </a>
+<DownloadLink file={file} token={token} />
             <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 ml-1">✕</button>
           </div>
         </div>
@@ -82,12 +77,7 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
           {!loading && !error && isOffice && (
             <div className="text-center">
               <p className="text-gray-500 text-sm mb-4">Предпросмотр недоступен для файлов Office</p>
-              <a
-                href={file.downloadUrl || file.fileUrl}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-              >
-                Скачать и открыть
-              </a>
+<DownloadLinkButton file={file} token={token} />
             </div>
           )}
         </div>
@@ -109,6 +99,34 @@ function TextPreview({ url, token }: { url: string; token?: string | null }) {
     <pre className="w-full text-xs text-gray-700 whitespace-pre-wrap break-all max-h-[70vh] overflow-auto bg-gray-50 p-4 rounded">
       {text}
     </pre>
+  );
+}
+
+function DownloadLink({ file, token }: { file: any; token?: string | null }) {
+  const downloadUrl = token
+    ? `${file.downloadUrl || file.fileUrl}?token=${encodeURIComponent(token)}`
+    : file.downloadUrl || file.fileUrl;
+  return (
+    <a
+      href={downloadUrl}
+      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
+    >
+      Скачать
+    </a>
+  );
+}
+
+function DownloadLinkButton({ file, token }: { file: any; token?: string | null }) {
+  const downloadUrl = token
+    ? `${file.downloadUrl || file.fileUrl}?token=${encodeURIComponent(token)}`
+    : file.downloadUrl || file.fileUrl;
+  return (
+    <a
+      href={downloadUrl}
+      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+    >
+      Скачать и открыть
+    </a>
   );
 }
 
@@ -276,7 +294,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
                     </div>
                     <div className="flex gap-1 flex-shrink-0 ml-2">
                       <a
-                        href={f.downloadUrl || f.fileUrl}
+                        href={typeof window !== "undefined" && localStorage.getItem("token") ? `${f.downloadUrl || f.fileUrl}?token=${encodeURIComponent(localStorage.getItem("token") || "")}` : f.downloadUrl || f.fileUrl}
                         className="p-1 hover:bg-gray-200 rounded text-gray-500"
                         title="Скачать"
                       >
