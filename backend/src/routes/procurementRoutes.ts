@@ -62,4 +62,28 @@ router.post("/orders", async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.put("/suppliers/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const supplier = await prisma.supplier.update({
+      where: { id: req.params.id },
+      data: req.body,
+    });
+    res.json(supplier);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update supplier" });
+  }
+});
+
+router.delete("/suppliers/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.supplier.update({
+      where: { id: req.params.id },
+      data: { isArchived: true },
+    });
+    res.json({ message: "Supplier archived" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete supplier" });
+  }
+});
+
 export default router;

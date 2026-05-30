@@ -8,6 +8,8 @@ export default function ProcurementPage() {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [editingSupId, setEditingSupId] = useState<string | null>(null);
+  const [editSupForm, setEditSupForm] = useState({ name: "", phone: "", email: "", inn: "" });
   const [reqForm, setReqForm] = useState({ productId: "", quantity: 1 });
   const [supForm, setSupForm] = useState({
     name: "",
@@ -48,6 +50,26 @@ export default function ProcurementPage() {
     },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
+  const updateSup = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      procurementAPI.updateSupplier(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["procurement"] });
+      toast.success("Поставщик обновлён");
+      setEditingSupId(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+  });
+
+  const deleteSup = useMutation({
+    mutationFn: (id: string) => procurementAPI.deleteSupplier(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["procurement"] });
+      toast.success("Поставщик удалён");
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+  });
+
   const createOrd = useMutation({
     mutationFn: (d: any) => procurementAPI.createOrder(d),
     onSuccess: () => {
@@ -184,10 +206,80 @@ export default function ProcurementPage() {
             </div>
           )}
           {data?.suppliers?.map((s: any) => (
-            <div key={s.id} className="p-3 bg-gray-50 rounded-lg mb-2 text-sm">
-              <p className="font-medium">{s.name}</p>
-              <p className="text-gray-500">{s.phone || "-"}</p>
-            </div>
+            editingSupId === s.id ? (
+              <div key={s.id} className="p-3 bg-blue-50 rounded-lg mb-2 text-sm border border-blue-200 space-y-2">
+                <input
+                  value={editSupForm.name}
+                  onChange={(e) => setEditSupForm({ ...editSupForm, name: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  placeholder="Название"
+                />
+                <input
+                  value={editSupForm.phone}
+                  onChange={(e) => setEditSupForm({ ...editSupForm, phone: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  placeholder="Телефон"
+                />
+                <input
+                  value={editSupForm.email}
+                  onChange={(e) => setEditSupForm({ ...editSupForm, email: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  placeholder="Email"
+                />
+                <input
+                  value={editSupForm.inn}
+                  onChange={(e) => setEditSupForm({ ...editSupForm, inn: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  placeholder="ИНН"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateSup.mutate({ id: s.id, data: editSupForm })}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs"
+                  >
+                    Сохранить
+                  </button>
+                  <button
+                    onClick={() => setEditingSupId(null)}
+                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={s.id} className="p-3 bg-gray-50 rounded-lg mb-2 text-sm group">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{s.name}</p>
+                    <p className="text-gray-500">{s.phone || "-"}</p>
+                    {s.email && <p className="text-gray-400 text-xs">{s.email}</p>}
+                    {s.inn && <p className="text-gray-400 text-xs">ИНН {s.inn}</p>}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        setEditSupForm({ name: s.name, phone: s.phone || "", email: s.email || "", inn: s.inn || "" });
+                        setEditingSupId(s.id);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded text-gray-500"
+                      title="Редактировать"
+                    >
+                      ✏
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm("Удалить поставщика?")) deleteSup.mutate(s.id);
+                      }}
+                      className="p-1 hover:bg-red-100 rounded text-red-500"
+                      title="Удалить"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
           ))}
         </div>
 
