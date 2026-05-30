@@ -61,6 +61,7 @@ model User {
   assignedTasks Task[]              @relation("TaskAssignee")
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  apiKey          String?
 
   commissions           AgentCommissionRecord[]
   integrationLogs       IntegrationLog[]

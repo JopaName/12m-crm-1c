@@ -8,6 +8,9 @@ export interface AuthRequest extends Request {
     email: string;
     roleId: string;
     roleName: string;
+    firstName: string;
+    lastName: string;
+    apiKey: string | null;
   };
 }
 
@@ -40,6 +43,9 @@ export async function authMiddleware(
       email: user.email,
       roleId: user.roleId,
       roleName: user.role.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      apiKey: user.apiKey || null,
     };
 
     next();
