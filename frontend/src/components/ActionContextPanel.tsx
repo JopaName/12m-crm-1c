@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void;
 }
 
-function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void }) {
+function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => void; token?: string | null }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -25,7 +25,11 @@ function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void })
       return;
     }
     const url = file.downloadUrl || file.fileUrl;
-    fetch(url)
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    fetch(url, { headers })
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch");
         return r.blob();
@@ -38,7 +42,7 @@ function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void })
         setError(true);
         setLoading(false);
       });
-  }, [file]);
+  }, [file, token]);
 
   const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext);
   const isPdf = ext === "pdf";
@@ -72,7 +76,7 @@ function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void })
             <iframe src={blobUrl} className="w-full h-[70vh] rounded" title={file.fileName} />
           )}
           {!loading && blobUrl && isText && (
-            <TextPreview url={blobUrl} />
+            <TextPreview url={blobUrl} token={token} />
           )}
         </div>
       </div>
@@ -80,11 +84,15 @@ function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void })
   );
 }
 
-function TextPreview({ url }: { url: string }) {
+function TextPreview({ url, token }: { url: string; token?: string | null }) {
   const [text, setText] = useState("");
   React.useEffect(() => {
-    fetch(url).then((r) => r.text()).then(setText).catch(() => setText("Ошибка чтения файла"));
-  }, [url]);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    fetch(url, { headers }).then((r) => r.text()).then(setText).catch(() => setText("Ошибка чтения файла"));
+  }, [url, token]);
   return (
     <pre className="w-full text-xs text-gray-700 whitespace-pre-wrap break-all max-h-[70vh] overflow-auto bg-gray-50 p-4 rounded">
       {text}
@@ -282,6 +290,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
           <FilePreviewModal
             file={previewFile}
             onClose={() => setPreviewFile(null)}
+            token={typeof window !== "undefined" ? localStorage.getItem("token") : undefined}
           />
         )}
       </div>
