@@ -86,6 +86,14 @@ export const tasksAPI = {
 export const warehouseAPI = {
   getAll: () => api.get("/warehouse"),
   createMovement: (data: any) => api.post("/warehouse/movement", data),
+  getCategories: () => api.get("/warehouse/categories"),
+  createCategory: (data: any) => api.post("/warehouse/categories", data),
+  updateCategory: (id: string, data: any) => api.put(`/warehouse/categories/${id}`, data),
+  deleteCategory: (id: string) => api.delete(`/warehouse/categories/${id}`),
+  getCategoryItems: (categoryId: string) => api.get(`/warehouse/categories/${categoryId}/items`),
+  createItem: (categoryId: string, data: any) => api.post(`/warehouse/categories/${categoryId}/items`, data),
+  updateItem: (id: string, data: any) => api.put(`/warehouse/items/${id}`, data),
+  deleteItem: (id: string) => api.delete(`/warehouse/items/${id}`),
 };
 
 export const installationAPI = {
