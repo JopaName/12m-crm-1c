@@ -14,6 +14,8 @@ export default function ClientsPage() {
     phone: "",
     email: "",
     inn: "",
+    source: "Direct",
+    status: "New",
     notes: "",
   });
 
@@ -35,6 +37,8 @@ export default function ClientsPage() {
         phone: "",
         email: "",
         inn: "",
+        source: "Direct",
+        status: "New",
         notes: "",
       });
     },
@@ -89,6 +93,26 @@ export default function ClientsPage() {
               onChange={(e) => setForm({ ...form, inn: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <select
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Direct">Прямое обращение</option>
+              <option value="Agent">Личный поиск</option>
+              <option value="Web-form">Сайт</option>
+              <option value="Channel">Канал обращения</option>
+              <option value="Import">Импорт</option>
+            </select>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="New">Новый</option>
+              <option value="Active">Активный</option>
+              <option value="Inactive">Неактивный</option>
+            </select>
             <input
               placeholder="Примечание"
               value={form.notes}
@@ -141,6 +165,18 @@ export default function ClientsPage() {
               </th>
               <th
                 className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("source")}
+              >
+                Источник{sortKey === "source" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+              </th>
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("status")}
+              >
+                Статус{sortKey === "status" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+              </th>
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
                 onClick={() => handleSort("createdBy.firstName")}
               >
                 Ответственный{sortKey === "createdBy.firstName" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
@@ -150,13 +186,13 @@ export default function ClientsPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-400">
+                <td colSpan={9} className="text-center py-8 text-gray-400">
                   Загрузка...
                 </td>
               </tr>
             ) : clients?.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-400">
+                <td colSpan={9} className="text-center py-8 text-gray-400">
                   Нет клиентов
                 </td>
               </tr>
@@ -181,6 +217,18 @@ export default function ClientsPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {new Date(client.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {client.source || "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      client.status === "Active" ? "bg-green-100 text-green-700" :
+                      client.status === "New" ? "bg-blue-100 text-blue-700" :
+                      "bg-gray-100 text-gray-500"
+                    }`}>
+                      {client.status || "-"}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {client.createdBy

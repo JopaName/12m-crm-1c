@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 const menuItems = [
   { path: "/", label: "Дашборд", icon: "📊", permission: "dashboard:view" },
   { path: "/clients", label: "Клиенты", icon: "👥", permission: "clients:view" },
-  { path: "/leads", label: "Лиды", icon: "📋", permission: "leads:view" },
   { path: "/deals", label: "Сделки", icon: "🤝", permission: "deals:view" },
   { path: "/products", label: "Товары", icon: "📦", permission: "products:view" },
   { path: "/warehouse", label: "Склад", icon: "🏭", permission: "warehouse:view" },
