@@ -98,6 +98,13 @@ export default function WarehousePage() {
 
   const resetItemForm = () => setItemForm({ productName: "", sku: "", description: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", categoryTag: "", note: "" });
 
+  const handleTransfer = () => {
+    if (!transferForm.productItemId) { toast.error("Выберите товар"); return; }
+    if (!transferForm.toCategoryId) { toast.error("Выберите склад назначения"); return; }
+    if (!transferForm.quantity || Number(transferForm.quantity) <= 0) { toast.error("Укажите количество"); return; }
+    transfer.mutate({ ...transferForm, fromCategoryId: selectedCategory });
+  };
+
   const rootCategories = (categories || []).filter((c: any) => !c.parentId);
   const selectedCat = categories?.find((c: any) => c.id === selectedCategory);
   const otherCategories = (categories || []).filter((c: any) => c.id !== selectedCategory);
@@ -127,12 +134,12 @@ export default function WarehousePage() {
           <div className="bg-white rounded-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Новый каталог</h3>
             <div className="space-y-3">
-              <input type="text" placeholder="Название" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <select value={categoryForm.parentId} onChange={(e) => setCategoryForm({ ...categoryForm, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                <option value="">Без родителя (корневой)</option>
+              <input type="text" placeholder="Название каталога" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+              <select value={categoryForm.parentId} onChange={(e) => setCategoryForm({ ...categoryForm, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500">
+                <option value="">Без родителя (корневой каталог)</option>
                 {rootCategories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
-              <button onClick={() => createCategory.mutate(categoryForm)} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Создать</button>
+              <button onClick={() => { if (!categoryForm.name) { toast.error("Введите название"); return; } createCategory.mutate(categoryForm); }} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Создать</button>
             </div>
           </div>
         </div>
@@ -141,24 +148,25 @@ export default function WarehousePage() {
       {showItemForm && selectedCategory && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => { setShowItemForm(false); setEditingItem(null); }}>
           <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">{editingItem ? "Редактировать" : "Новый товар"}</h3>
+            <h3 className="text-lg font-semibold mb-4">{editingItem ? "Редактировать товар" : "Новый товар"}</h3>
             <div className="space-y-3">
-              <input type="text" placeholder="Название товара *" value={itemForm.productName} onChange={(e) => setItemForm({ ...itemForm, productName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="text" placeholder="Название товара (обязательно)" value={itemForm.productName} onChange={(e) => setItemForm({ ...itemForm, productName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
               <div className="grid grid-cols-2 gap-2">
-                <input type="text" placeholder="Артикул (SKU)" value={itemForm.sku} onChange={(e) => setItemForm({ ...itemForm, sku: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                <input type="text" placeholder="Категория" value={itemForm.categoryTag} onChange={(e) => setItemForm({ ...itemForm, categoryTag: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" placeholder="Артикул / SKU" value={itemForm.sku} onChange={(e) => setItemForm({ ...itemForm, sku: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+                <input type="text" placeholder="Категория товара" value={itemForm.categoryTag} onChange={(e) => setItemForm({ ...itemForm, categoryTag: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
               </div>
-              <input type="text" placeholder="Описание" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="text" placeholder="Описание товара" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
               <div className="grid grid-cols-3 gap-2">
-                <input type="number" placeholder="Кол-во" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                <input type="text" placeholder="Ед." value={itemForm.unit} onChange={(e) => setItemForm({ ...itemForm, unit: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                <input type="text" placeholder="Примечание" value={itemForm.note} onChange={(e) => setItemForm({ ...itemForm, note: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="number" placeholder="Количество" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+                <input type="text" placeholder="Ед. измерения (шт, кг)" value={itemForm.unit} onChange={(e) => setItemForm({ ...itemForm, unit: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+                <input type="text" placeholder="Примечание" value={itemForm.note} onChange={(e) => setItemForm({ ...itemForm, note: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input type="number" step="0.01" placeholder="Цена закупки" value={itemForm.purchasePrice} onChange={(e) => setItemForm({ ...itemForm, purchasePrice: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                <input type="number" step="0.01" placeholder="Цена продажи" value={itemForm.salePrice} onChange={(e) => setItemForm({ ...itemForm, salePrice: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="number" step="0.01" placeholder="Цена закупки (₽)" value={itemForm.purchasePrice} onChange={(e) => setItemForm({ ...itemForm, purchasePrice: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+                <input type="number" step="0.01" placeholder="Цена продажи (₽)" value={itemForm.salePrice} onChange={(e) => setItemForm({ ...itemForm, salePrice: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
               </div>
               <button onClick={() => {
+                if (!itemForm.productName) { toast.error("Введите название товара"); return; }
                 if (editingItem) { updateItem.mutate({ id: editingItem.id, data: itemForm }); }
                 else { createItem.mutate({ categoryId: selectedCategory, data: itemForm }); }
               }} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">{editingItem ? "Сохранить" : "Добавить"}</button>
@@ -172,17 +180,17 @@ export default function WarehousePage() {
           <div className="bg-white rounded-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Перемещение товара</h3>
             <div className="space-y-3">
-              <select value={transferForm.productItemId} onChange={(e) => setTransferForm({ ...transferForm, productItemId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                <option value="">Выберите товар</option>
-                {items?.map((i: any) => (<option key={i.id} value={i.id}>{i.productName} ({i.quantity} {i.unit})</option>))}
+              <select value={transferForm.productItemId} onChange={(e) => setTransferForm({ ...transferForm, productItemId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500">
+                <option value="">Выберите товар для перемещения</option>
+                {items?.map((i: any) => (<option key={i.id} value={i.id}>{i.productName} (доступно: {i.quantity} {i.unit})</option>))}
               </select>
-              <input type="number" placeholder="Количество" value={transferForm.quantity} onChange={(e) => setTransferForm({ ...transferForm, quantity: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <select value={transferForm.toCategoryId} onChange={(e) => setTransferForm({ ...transferForm, toCategoryId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                <option value="">Куда</option>
+              <input type="number" placeholder="Количество для перемещения" value={transferForm.quantity} onChange={(e) => setTransferForm({ ...transferForm, quantity: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+              <select value={transferForm.toCategoryId} onChange={(e) => setTransferForm({ ...transferForm, toCategoryId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500">
+                <option value="">Куда переместить (обязательно)</option>
                 {otherCategories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
-              <input type="text" placeholder="Примечание" value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-              <button onClick={() => transfer.mutate({ ...transferForm, fromCategoryId: selectedCategory })} className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">Переместить</button>
+              <input type="text" placeholder="Примечание к перемещению" value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400" />
+              <button onClick={handleTransfer} className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">Переместить</button>
             </div>
           </div>
         </div>

@@ -168,6 +168,7 @@ export default function TasksPage() {
             </select>
             <input
               type="date"
+              placeholder="Срок выполнения"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
