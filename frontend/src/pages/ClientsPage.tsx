@@ -40,6 +40,7 @@ export default function ClientsPage() {
         inn: "",
         source: "Direct",
         status: "New",
+        address: "",
         notes: "",
       });
     },
