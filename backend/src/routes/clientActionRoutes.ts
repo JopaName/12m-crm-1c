@@ -211,9 +211,34 @@ router.get("/:clientId/actions/:actionId/files", async (req: AuthRequest, res: R
       orderBy: { createdAt: "desc" },
       include: { uploadedBy: { select: { id: true, firstName: true, lastName: true } } },
     });
-    res.json(files);
+    const baseUrl = `/api/clients/${req.params.clientId}/actions/${req.params.actionId}/files`;
+    const enriched = files.map((f) => ({
+      ...f,
+      downloadUrl: `${baseUrl}/${f.id}/download`,
+    }));
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch files" });
+  }
+});
+
+// Download a file with the original filename
+router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: AuthRequest, res: Response) => {
+  try {
+    const file = await prisma.actionFile.findUnique({ where: { id: req.params.fileId } });
+    if (!file) return res.status(404).json({ error: "File not found" });
+
+    const filePath = path.join(__dirname, "../../uploads", file.fileUrl.replace(/^\/uploads\/?/, ""));
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found on disk" });
+    }
+
+    const filename = encodeURIComponent(file.fileName);
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${filename}; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.sendFile(filePath);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to download file" });
   }
 });
 
@@ -242,7 +267,7 @@ router.delete("/:clientId/actions/:actionId/files/:fileId", async (req: AuthRequ
     const file = await prisma.actionFile.findUnique({ where: { id: req.params.fileId } });
     if (!file) return res.status(404).json({ error: "File not found" });
 
-    const filePath = path.join(__dirname, "../../../" + file.fileUrl);
+    const filePath = path.join(__dirname, "../../uploads", file.fileUrl.replace(/^\/uploads\/?/, ""));
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }

@@ -11,10 +11,92 @@ interface Props {
   onClose: () => void;
 }
 
+function FilePreviewModal({ file, onClose }: { file: any; onClose: () => void }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const ext = file.fileName?.split(".").pop()?.toLowerCase() || "";
+  const previewable = ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "txt", "csv", "json", "xml", "md"].includes(ext);
+
+  React.useEffect(() => {
+    if (!previewable) {
+      setLoading(false);
+      return;
+    }
+    const url = file.downloadUrl || file.fileUrl;
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch");
+        return r.blob();
+      })
+      .then((blob) => {
+        setBlobUrl(URL.createObjectURL(blob));
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, [file]);
+
+  const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext);
+  const isPdf = ext === "pdf";
+  const isText = ["txt", "csv", "json", "xml", "md"].includes(ext);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-800 truncate">{file.fileName}</h3>
+          <div className="flex items-center gap-2">
+            <a
+              href={file.downloadUrl || file.fileUrl}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
+            >
+              Скачать
+            </a>
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 ml-1">✕</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4 min-h-[300px] flex items-center justify-center">
+          {loading && <p className="text-gray-400 text-sm">Загрузка...</p>}
+          {error && <p className="text-red-500 text-sm">Ошибка загрузки файла</p>}
+          {!loading && !error && !previewable && (
+            <p className="text-gray-400 text-sm">Предпросмотр недоступен для этого типа файлов</p>
+          )}
+          {!loading && blobUrl && isImage && (
+            <img src={blobUrl} alt={file.fileName} className="max-w-full max-h-[70vh] object-contain rounded" />
+          )}
+          {!loading && blobUrl && isPdf && (
+            <iframe src={blobUrl} className="w-full h-[70vh] rounded" title={file.fileName} />
+          )}
+          {!loading && blobUrl && isText && (
+            <TextPreview url={blobUrl} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TextPreview({ url }: { url: string }) {
+  const [text, setText] = useState("");
+  React.useEffect(() => {
+    fetch(url).then((r) => r.text()).then(setText).catch(() => setText("Ошибка чтения файла"));
+  }, [url]);
+  return (
+    <pre className="w-full text-xs text-gray-700 whitespace-pre-wrap break-all max-h-[70vh] overflow-auto bg-gray-50 p-4 rounded">
+      {text}
+    </pre>
+  );
+}
+
 export default function ActionContextPanel({ clientId, actionId, actionTitle, onClose }: Props) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [tab, setTab] = useState<"chat" | "files">("chat");
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
   const [newMessage, setNewMessage] = useState("");
 
   const { data: messages } = useQuery({
@@ -164,27 +246,43 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
               ) : (
                 files.map((f: any) => (
                   <div key={f.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group">
-                    <a
-                      href={f.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-blue-600 hover:underline truncate flex-1 min-w-0"
-                    >
-                      {f.fileName}
-                    </a>
-                    <button
-                      onClick={() => {
-                        if (confirm("Удалить файл?")) deleteFileMutation.mutate(f.id);
-                      }}
-                      className="p-1 hover:bg-red-100 rounded text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                    >
-                      🗑
-                    </button>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <button
+                        onClick={() => setPreviewFile(f)}
+                        className="text-sm text-blue-600 hover:underline truncate text-left"
+                      >
+                        {f.fileName}
+                      </button>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0 ml-2">
+                      <a
+                        href={f.downloadUrl || f.fileUrl}
+                        className="p-1 hover:bg-gray-200 rounded text-gray-500"
+                        title="Скачать"
+                      >
+                        ⬇
+                      </a>
+                      <button
+                        onClick={() => {
+                          if (confirm("Удалить файл?")) deleteFileMutation.mutate(f.id);
+                        }}
+                        className="p-1 hover:bg-red-100 rounded text-red-500 ml-1"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </div>
+        )}
+
+        {previewFile && (
+          <FilePreviewModal
+            file={previewFile}
+            onClose={() => setPreviewFile(null)}
+          />
         )}
       </div>
     </div>
