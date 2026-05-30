@@ -45,6 +45,14 @@ export const clientsAPI = {
   delete: (id: string) => api.delete(`/clients/${id}`),
 };
 
+export const actionsAPI = {
+  getByClient: (clientId: string) => api.get(`/clients/${clientId}/actions`),
+  create: (clientId: string, data: any) => api.post(`/clients/${clientId}/actions`, data),
+  update: (clientId: string, actionId: string, data: any) => api.put(`/clients/${clientId}/actions/${actionId}`, data),
+  delete: (clientId: string, actionId: string) => api.delete(`/clients/${clientId}/actions/${actionId}`),
+  reorder: (clientId: string, orderedIds: string[]) => api.put(`/clients/${clientId}/actions/reorder`, { orderedIds }),
+};
+
 export const dealsAPI = {
   getAll: () => api.get("/deals"),
   getById: (id: string) => api.get(`/deals/${id}`),
