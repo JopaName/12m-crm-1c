@@ -11,7 +11,7 @@ export default function ClientDetailPage() {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", inn: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", inn: "", source: "", status: "", notes: "" });
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", id],
@@ -42,6 +42,8 @@ export default function ClientDetailPage() {
       phone: client.phone || "",
       email: client.email || "",
       inn: client.inn || "",
+      source: client.source || "",
+      status: client.status || "",
       notes: client.notes || "",
     });
     setEditing(true);
@@ -99,6 +101,28 @@ export default function ClientDetailPage() {
               onChange={(e) => setForm({ ...form, inn: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <select
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">—</option>
+              <option value="Direct">Прямое обращение</option>
+              <option value="Agent">Личный поиск</option>
+              <option value="Web-form">Сайт</option>
+              <option value="Channel">Канал обращения</option>
+              <option value="Import">Импорт</option>
+            </select>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">—</option>
+              <option value="New">Новый</option>
+              <option value="Active">Активный</option>
+              <option value="Inactive">Неактивный</option>
+            </select>
             <textarea
               placeholder="Примечание"
               value={form.notes}
@@ -167,6 +191,20 @@ export default function ClientDetailPage() {
             <div>
               <span className="text-gray-500">Примечание:</span>{" "}
               <span className="text-gray-800">{client.notes || "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Источник:</span>{" "}
+              <span className="text-gray-800">{client.source || "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Статус:</span>{" "}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                client.status === "Active" ? "bg-green-100 text-green-700" :
+                client.status === "New" ? "bg-blue-100 text-blue-700" :
+                "bg-gray-100 text-gray-500"
+              }`}>
+                {client.status || "-"}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Дата создания:</span>{" "}

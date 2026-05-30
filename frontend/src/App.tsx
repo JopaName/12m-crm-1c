@@ -5,7 +5,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ClientsPage from "./pages/ClientsPage";
 import ClientDetailPage from "./pages/ClientDetailPage";
-import LeadsPage from "./pages/LeadsPage";
 import DealsPage from "./pages/DealsPage";
 import ProductsPage from "./pages/ProductsPage";
 import WarehousePage from "./pages/WarehousePage";
@@ -49,7 +48,6 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="clients/:id" element={<ClientDetailPage />} />
-        <Route path="leads" element={<LeadsPage />} />
         <Route path="deals" element={<DealsPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="warehouse" element={<WarehousePage />} />

@@ -45,13 +45,6 @@ export const clientsAPI = {
   delete: (id: string) => api.delete(`/clients/${id}`),
 };
 
-export const leadsAPI = {
-  getAll: () => api.get("/leads"),
-  create: (data: any) => api.post("/leads", data),
-  update: (id: string, data: any) => api.put(`/leads/${id}`, data),
-  convert: (id: string, data: any) => api.post(`/leads/${id}/convert`, data),
-};
-
 export const dealsAPI = {
   getAll: () => api.get("/deals"),
   getById: (id: string) => api.get(`/deals/${id}`),

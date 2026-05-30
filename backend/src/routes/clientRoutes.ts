@@ -78,6 +78,8 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       legalAddress,
       actualAddress,
       contactPerson,
+      source,
+      status,
       notes,
     } = req.body;
     const client = await prisma.client.create({
@@ -91,6 +93,8 @@ router.post("/", async (req: AuthRequest, res: Response) => {
         legalAddress,
         actualAddress,
         contactPerson,
+        source: source || "Direct",
+        status: status || "New",
         notes,
         createdById: req.user!.id,
       },
@@ -126,10 +130,10 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Only the responsible person, Director, or Owner can edit this client" });
     }
 
-    const { name, phone, email, inn, notes } = req.body;
+    const { name, phone, email, inn, source, status, notes } = req.body;
     const client = await prisma.client.update({
       where: { id: req.params.id },
-      data: { name, phone, email, inn, notes },
+      data: { name, phone, email, inn, source, status, notes },
     });
 
     await createAuditLog({
