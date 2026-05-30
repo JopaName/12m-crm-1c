@@ -21,7 +21,7 @@ export interface IntentResult {
 export async function callAI(
   messages: ChatMessage[],
   temperature: number = 0.3,
-  maxTokens: number = 1000
+  maxTokens: number = 300
 ): Promise<string> {
   try {
     const res = await axios.post(
@@ -34,14 +34,29 @@ export async function callAI(
       },
       {
         headers: {
-          Authorization: `Bearer ${AI_API_KEY}`,
+          "x-api-key": AI_API_KEY,
           "Content-Type": "application/json",
         },
+        timeout: 60000,
       }
     );
-    return res.data?.choices?.[0]?.message?.content || "";
+    const data = res.data;
+    if (data.type === "error") {
+      throw new Error(data.error?.message || "AI API error");
+    }
+    if (data.content && Array.isArray(data.content)) {
+      const textBlock = data.content.find((b: any) => b.type === "text");
+      return textBlock?.text || "";
+    }
+    if (data.choices && data.choices.length > 0) {
+      return data.choices[0].message?.content || "";
+    }
+    return "";
   } catch (err: any) {
     console.error("AI API Error:", err.response?.data || err.message);
+    if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+      throw new Error("AI отвечает слишком долго. Попробуйте позже.");
+    }
     throw new Error("Ошибка обращения к AI");
   }
 }
@@ -60,7 +75,7 @@ Format:
 {"intent":"CHAT","response":"..."}
 
 Rules:
-- SEARCH: user asks for info (status, client details, inventory).
+- SEARCH: user asks for info (status, client details, inventory, warehouse, склад).
 - ACTION: user wants to create/update/delete something.
 - CHAT: user asks for advice, greetings, or general help.
 - If ACTION, extract all possible fields into payload.
@@ -68,12 +83,10 @@ Rules:
 
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
-    { role: "user", content: contextSummary ? `${contextSummary}
-
-User: ${userMessage}` : userMessage },
+    { role: "user", content: contextSummary ? `${contextSummary}\n\nUser: ${userMessage}` : userMessage },
   ];
 
-  const raw = await callAI(messages, 0.1, 500);
+  const raw = await callAI(messages, 0.1, 200);
   try {
     const jsonStr = raw.replace(/```json|```/g, "").trim();
     return JSON.parse(jsonStr);
