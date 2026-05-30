@@ -233,7 +233,21 @@ router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: Au
       return res.status(404).json({ error: "File not found on disk" });
     }
 
-    const filename = encodeURIComponent(file.fileName);
+    // Fix double-encoding: convert garbled Latin-1 string back to UTF-8
+    let originalFilename = file.fileName;
+    try {
+      // If the filename contains non-ASCII Latin-1 chars, it's likely the UTF-8 bytes stored as Latin-1
+      const buffer = Buffer.from(originalFilename, "latin1");
+      const recovered = buffer.toString("utf-8");
+      // Check if recovered looks reasonable (contains valid UTF-8)
+      if (recovered !== originalFilename && recovered.length < originalFilename.length * 2) {
+        originalFilename = recovered;
+      }
+    } catch (e) {
+      // Keep original if conversion fails
+    }
+
+    const filename = encodeURIComponent(originalFilename);
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${filename}; filename="${filename}"`);
     res.setHeader("Content-Type", "application/octet-stream");
     res.sendFile(filePath);
