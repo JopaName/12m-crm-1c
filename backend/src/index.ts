@@ -13,7 +13,7 @@ import { initializeScheduledTasks } from "./services/scheduler";
 import { setupTelemetrySocket } from "./services/telemetrySocket";
 
 import clientRoutes from "./routes/clientRoutes";
-import leadRoutes from "./routes/leadRoutes";
+import clientActionRoutes from "./routes/clientActionRoutes";
 import dealRoutes from "./routes/dealRoutes";
 import userRoutes from "./routes/userRoutes";
 import productRoutes from "./routes/productRoutes";
@@ -65,7 +65,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use("/api/auth", userRoutes);
 app.use("/api/clients", authMiddleware, clientRoutes);
-app.use("/api/leads", authMiddleware, leadRoutes);
+app.use("/api/clients", authMiddleware, clientActionRoutes);
 app.use("/api/deals", authMiddleware, dealRoutes);
 app.use("/api/products", authMiddleware, productRoutes);
 app.use("/api/warehouse", authMiddleware, warehouseRoutes);

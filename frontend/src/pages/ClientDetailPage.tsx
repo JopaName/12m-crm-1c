@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { clientsAPI } from "../api";
+import ClientActions from "../components/ClientActions";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -254,6 +255,10 @@ export default function ClientDetailPage() {
             )) || <p className="text-gray-400 text-sm">Нет документов</p>}
           </div>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <ClientActions clientId={client.id} />
       </div>
     </div>
   );
