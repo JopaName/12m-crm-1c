@@ -1,8 +1,8 @@
 import axios from "axios";
 
-const AI_API_KEY = "sk-cdLb8Z2vT2ob7i5Dh7PL8InaOvoCIx8wyqdgBE4Onanbvj9TpoCMzpKunl15V1gm";
 const AI_BASE_URL = "https://opencode.ai/zen/v1";
 const AI_MODEL = "qwen3.5-plus";
+const DEFAULT_API_KEY = "sk-cdLb8Z2vT2ob7i5Dh7PL8InaOvoCIx8wyqdgBE4Onanbvj9TpoCMzpKunl15V1gm";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -20,9 +20,11 @@ export interface IntentResult {
 
 export async function callAI(
   messages: ChatMessage[],
+  apiKey?: string,
   temperature: number = 0.3,
   maxTokens: number = 300
 ): Promise<string> {
+  const key = apiKey || DEFAULT_API_KEY;
   try {
     const res = await axios.post(
       `${AI_BASE_URL}/messages`,
@@ -34,7 +36,7 @@ export async function callAI(
       },
       {
         headers: {
-          "x-api-key": AI_API_KEY,
+          "x-api-key": key,
           "Content-Type": "application/json",
         },
         timeout: 60000,
@@ -63,6 +65,7 @@ export async function callAI(
 
 export async function detectIntent(
   userMessage: string,
+  apiKey?: string,
   contextSummary?: string
 ): Promise<IntentResult> {
   const systemPrompt = `You are an AI Coordinator for a CRM system.
@@ -86,7 +89,7 @@ Rules:
     { role: "user", content: contextSummary ? `${contextSummary}\n\nUser: ${userMessage}` : userMessage },
   ];
 
-  const raw = await callAI(messages, 0.1, 200);
+  const raw = await callAI(messages, apiKey, 0.1, 200);
   try {
     const jsonStr = raw.replace(/```json|```/g, "").trim();
     return JSON.parse(jsonStr);

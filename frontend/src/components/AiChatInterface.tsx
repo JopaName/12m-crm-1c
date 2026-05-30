@@ -17,10 +17,23 @@ interface ActionPayload {
   message: string;
 }
 
+const ADMIN_SUGGESTIONS = [
+  "\u041F\u043E\u043A\u0430\u0436\u0438 \u0441\u043E\u0442\u0440\u0443\u0434\u043D\u0438\u043A\u043E\u0432",
+  "\u0421\u043E\u0437\u0434\u0430\u0439 \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F",
+  "\u0427\u0442\u043E \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0435?",
+];
+
+const USER_SUGGESTIONS = [
+  "\u0427\u0442\u043E \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0435?",
+  "\u041D\u0430\u0439\u0434\u0438 \u043A\u043B\u0438\u0435\u043D\u0442\u043E\u0432",
+  "\u041A\u0430\u043A\u0438\u0435 \u0435\u0441\u0442\u044C \u0437\u0430\u0434\u0430\u0447\u0438?",
+];
+
 export default function AiChatInterface() {
   const { user } = useAuth();
+  const isAdmin = user?.role?.name === "Administrator" || user?.role?.name === "Director";
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Здравствуйте! Я AI-Координатор 12M CRM. Чем могу помочь?\n\nПримеры запросов:\n• Что лежит на верхнем складе?\n• Найди клиента ООО Ромашка\n• Создай задачу позвонить Петрову\n• Какой статус сделки с Заводом Прогресс?" },
+    { role: "assistant", content: `Здравствуйте, ${user?.firstName}! Я AI-Координатор 12M CRM.${isAdmin ? "\nВы вошли как администратор \u2014 можете управлять сотрудниками через чат." : ""}\n\nПримеры запросов:\n${isAdmin ? "\u2022 Покажи сотрудников\n\u2022 Создай пользователя\n\u2022 " : ""}\u2022 Что лежит на складе?\n\u2022 Найди клиентов\n\u2022 Какие есть задачи?` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +54,6 @@ export default function AiChatInterface() {
     try {
       const res = await api.post("/ai/coordinator", {
         messages: [...messages, userMsg],
-        userId: user?.id,
       });
       const data = res.data;
 
@@ -84,20 +96,19 @@ export default function AiChatInterface() {
       const res = await api.post("/ai/execute-action", {
         action: pendingAction.action,
         payload: pendingAction.payload,
-        userId: user?.id,
       });
       const data = res.data;
       if (data.success) {
         toast.success(data.message);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `✅ ${data.message}` },
+          { role: "assistant", content: `\u2705 ${data.message}` },
         ]);
       } else {
         toast.error(data.error);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `❌ Ошибка: ${data.error}` },
+          { role: "assistant", content: `\u274C Ошибка: ${data.error}` },
         ]);
       }
     } catch (err) {
@@ -107,13 +118,24 @@ export default function AiChatInterface() {
     }
   };
 
+  const suggestions = isAdmin ? ADMIN_SUGGESTIONS : USER_SUGGESTIONS;
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <span className="text-2xl">🤖</span> AI-Координатор
-        </h2>
-        <p className="text-sm text-blue-100">Умный помощник для управления CRM</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <span className="text-2xl">\uD83E\uDD16</span> AI-Координатор
+            </h2>
+            <p className="text-sm text-blue-100">Умный помощник для управления CRM</p>
+          </div>
+          {isAdmin && (
+            <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full uppercase tracking-wide">
+              Admin
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
@@ -155,7 +177,35 @@ export default function AiChatInterface() {
         </div>
       )}
 
+      {isAdmin && messages.length <= 2 && (
+        <div className="px-4 py-2 bg-blue-50 border-t border-blue-100">
+          <p className="text-xs text-blue-700 font-medium mb-2">Админ-действия:</p>
+          <div className="flex flex-wrap gap-2">
+            {["Создай пользователя", "Покажи сотрудников", "Удали пользователя"].map((s) => (
+              <button
+                key={s}
+                onClick={() => sendMessage(s)}
+                className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full hover:bg-blue-200 transition"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="p-4 border-t border-gray-100 bg-white">
+        <div className="flex flex-wrap gap-2 mb-3">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => sendMessage(s)}
+              className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
