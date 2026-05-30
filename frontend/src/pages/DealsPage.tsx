@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dealsAPI, clientsAPI } from "../api";
+import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 const statusColors: Record<string, string> = {
@@ -61,6 +62,8 @@ export default function DealsPage() {
     queryKey: ["deals"],
     queryFn: () => dealsAPI.getAll().then((r) => r.data),
   });
+
+  const { sorted: sortedDeals, handleSort, sortKey, sortDir } = useSort(deals, "dealNumber");
 
   const { data: clients } = useQuery({
     queryKey: ["clients"],
@@ -231,20 +234,32 @@ export default function DealsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Номер
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("dealNumber")}
+              >
+                Номер{sortKey === "dealNumber" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                 Клиент
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Тип
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("dealType")}
+              >
+                Тип{sortKey === "dealType" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Статус
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("status")}
+              >
+                Статус{sortKey === "status" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Сумма
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("expectedAmount")}
+              >
+                Сумма{sortKey === "expectedAmount" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                 Агент
@@ -268,7 +283,7 @@ export default function DealsPage() {
                 </td>
               </tr>
             ) : (
-              deals?.map((deal: any) => (
+              sortedDeals?.map((deal: any) => (
                 <tr key={deal.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">
                     {deal.dealNumber}

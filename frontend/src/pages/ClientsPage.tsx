@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clientsAPI } from "../api";
 import { useNavigate } from "react-router-dom";
+import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 export default function ClientsPage() {
@@ -20,6 +21,8 @@ export default function ClientsPage() {
     queryKey: ["clients"],
     queryFn: () => clientsAPI.getAll().then((r) => r.data),
   });
+
+  const { sorted: sortedClients, handleSort, sortKey, sortDir } = useSort(clients, "name");
 
   const createMutation = useMutation({
     mutationFn: (data: any) => clientsAPI.create(data),
@@ -106,20 +109,35 @@ export default function ClientsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Название
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("name")}
+              >
+                Название{sortKey === "name" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Телефон
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("phone")}
+              >
+                Телефон{sortKey === "phone" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Email
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("email")}
+              >
+                Email{sortKey === "email" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                ИНН
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("inn")}
+              >
+                ИНН{sortKey === "inn" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Дата создания
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("createdAt")}
+              >
+                Дата создания{sortKey === "createdAt" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
             </tr>
           </thead>
@@ -137,7 +155,7 @@ export default function ClientsPage() {
                 </td>
               </tr>
             ) : (
-              clients?.map((client: any) => (
+              sortedClients?.map((client: any) => (
                 <tr
                   key={client.id}
                   className="hover:bg-gray-50 cursor-pointer"

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { leadsAPI, clientsAPI } from "../api";
+import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 export default function LeadsPage() {
@@ -24,6 +25,8 @@ export default function LeadsPage() {
     queryKey: ["leads"],
     queryFn: () => leadsAPI.getAll().then((r) => r.data),
   });
+
+  const { sorted: sortedLeads, handleSort, sortKey, sortDir } = useSort(leads, "clientName");
 
   const createMutation = useMutation({
     mutationFn: (data: any) => leadsAPI.create(data),
@@ -130,17 +133,29 @@ export default function LeadsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Клиент
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("clientName")}
+              >
+                Клиент{sortKey === "clientName" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Телефон
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("clientPhone")}
+              >
+                Телефон{sortKey === "clientPhone" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Источник
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("source")}
+              >
+                Источник{sortKey === "source" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Статус
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("status")}
+              >
+                Статус{sortKey === "status" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                 Действия
@@ -161,7 +176,7 @@ export default function LeadsPage() {
                 </td>
               </tr>
             ) : (
-              leads?.map((lead: any) => (
+              sortedLeads?.map((lead: any) => (
                 <tr key={lead.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">
                     {lead.clientName}
