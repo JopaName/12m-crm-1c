@@ -139,18 +139,24 @@ export default function ClientsPage() {
               >
                 Дата создания{sortKey === "createdAt" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("createdBy.firstName")}
+              >
+                Ответственный{sortKey === "createdBy.firstName" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-400">
+                <td colSpan={7} className="text-center py-8 text-gray-400">
                   Загрузка...
                 </td>
               </tr>
             ) : clients?.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-400">
+                <td colSpan={7} className="text-center py-8 text-gray-400">
                   Нет клиентов
                 </td>
               </tr>
@@ -175,6 +181,11 @@ export default function ClientsPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {new Date(client.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {client.createdBy
+                      ? `${client.createdBy.firstName} ${client.createdBy.lastName}`
+                      : "-"}
                   </td>
                 </tr>
               ))
