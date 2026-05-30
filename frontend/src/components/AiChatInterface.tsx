@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import api from "../api";
 import toast from "react-hot-toast";
 import ActionConfirmationCard from "./ActionConfirmationCard";
 
@@ -19,7 +20,7 @@ interface ActionPayload {
 export default function AiChatInterface() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Здравствуйте! Я AI-Координатор 12M CRM. Чем могу помочь?\n\nПримеры запросов:\n• Найди клиента ООО Ромашка\n• Создай задачу позвонить Петрову\n• Какой статус сделки с Заводом Прогресс?" },
+    { role: "assistant", content: "Здравствуйте! Я AI-Координатор 12M CRM. Чем могу помочь?\n\nПримеры запросов:\n• Что лежит на верхнем складе?\n• Найди клиента ООО Ромашка\n• Создай задачу позвонить Петрову\n• Какой статус сделки с Заводом Прогресс?" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,15 +39,19 @@ export default function AiChatInterface() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/ai/coordinator", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMsg],
-          userId: user?.id,
-        }),
+      const res = await api.post("/ai/coordinator", {
+        messages: [...messages, userMsg],
+        userId: user?.id,
       });
-      const data = await res.json();
+      const data = res.data;
+
+      if (data.error) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `Ошибка: ${data.error}` },
+        ]);
+        return;
+      }
 
       if (data.intent === "ACTION") {
         setPendingAction(data);
@@ -60,9 +65,9 @@ export default function AiChatInterface() {
           { role: "assistant", content: data.response || "Нет ответа." },
         ]);
       }
-    } catch (err) {
-      toast.error("Ошибка обращения к AI");
-      setMessages((prev) => [...prev, { role: "assistant", content: "Произошла ошибка при обработке запроса." }]);
+    } catch (err: any) {
+      console.error("AI Error:", err);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка при обработке запроса. Попробуйте ещё раз." }]);
     } finally {
       setLoading(false);
     }
@@ -76,16 +81,12 @@ export default function AiChatInterface() {
     }
 
     try {
-      const res = await fetch("/api/ai/execute-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: pendingAction.action,
-          payload: pendingAction.payload,
-          userId: user?.id,
-        }),
+      const res = await api.post("/ai/execute-action", {
+        action: pendingAction.action,
+        payload: pendingAction.payload,
+        userId: user?.id,
       });
-      const data = await res.json();
+      const data = res.data;
       if (data.success) {
         toast.success(data.message);
         setMessages((prev) => [
@@ -108,7 +109,6 @@ export default function AiChatInterface() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Header */}
       <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <span className="text-2xl">🤖</span> AI-Координатор
@@ -116,7 +116,6 @@ export default function AiChatInterface() {
         <p className="text-sm text-blue-100">Умный помощник для управления CRM</p>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -145,7 +144,6 @@ export default function AiChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Action Confirmation */}
       {pendingAction && (
         <div className="p-4 bg-yellow-50 border-t border-yellow-200">
           <ActionConfirmationCard
@@ -157,7 +155,6 @@ export default function AiChatInterface() {
         </div>
       )}
 
-      {/* Input */}
       <div className="p-4 border-t border-gray-100 bg-white">
         <form
           onSubmit={(e) => {
