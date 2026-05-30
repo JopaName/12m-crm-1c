@@ -94,6 +94,7 @@ model Client {
   ogrn          String?
   legalAddress  String?
   actualAddress String?
+  address        String?
   contactPerson  String?
   source         String?
   status         String?
