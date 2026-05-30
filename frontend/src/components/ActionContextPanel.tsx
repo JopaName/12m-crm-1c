@@ -17,7 +17,7 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
   const [error, setError] = useState(false);
 
   const ext = file.fileName?.split(".").pop()?.toLowerCase() || "";
-  const previewable = ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "txt", "csv", "json", "xml", "md"].includes(ext);
+  const previewable = ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "txt", "csv", "json", "xml", "md", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext);
 
   React.useEffect(() => {
     if (!previewable) {
@@ -47,10 +47,11 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
   const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext);
   const isPdf = ext === "pdf";
   const isText = ["txt", "csv", "json", "xml", "md"].includes(ext);
+  const isOffice = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-800 truncate">{file.fileName}</h3>
           <div className="flex items-center gap-2">
@@ -73,10 +74,21 @@ function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => 
             <img src={blobUrl} alt={file.fileName} className="max-w-full max-h-[70vh] object-contain rounded" />
           )}
           {!loading && blobUrl && isPdf && (
-            <iframe src={blobUrl} className="w-full h-[70vh] rounded" title={file.fileName} />
+            <embed src={blobUrl} type="application/pdf" className="w-full h-[70vh] rounded" />
           )}
           {!loading && blobUrl && isText && (
             <TextPreview url={blobUrl} token={token} />
+          )}
+          {!loading && !error && isOffice && (
+            <div className="text-center">
+              <p className="text-gray-500 text-sm mb-4">Предпросмотр недоступен для файлов Office</p>
+              <a
+                href={file.downloadUrl || file.fileUrl}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                Скачать и открыть
+              </a>
+            </div>
           )}
         </div>
       </div>
