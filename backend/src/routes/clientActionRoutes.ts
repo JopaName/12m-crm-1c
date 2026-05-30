@@ -234,14 +234,20 @@ router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: Au
     }
 
     // Fix double-encoding: convert garbled Latin-1 string back to UTF-8
+    // Only apply to old files that were stored with garbled names
     let originalFilename = file.fileName;
     try {
-      // If the filename contains non-ASCII Latin-1 chars, it's likely the UTF-8 bytes stored as Latin-1
-      const buffer = Buffer.from(originalFilename, "latin1");
-      const recovered = buffer.toString("utf-8");
-      // Check if recovered looks reasonable (contains valid UTF-8)
-      if (recovered !== originalFilename && recovered.length < originalFilename.length * 2) {
-        originalFilename = recovered;
+      // Check if filename looks garbled (contains Latin-1 range chars that are actually UTF-8 bytes)
+      // Garbled names have chars in range 0xC0-0xFF (Latin-1 supplement)
+      const looksGarbled = /[\x80-\xFF]/.test(originalFilename) && !/[\u0400-\u04FF]/.test(originalFilename);
+      
+      if (looksGarbled) {
+        const buffer = Buffer.from(originalFilename, "latin1");
+        const recovered = buffer.toString("utf-8");
+        // Verify recovered is valid UTF-8 and looks reasonable
+        if (recovered.length > 0 && recovered.length <= originalFilename.length) {
+          originalFilename = recovered;
+        }
       }
     } catch (e) {
       // Keep original if conversion fails
@@ -249,7 +255,24 @@ router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: Au
 
     const filename = encodeURIComponent(originalFilename);
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${filename}; filename="${filename}"`);
-    res.setHeader("Content-Type", "application/octet-stream");
+    
+    // Set correct Content-Type based on file extension
+    const ext = path.extname(originalFilename).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".xls": "application/vnd.ms-excel",
+      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".txt": "text/plain; charset=utf-8",
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".svg": "image/svg+xml",
+    };
+    res.setHeader("Content-Type", mimeTypes[ext] || "application/octet-stream");
     res.sendFile(filePath);
   } catch (error) {
     res.status(500).json({ error: "Failed to download file" });
@@ -261,10 +284,20 @@ router.post("/:clientId/actions/:actionId/files", upload.single("file"), async (
     if (!req.file) {
       return res.status(400).json({ error: "No file provided" });
     }
+    // Fix filename encoding: convert garbled Latin-1 to proper UTF-8
+    let originalName = req.file.originalname;
+    try {
+      const buffer = Buffer.from(originalName, "latin1");
+      const recovered = buffer.toString("utf-8");
+      if (recovered !== originalName && recovered.length < originalName.length * 2) {
+        originalName = recovered;
+      }
+    } catch (e) {}
+
     const fileRecord = await prisma.actionFile.create({
       data: {
         actionId: req.params.actionId,
-        fileName: req.file.originalname,
+        fileName: originalName,
         fileUrl: "/uploads/action-files/" + req.file.filename,
         uploadedById: req.user!.id,
       },
