@@ -11,6 +11,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     const clients = await prisma.client.findMany({
       where: { ...filter, isArchived: false },
       include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
         leads: true,
         deals: true,
         rentContracts: true,
@@ -29,6 +30,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
     const client = await prisma.client.findUnique({
       where: { id: req.params.id },
       include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
         leads: { orderBy: { createdAt: "desc" } },
         deals: {
           include: {
@@ -120,9 +122,14 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
     });
     if (!old) return res.status(404).json({ error: "Client not found" });
 
+    if (old.createdById !== req.user!.id && req.user!.roleName !== "Director" && req.user!.roleName !== "Owner") {
+      return res.status(403).json({ error: "Only the responsible person, Director, or Owner can edit this client" });
+    }
+
+    const { name, phone, email, inn, notes } = req.body;
     const client = await prisma.client.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: { name, phone, email, inn, notes },
     });
 
     await createAuditLog({
