@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI, dealsAPI, authAPI } from "../api";
+import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 const typeLabels: Record<string, string> = {
@@ -40,6 +41,8 @@ export default function TasksPage() {
     queryKey: ["tasks"],
     queryFn: () => tasksAPI.getAll().then((r) => r.data),
   });
+
+  const { sorted: sortedTasks, handleSort, sortKey, sortDir } = useSort(tasks, "title");
   const { data: deals } = useQuery({
     queryKey: ["deals"],
     queryFn: () => dealsAPI.getAll().then((r) => r.data),
@@ -192,23 +195,38 @@ export default function TasksPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Название
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("title")}
+              >
+                Название{sortKey === "title" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Тип
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("type")}
+              >
+                Тип{sortKey === "type" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Приоритет
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("priority")}
+              >
+                Приоритет{sortKey === "priority" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Статус
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("status")}
+              >
+                Статус{sortKey === "status" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                 Исполнитель
               </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Срок
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("dueDate")}
+              >
+                Срок{sortKey === "dueDate" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
                 Действия
@@ -229,7 +247,7 @@ export default function TasksPage() {
                 </td>
               </tr>
             ) : (
-              tasks?.map((task: any) => (
+              sortedTasks?.map((task: any) => (
                 <tr key={task.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">
                     {task.title}

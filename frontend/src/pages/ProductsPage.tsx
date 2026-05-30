@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productsAPI, warehouseAPI } from "../api";
+import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 export default function ProductsPage() {
@@ -35,6 +36,8 @@ export default function ProductsPage() {
     queryKey: ["warehouse"],
     queryFn: () => warehouseAPI.getAll().then((r) => r.data),
   });
+
+  const { sorted: sortedProducts, handleSort, sortKey, sortDir } = useSort(products, "name");
 
   const createMutation = useMutation({
     mutationFn: (data: any) => productsAPI.create(data),
@@ -190,7 +193,7 @@ export default function ProductsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 <option value="">Выберите товар</option>
-                {products?.map((p: any) => (
+                {sortedProducts?.map((p: any) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
@@ -237,19 +240,28 @@ export default function ProductsPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">
-                  Название
+                <th
+                  className="text-left px-4 py-2 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                  onClick={() => handleSort("name")}
+                >
+                  Название{sortKey === "name" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
                 </th>
-                <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">
-                  Артикул
+                <th
+                  className="text-left px-4 py-2 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                  onClick={() => handleSort("sku")}
+                >
+                  Артикул{sortKey === "sku" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
                 </th>
-                <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">
-                  Цена
+                <th
+                  className="text-left px-4 py-2 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+                  onClick={() => handleSort("price")}
+                >
+                  Цена{sortKey === "price" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {products?.map((p: any) => (
+              {sortedProducts?.map((p: any) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2.5 text-sm text-gray-800">
                     {p.name}
