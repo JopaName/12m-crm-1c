@@ -109,6 +109,7 @@ export default function RentPage() {
             />
             <input
               type="date"
+              placeholder="Дата начала"
               value={form.startDate}
               onChange={(e) => setForm({ ...form, startDate: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"

@@ -110,6 +110,7 @@ export default function InstallationPage() {
             </select>
             <input
               type="datetime-local"
+              placeholder="Дата установки"
               value={form.installDate}
               onChange={(e) =>
                 setForm({ ...form, installDate: e.target.value })

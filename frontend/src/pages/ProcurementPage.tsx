@@ -119,9 +119,9 @@ export default function ProcurementPage() {
               </select>
               <input
                 type="number"
+                placeholder="Количество"
                 min={1}
                 value={reqForm.quantity}
-                placeholder="Кол-во"
                 onChange={(e) =>
                   setReqForm({ ...reqForm, quantity: +e.target.value })
                 }
