@@ -265,6 +265,31 @@ model InventoryBalance {
   @@index([cellId])
 }
 
+
+model WarehouseCategory {
+  id          String   @id @default(cuid())
+  name        String
+  parentId    String?
+  parent      WarehouseCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    WarehouseCategory[] @relation("CategoryHierarchy")
+  items       WarehouseStockItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WarehouseStockItem {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    WarehouseCategory @relation(fields: [categoryId], references: [id])
+  productName String
+  quantity    Float    @default(0)
+  unit        String   @default("шт")
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
 model WarehouseMovement {
   id            String       @id @default(cuid())
   type          String
