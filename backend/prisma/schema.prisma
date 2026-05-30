@@ -82,6 +82,8 @@ model User {
   legalDocumentComments LegalDocumentComment[]
   notifications Notification[]
   clientActions  ClientAction[]
+  actionMessages ActionMessage[]
+  actionFiles    ActionFile[]
 }
 
 model Client {
@@ -887,9 +889,40 @@ model ClientAction {
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
 
+  messages ActionMessage[]
+  files    ActionFile[]
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([clientId])
   @@index([clientId, orderIndex])
+}
+
+model ActionMessage {
+  id        String   @id @default(cuid())
+  actionId  String
+  action    ClientAction @relation(fields: [actionId], references: [id])
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  content   String
+
+  createdAt DateTime @default(now())
+
+  @@index([actionId])
+  @@index([actionId, createdAt])
+}
+
+model ActionFile {
+  id           String   @id @default(cuid())
+  actionId     String
+  action       ClientAction @relation(fields: [actionId], references: [id])
+  fileName     String
+  fileUrl      String
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([actionId])
 }
