@@ -16,6 +16,7 @@ export default function ClientsPage() {
     inn: "",
     source: "Direct",
     status: "New",
+    address: "",
     notes: "",
   });
 
@@ -114,6 +115,12 @@ export default function ClientsPage() {
               <option value="Inactive">Неактивный</option>
             </select>
             <input
+              placeholder="Адрес"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
               placeholder="Примечание"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -177,6 +184,12 @@ export default function ClientsPage() {
               </th>
               <th
                 className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+                onClick={() => handleSort("address")}
+              >
+                Адрес{sortKey === "address" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+              </th>
+              <th
+                className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
                 onClick={() => handleSort("createdBy.firstName")}
               >
                 Ответственный{sortKey === "createdBy.firstName" ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
@@ -186,13 +199,13 @@ export default function ClientsPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-400">
+                <td colSpan={10} className="text-center py-8 text-gray-400">
                   Загрузка...
                 </td>
               </tr>
             ) : clients?.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-400">
+                <td colSpan={10} className="text-center py-8 text-gray-400">
                   Нет клиентов
                 </td>
               </tr>
@@ -229,6 +242,9 @@ export default function ClientsPage() {
                     }`}>
                       {client.status || "-"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {client.address || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {client.createdBy

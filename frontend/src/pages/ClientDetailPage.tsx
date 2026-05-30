@@ -12,7 +12,7 @@ export default function ClientDetailPage() {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", inn: "", source: "", status: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", inn: "", address: "", source: "", status: "", notes: "" });
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", id],
@@ -43,6 +43,7 @@ export default function ClientDetailPage() {
       phone: client.phone || "",
       email: client.email || "",
       inn: client.inn || "",
+      address: client.address || "",
       source: client.source || "",
       status: client.status || "",
       notes: client.notes || "",
@@ -100,6 +101,12 @@ export default function ClientDetailPage() {
               placeholder="ИНН"
               value={form.inn}
               onChange={(e) => setForm({ ...form, inn: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              placeholder="Адрес"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
