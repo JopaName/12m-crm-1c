@@ -122,7 +122,7 @@ export default function WarehousePage() {
           </button>
           <button
             onClick={() => setShowCategoryForm(!showCategoryForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             + Каталог
           </button>
@@ -139,7 +139,7 @@ export default function WarehousePage() {
                 <option value="">Без родителя (корневой каталог)</option>
                 {rootCategories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </select>
-              <button onClick={() => { if (!categoryForm.name) { toast.error("Введите название"); return; } createCategory.mutate(categoryForm); }} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Создать</button>
+              <button onClick={() => { if (!categoryForm.name) { toast.error("Введите название"); return; } createCategory.mutate(categoryForm); }} className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">Создать</button>
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function WarehousePage() {
                 if (!itemForm.productName) { toast.error("Введите название товара"); return; }
                 if (editingItem) { updateItem.mutate({ id: editingItem.id, data: itemForm }); }
                 else { createItem.mutate({ categoryId: selectedCategory, data: itemForm }); }
-              }} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">{editingItem ? "Сохранить" : "Добавить"}</button>
+              }} className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">{editingItem ? "Сохранить" : "Добавить"}</button>
             </div>
           </div>
         </div>
@@ -248,7 +248,7 @@ export default function WarehousePage() {
                       <td className="px-3 py-2.5 text-sm">{item.purchasePrice ? `${item.purchasePrice} ₽` : "-"}</td>
                       <td className="px-3 py-2.5 text-sm">{item.salePrice ? `${item.salePrice} ₽` : "-"}</td>
                       <td className="px-3 py-2.5 text-right">
-                        <button onClick={() => { setEditingItem(item); setItemForm({ productName: item.productName, sku: item.sku || "", description: item.description || "", quantity: String(item.quantity), unit: item.unit, purchasePrice: item.purchasePrice ? String(item.purchasePrice) : "", salePrice: item.salePrice ? String(item.salePrice) : "", categoryTag: item.categoryTag || "", note: item.note || "" }); setShowItemForm(true); }} className="p-1 hover:bg-blue-100 rounded text-blue-500 mr-1">✏️</button>
+                        <button onClick={() => { setEditingItem(item); setItemForm({ productName: item.productName, sku: item.sku || "", description: item.description || "", quantity: String(item.quantity), unit: item.unit, purchasePrice: item.purchasePrice ? String(item.purchasePrice) : "", salePrice: item.salePrice ? String(item.salePrice) : "", categoryTag: item.categoryTag || "", note: item.note || "" }); setShowItemForm(true); }} className="p-1 hover:bg-primary-100 rounded text-primary-500 mr-1">✏️</button>
                         <button onClick={() => { if (confirm("Удалить товар?")) deleteItem.mutate(item.id); }} className="p-1 hover:bg-red-100 rounded text-red-500">🗑</button>
                       </td>
                     </tr>
@@ -289,7 +289,7 @@ function CategoryNode({ category, allCategories, selectedId, onSelect, onDelete 
 
   return (
     <div>
-      <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer mb-1 ${isSelected ? "bg-blue-100 text-blue-700" : "hover:bg-gray-50"}`} onClick={() => onSelect(category.id)}>
+      <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer mb-1 ${isSelected ? "bg-primary-100 text-primary-700" : "hover:bg-gray-50"}`} onClick={() => onSelect(category.id)}>
         <div className="flex items-center gap-2">
           {children.length > 0 && (<button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="text-xs text-gray-400">{expanded ? "▼" : "▶"}</button>)}
           <span className="text-sm font-medium">{category.name}</span>

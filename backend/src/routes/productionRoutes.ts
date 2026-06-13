@@ -1,70 +1,47 @@
 import { Router, Response } from "express";
-import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
-import { autoCalculateProductionCost } from "../services/salaryService";
+import { ProductionService } from "../services/ProductionService";
+import { createProductionOrderSchema } from "../validators";
 
 const router = Router();
+const service = new ProductionService();
 
 router.get("/", async (_req: AuthRequest, res: Response) => {
   try {
-    const orders = await prisma.productionOrder.findMany({
-      where: { isArchived: false },
-      include: {
-        deal: { include: { client: true, responsibleAgent: true } },
-        productionRoute: {
-          include: { steps: { orderBy: { orderIndex: "asc" } } },
-        },
-        defectRecords: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const orders = await service.getAll("", "");
     res.json(orders);
-  } catch (error) {
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to fetch production orders" });
   }
 });
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.productionOrder.create({
-      data: {
-        dealId: req.body.dealId,
-        productionRouteId: req.body.productionRouteId || null,
-        status: "New",
-      },
-    });
+    const data = createProductionOrderSchema.parse(req.body);
+    const order = await service.create(data, req.user!.id);
     res.status(201).json(order);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create production order" });
   }
 });
 
 router.put("/:id/status", async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.productionOrder.update({
-      where: { id: req.params.id },
-      data: { status: req.body.status },
-    });
-
-    if (req.body.status === "Completed") {
-      await autoCalculateProductionCost(req.params.id);
-    }
-
-    const updated = await prisma.productionOrder.findUnique({
-      where: { id: req.params.id },
-      include: { productionRoute: true },
-    });
-    res.json(updated);
-  } catch (error) {
+    const order = await service.updateStatus(req.params.id, req.body.status, req.user!.id);
+    res.json(order);
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to update production order" });
   }
 });
 
 router.get("/routes", async (_req: AuthRequest, res: Response) => {
-  const routes = await prisma.productionRoute.findMany({
-    where: { isArchived: false },
-  });
-  res.json(routes);
+  try {
+    const routes = await service.getRoutes();
+    res.json(routes);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch production routes" });
+  }
 });
 
 export default router;

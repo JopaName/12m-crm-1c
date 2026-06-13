@@ -68,7 +68,7 @@ export default function InstallationPage() {
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новый монтаж
         </button>
@@ -128,7 +128,7 @@ export default function InstallationPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Создать
           </button>
@@ -178,7 +178,7 @@ export default function InstallationPage() {
                         t.status === "Completed"
                           ? "bg-green-100 text-green-700"
                           : t.status === "InProgress"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-primary-100 text-primary-700"
                             : t.status === "Scheduled"
                               ? "bg-yellow-100 text-yellow-700"
                               : "bg-gray-100 text-gray-500"
@@ -196,7 +196,7 @@ export default function InstallationPage() {
                             data: { status: "InProgress" },
                           })
                         }
-                        className="text-blue-600 text-xs hover:underline"
+                        className="text-primary-600 text-xs hover:underline"
                       >
                         Начать
                       </button>
@@ -243,7 +243,7 @@ export default function InstallationPage() {
                       ? "bg-green-100 text-green-700"
                       : e.status === "Missed"
                         ? "bg-red-100 text-red-700"
-                        : "bg-blue-100 text-blue-700"
+                        : "bg-primary-100 text-primary-700"
                   }`}
                 >
                   {e.status}

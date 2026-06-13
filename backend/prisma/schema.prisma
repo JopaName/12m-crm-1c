@@ -70,6 +70,7 @@ model User {
   reserves              Reserve[]
   defectRecords         DefectRecord[]
   purchaseRequests      PurchaseRequest[]
+  responsiblePurchaseRequests PurchaseRequest[] @relation("ResponsiblePurchaseRequest")
   supplierOrders        SupplierOrder[]
   legalDocuments        LegalDocument[]            @relation("ResponsibleLawyer")
   confirmedPayments     Payment[]
@@ -85,6 +86,7 @@ model User {
   clientActions  ClientAction[]
   actionMessages ActionMessage[]
   actionFiles    ActionFile[]
+  @@index([isArchived, isActive])
 }
 
 model Client {
@@ -121,6 +123,7 @@ model Client {
 
   @@index([name])
   @@index([inn])
+  @@index([isArchived, createdById, createdAt])
 }
 
 model Lead {
@@ -146,6 +149,7 @@ model Lead {
   @@index([assignedAgentId])
   @@index([status, assignedAgentId])
   @@index([source])
+  @@index([isArchived, assignedAgentId, createdAt])
 }
 
 model Deal {
@@ -187,6 +191,7 @@ model Deal {
   @@index([clientId, status])
   @@index([responsibleAgentId])
   @@index([dealType])
+  @@index([isArchived, responsibleAgentId, createdAt])
 }
 
 model Product {
@@ -211,6 +216,7 @@ model Product {
 
   @@index([category])
   @@index([name])
+  @@index([isArchived, category])
 }
 
 model ProductItem {
@@ -233,6 +239,7 @@ model ProductItem {
   @@index([status])
   @@index([productId])
   @@index([warehouseCellId])
+  @@index([isArchived, status])
 }
 
 model WarehouseCell {
@@ -429,6 +436,7 @@ model ProductionOrder {
 
   @@index([status])
   @@index([dealId])
+  @@index([isArchived, status])
 }
 
 model DefectRecord {
@@ -458,14 +466,21 @@ model PurchaseRequest {
   id            String   @id @default(cuid())
   dealId        String?
   deal          Deal?    @relation(fields: [dealId], references: [id])
-  productId     String
-  product       Product  @relation(fields: [productId], references: [id])
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  productName   String?
   quantity      Int
   status        String
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   createdById   String
   createdBy     User     @relation(fields: [createdById], references: [id])
+  responsibleUserId String?
+  responsibleUser   User?    @relation("ResponsiblePurchaseRequest", fields: [responsibleUserId], references: [id])
+  dueDate           DateTime?
+  note              String?
+  fileUrl           String?
+  fileName          String?
   isArchived    Boolean  @default(false)
 
   createdAt DateTime @default(now())
@@ -474,6 +489,7 @@ model PurchaseRequest {
   @@index([status])
   @@index([dealId])
   @@index([productId])
+  @@index([productName])
 }
 
 model Supplier {
@@ -494,6 +510,7 @@ model Supplier {
 
   @@index([name])
   @@index([inn])
+  @@index([isArchived, inn])
 }
 
 model SupplierOrder {
@@ -513,6 +530,7 @@ model SupplierOrder {
 
   @@index([status])
   @@index([supplierId])
+  @@index([isArchived, status])
 }
 
 model RentContract {
@@ -539,6 +557,7 @@ model RentContract {
 
   @@index([status])
   @@index([clientId])
+  @@index([isArchived, status])
 }
 
 model BillingRecord {
@@ -579,6 +598,9 @@ model LegalDocumentComment {
 model LegalDocument {
   id                  String   @id @default(cuid())
   documentType        String
+  category            String?
+  description         String?
+  amount              Float?
   dealId              String?
   deal                Deal?    @relation(fields: [dealId], references: [id])
   clientId            String?
@@ -605,6 +627,7 @@ model LegalDocument {
   @@index([clientId])
   @@index([documentType])
   @@index([responsibleLawyerId])
+  @@index([isArchived, status])
 }
 
 model Invoice {
@@ -629,6 +652,8 @@ model Invoice {
   @@index([status])
   @@index([clientId])
   @@index([dealId])
+  @@index([isArchived, clientId])
+  @@index([isArchived, dueDate, status])
 }
 
 model Payment {
@@ -655,6 +680,8 @@ model Payment {
   @@index([clientId])
   @@index([dealId])
   @@index([method])
+  @@index([isArchived, clientId])
+  @@index([isArchived, status])
 }
 
 model CashOrder {
@@ -704,6 +731,7 @@ model InstallationTask {
   @@index([installerId])
   @@index([dealId])
   @@index([installDate])
+  @@index([isArchived, status])
 }
 
 model InstallationCalendarEvent {
@@ -745,6 +773,7 @@ model ServiceCase {
   @@index([status])
   @@index([clientId])
   @@index([type])
+  @@index([isArchived, status])
 }
 
 model TelemetryDevice {
@@ -790,6 +819,7 @@ model TelemetryReading {
   @@index([receivedAt])
   @@index([verificationStatus])
   @@index([deviceId])
+  @@index([isArchived, deviceId, createdAt])
 }
 
 model AgentCommissionRecord {
@@ -837,6 +867,8 @@ model Task {
   @@index([dealId])
   @@index([type])
   @@index([priority])
+  @@index([isArchived, assigneeId, status])
+  @@index([isArchived, dueDate])
 }
 
 model AuditLog {
@@ -867,6 +899,10 @@ model ChatMessage {
   receiverId  String
   receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   content     String
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
   readAt      DateTime?
 
   createdAt DateTime @default(now())
@@ -968,3 +1004,75 @@ model ActionFile {
 
   @@index([actionId])
 }
+
+
+model AiChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AiChatMessage[]
+  files    AiChatFile[]
+
+  @@index([userId])
+}
+
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   AiChatSession @relation(fields: [sessionId], references: [id])
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model AiChatFile {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       AiChatSession @relation(fields: [sessionId], references: [id])
+  userId        String
+  originalName  String
+  storedName    String
+  mimeType      String
+  size          Int
+  extractedText String?
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  level     String   @default("error")
+  message   String
+  source    String   @default("app")
+  stack     String?
+  metadata  String?
+  url       String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([level, createdAt])
+  @@index([source, createdAt])
+}
+
+model FileRecord {
+  id           String   @id @default(cuid())
+  entityType   String
+  entityId     String
+  fieldName    String
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, fieldName])
+}
+

@@ -70,7 +70,7 @@ export default function ProductionPage() {
         <h1 className="text-2xl font-bold text-gray-800">Производство</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новый заказ
         </button>
@@ -112,7 +112,7 @@ export default function ProductionPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Создать
           </button>
@@ -156,7 +156,7 @@ export default function ProductionPage() {
                         ? "bg-green-100 text-green-700"
                         : order.status === "InProgress" ||
                             order.status === "QualityCheck"
-                          ? "bg-blue-100 text-blue-700"
+                          ? "bg-primary-100 text-primary-700"
                           : "bg-gray-100 text-gray-500"
                     }`}
                   >
@@ -175,7 +175,7 @@ export default function ProductionPage() {
                           status: statusFlow[order.status],
                         })
                       }
-                      className="text-blue-600 text-xs hover:underline"
+                      className="text-primary-600 text-xs hover:underline"
                     >
                       {order.status === "New"
                         ? "Запустить"

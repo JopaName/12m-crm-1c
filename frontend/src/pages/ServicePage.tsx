@@ -48,7 +48,7 @@ export default function ServicePage() {
         <h1 className="text-2xl font-bold text-gray-800">Сервис и гарантия</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новое обращение
         </button>
@@ -94,7 +94,7 @@ export default function ServicePage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Создать
           </button>
@@ -132,7 +132,7 @@ export default function ServicePage() {
                       c.status === "Resolved" || c.status === "Closed"
                         ? "bg-green-100 text-green-700"
                         : c.status === "InProgress"
-                          ? "bg-blue-100 text-blue-700"
+                          ? "bg-primary-100 text-primary-700"
                           : "bg-yellow-100 text-yellow-700"
                     }`}
                   >

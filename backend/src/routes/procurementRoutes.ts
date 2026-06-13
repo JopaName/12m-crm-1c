@@ -1,64 +1,76 @@
 import { Router, Response } from "express";
-import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { prisma } from "../db";
+import { ProcurementService } from "../services/ProcurementService";
+import { createPurchaseRequestSchema, createSupplierSchema, createSupplierOrderSchema } from "../validators";
 
 const router = Router();
+const service = new ProcurementService();
 
 router.get("/", async (_req: AuthRequest, res: Response) => {
   try {
-    const [requests, suppliers, orders] = await Promise.all([
-      prisma.purchaseRequest.findMany({
-        where: { isArchived: false },
-        include: {
-          product: true,
-          supplier: true,
-          createdBy: { select: { firstName: true, lastName: true } },
-        },
-      }),
-      prisma.supplier.findMany({ where: { isArchived: false } }),
-      prisma.supplierOrder.findMany({
-        where: { isArchived: false },
-        include: { supplier: true },
-      }),
-    ]);
-    res.json({ requests, suppliers, orders });
-  } catch (error) {
+    const data = await service.getProcurementDashboard();
+    res.json(data);
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to fetch procurement data" });
   }
 });
 
 router.post("/requests", async (req: AuthRequest, res: Response) => {
   try {
-    const request = await prisma.purchaseRequest.create({
-      data: { ...req.body, createdById: req.user!.id },
-    });
+    const data = createPurchaseRequestSchema.parse(req.body);
+    const request = await service.create(data, req.user!.id);
     res.status(201).json(request);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create purchase request" });
   }
 });
 
 router.post("/suppliers", async (req: AuthRequest, res: Response) => {
   try {
-    const supplier = await prisma.supplier.create({ data: req.body });
+    const data = createSupplierSchema.parse(req.body);
+    const supplier = await service.createSupplier(data);
     res.status(201).json(supplier);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create supplier" });
   }
 });
 
 router.post("/orders", async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.supplierOrder.create({
-      data: {
-        ...req.body,
-        orderNumber: `PO-${Date.now()}`,
-        createdById: req.user!.id,
-      },
-    });
+    const data = createSupplierOrderSchema.parse(req.body);
+    const order = await service.createOrder(data, req.user!.id);
     res.status(201).json(order);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create supplier order" });
+  }
+});
+
+
+router.put("/requests/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const request = await prisma.purchaseRequest.update({
+      where: { id: req.params.id },
+      data: req.body,
+    });
+    res.json(request);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update request" });
+  }
+});
+
+router.delete("/requests/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.purchaseRequest.update({
+      where: { id: req.params.id },
+      data: { isArchived: true },
+    });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete request" });
   }
 });
 
@@ -69,7 +81,7 @@ router.put("/suppliers/:id", async (req: AuthRequest, res: Response) => {
       data: req.body,
     });
     res.json(supplier);
-  } catch (error) {
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to update supplier" });
   }
 });
@@ -80,9 +92,37 @@ router.delete("/suppliers/:id", async (req: AuthRequest, res: Response) => {
       where: { id: req.params.id },
       data: { isArchived: true },
     });
-    res.json({ message: "Supplier archived" });
-  } catch (error) {
+    res.json({ success: true });
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to delete supplier" });
+  }
+});
+
+router.post("/upload", async (req: AuthRequest, res: Response) => {
+  try {
+    const multer = require("multer");
+    const path = require("path");
+    const fs = require("fs");
+    const uploadDir = path.join(__dirname, "../../uploads/procurement");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const storage = multer.diskStorage({
+      destination: (_: any, __: any, cb: any) => cb(null, uploadDir),
+      filename: (_: any, file: any, cb: any) => {
+        const name = Buffer.from(file.originalname, "latin1").toString("utf8");
+        cb(null, `${Date.now()}-${name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")}`);
+      },
+    });
+    const upload = multer({ storage }).single("file");
+
+    upload(req, res, async (err: any) => {
+      if (err) return res.status(400).json({ error: "Upload failed: " + err.message });
+      if (!req.file) return res.status(400).json({ error: "No file provided" });
+      const fileName = Buffer.from(req.file.originalname, "latin1").toString("utf8");
+      res.json({ fileUrl: "/uploads/procurement/" + req.file.filename, fileName });
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to upload file" });
   }
 });
 

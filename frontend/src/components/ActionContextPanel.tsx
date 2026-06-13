@@ -158,7 +158,7 @@ function XlsxPreview({ blobUrl, token }: { blobUrl: string; token?: string | nul
             <button
               key={i}
               onClick={() => setActiveSheet(i)}
-              className={`px-3 py-1.5 text-xs rounded ${i === activeSheet ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"}`}
+              className={`px-3 py-1.5 text-xs rounded ${i === activeSheet ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"}`}
             >
               {s.name}
             </button>
@@ -205,7 +205,7 @@ function DownloadLink({ file, token }: { file: any; token?: string | null }) {
   return (
     <a
       href={downloadUrl}
-      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
+      className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs"
     >
       Скачать
     </a>
@@ -219,7 +219,7 @@ function DownloadLinkButton({ file, token }: { file: any; token?: string | null 
   return (
     <a
       href={downloadUrl}
-      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
     >
       Скачать и открыть
     </a>
@@ -301,7 +301,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
           <button
             onClick={() => setTab("chat")}
             className={`py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-              tab === "chat" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              tab === "chat" ? "border-primary-600 text-primary-600" : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
             Чат
@@ -309,7 +309,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
           <button
             onClick={() => setTab("files")}
             className={`py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-              tab === "files" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              tab === "files" ? "border-primary-600 text-primary-600" : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
             Файлы
@@ -330,14 +330,14 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
                     <div
                       className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
                         msg.senderId === user?.id
-                          ? "bg-blue-600 text-white"
+                          ? "bg-primary-600 text-white"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       <p>{msg.content}</p>
                       <p
                         className={`text-[10px] mt-0.5 ${
-                          msg.senderId === user?.id ? "text-blue-200" : "text-gray-400"
+                          msg.senderId === user?.id ? "text-primary-200" : "text-gray-400"
                         }`}
                       >
                         {msg.sender?.firstName} {msg.sender?.lastName} ·{" "}
@@ -352,13 +352,13 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
               <input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Сообщение..."
               />
               <button
                 type="submit"
                 disabled={sendMutation.isPending || !newMessage.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm disabled:opacity-50"
               >
                 Отправить
               </button>
@@ -369,7 +369,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
         {tab === "files" && (
           <div className="flex-1 flex flex-col min-h-0">
             <div className="p-3 border-b border-gray-200">
-              <label className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors text-sm text-gray-500">
+              <label className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 transition-colors text-sm text-gray-500">
                 <input type="file" onChange={handleFileUpload} className="hidden" />
                 + Загрузить файл
               </label>
@@ -383,7 +383,7 @@ export default function ActionContextPanel({ clientId, actionId, actionTitle, on
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <button
                         onClick={() => setPreviewFile(f)}
-                        className="text-sm text-blue-600 hover:underline truncate text-left"
+                        className="text-sm text-primary-600 hover:underline truncate text-left"
                       >
                         {f.fileName}
                       </button>

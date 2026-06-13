@@ -1,180 +1,61 @@
 import { Router, Response } from "express";
-import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
-import { createAuditLog, rowLevelFilter } from "../utils/helpers";
+import { ClientService } from "../services/ClientService";
+import { createClientSchema, updateClientSchema } from "../validators";
 
 const router = Router();
+const service = new ClientService();
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   try {
-    const filter = rowLevelFilter(req.user!.roleName, req.user!.id);
-    const clients = await prisma.client.findMany({
-      where: { ...filter, isArchived: false },
-      include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
-        leads: true,
-        deals: true,
-        rentContracts: true,
-        invoices: { take: 5, orderBy: { createdAt: "desc" } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const clients = await service.getAll(req.user!.id, req.user!.roleName);
     res.json(clients);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch clients" });
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to fetch clients" });
   }
 });
 
 router.get("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const client = await prisma.client.findUnique({
-      where: { id: req.params.id },
-      include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true, email: true } },
-        leads: { orderBy: { createdAt: "desc" } },
-        deals: {
-          include: {
-            project: true,
-            rentContract: true,
-            invoices: true,
-            installationTasks: true,
-          },
-          orderBy: { createdAt: "desc" },
-        },
-        rentContracts: { orderBy: { createdAt: "desc" } },
-        legalDocuments: { orderBy: { createdAt: "desc" } },
-        invoices: { orderBy: { createdAt: "desc" } },
-        payments: { orderBy: { createdAt: "desc" } },
-        serviceCases: { orderBy: { createdAt: "desc" } },
-      },
-    });
-
-    if (!client) {
-      return res.status(404).json({ error: "Client not found" });
-    }
-
-    await createAuditLog({
-      entityType: "Client",
-      entityId: client.id,
-      action: "VIEW",
-      userId: req.user!.id,
-    });
-
+    const client = await service.getFullProfile(req.params.id, req.user!.id);
     res.json(client);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch client" });
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to fetch client" });
   }
 });
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      name,
-      phone,
-      email,
-      inn,
-      kpp,
-      ogrn,
-      legalAddress,
-      actualAddress,
-      address,
-      contactPerson,
-      source,
-      status,
-      notes,
-    } = req.body;
-    const client = await prisma.client.create({
-      data: {
-        name,
-        phone,
-        email,
-        inn,
-        kpp,
-        ogrn,
-        legalAddress,
-        actualAddress,
-        address,
-        contactPerson,
-        source: source || "Direct",
-        status: status || "New",
-        notes,
-        createdById: req.user!.id,
-      },
-    });
-
-    await createAuditLog({
-      entityType: "Client",
-      entityId: client.id,
-      action: "CREATE",
-      userId: req.user!.id,
-      newValue: client,
-    });
-
+    const data = createClientSchema.parse(req.body);
+    const client = await service.create(data, req.user!.id);
     res.status(201).json(client);
-  } catch (error: any) {
-    if (error.code === "P2002") {
-      return res
-        .status(409)
-        .json({ error: "Client with this INN already exists" });
-    }
-    res.status(500).json({ error: "Failed to create client" });
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
+    if (e.code === "P2002") return res.status(409).json({ error: "Client with this INN already exists" });
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to create client" });
   }
 });
 
 router.put("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const old = await prisma.client.findUnique({
-      where: { id: req.params.id },
-    });
-    if (!old) return res.status(404).json({ error: "Client not found" });
-
-    if (old.createdById !== req.user!.id && req.user!.roleName !== "Director" && req.user!.roleName !== "Owner") {
-      return res.status(403).json({ error: "Only the responsible person, Director, or Owner can edit this client" });
-    }
-
-    const { name, phone, email, inn, address, source, status, notes } = req.body;
-    const client = await prisma.client.update({
-      where: { id: req.params.id },
-      data: { name, phone, email, inn, address, source, status, notes },
-    });
-
-    await createAuditLog({
-      entityType: "Client",
-      entityId: client.id,
-      action: "UPDATE",
-      userId: req.user!.id,
-      oldValue: old,
-      newValue: client,
-    });
-
+    const data = updateClientSchema.parse(req.body);
+    const client = await service.update(req.params.id, data, req.user!.id);
     res.json(client);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update client" });
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to update client" });
   }
 });
 
 router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
     if (req.user!.roleName !== "Director" && req.user!.roleName !== "Owner") {
-      return res
-        .status(403)
-        .json({ error: "Only Director can delete clients" });
+      return res.status(403).json({ error: "Only Director can delete clients" });
     }
-    await prisma.client.update({
-      where: { id: req.params.id },
-      data: { isArchived: true },
-    });
-
-    await createAuditLog({
-      entityType: "Client",
-      entityId: req.params.id,
-      action: "ARCHIVE",
-      userId: req.user!.id,
-    });
-
+    await service.archive(req.params.id, req.user!.id);
     res.json({ message: "Client archived" });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to archive client" });
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to archive client" });
   }
 });
 

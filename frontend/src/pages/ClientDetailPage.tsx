@@ -68,7 +68,7 @@ export default function ClientDetailPage() {
       <div>
         <button
           onClick={() => setEditing(false)}
-          className="text-blue-600 text-sm mb-4 hover:underline"
+          className="text-primary-600 text-sm mb-4 hover:underline"
         >
           ← Назад
         </button>
@@ -82,37 +82,37 @@ export default function ClientDetailPage() {
               placeholder="Название *"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
             <input
               placeholder="Телефон"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="ИНН"
               value={form.inn}
               onChange={(e) => setForm({ ...form, inn: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="Адрес"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <select
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">—</option>
               <option value="Direct">Прямое обращение</option>
@@ -124,7 +124,7 @@ export default function ClientDetailPage() {
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">—</option>
               <option value="New">Новый</option>
@@ -135,14 +135,14 @@ export default function ClientDetailPage() {
               placeholder="Примечание"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
           </div>
           <div className="flex gap-3 mt-6">
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
               disabled={updateMutation.isPending}
             >
               {updateMutation.isPending ? "Сохранение..." : "Сохранить"}
@@ -164,7 +164,7 @@ export default function ClientDetailPage() {
     <div>
       <button
         onClick={() => navigate("/clients")}
-        className="text-blue-600 text-sm mb-4 hover:underline"
+        className="text-primary-600 text-sm mb-4 hover:underline"
       >
         ← Назад к клиентам
       </button>
@@ -173,7 +173,7 @@ export default function ClientDetailPage() {
         {canEdit && (
           <button
             onClick={handleEdit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Редактировать
           </button>
@@ -208,7 +208,7 @@ export default function ClientDetailPage() {
               <span className="text-gray-500">Статус:</span>{" "}
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                 client.status === "Active" ? "bg-green-100 text-green-700" :
-                client.status === "New" ? "bg-blue-100 text-blue-700" :
+                client.status === "New" ? "bg-primary-100 text-primary-700" :
                 "bg-gray-100 text-gray-500"
               }`}>
                 {client.status || "-"}

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../index";
+import { logError } from "../utils/logger";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -50,6 +51,7 @@ export async function authMiddleware(
 
     next();
   } catch (error) {
+    logError("Auth middleware error", { stack: (error as any)?.stack, source: "auth" });
     res.status(401).json({ error: "Invalid token" });
   }
 }

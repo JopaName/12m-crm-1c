@@ -5,7 +5,7 @@ import { useSort } from "../hooks/useSort";
 import toast from "react-hot-toast";
 
 const statusColors: Record<string, string> = {
-  Lead_Created: "bg-blue-100 text-blue-700",
+  Lead_Created: "bg-primary-100 text-primary-700",
   Invoice_Generation: "bg-yellow-100 text-yellow-700",
   Legal_Review: "bg-purple-100 text-purple-700",
   Doc_Sending: "bg-indigo-100 text-indigo-700",
@@ -38,7 +38,7 @@ const statusFlow: string[] = [
 ];
 
 const funnelStages = [
-  { key: "New", label: "Новые", color: "bg-blue-500" },
+  { key: "New", label: "Новые", color: "bg-primary-500" },
   { key: "Invoice_Generation", label: "Счет", color: "bg-yellow-500" },
   { key: "Legal_Review", label: "Юристы", color: "bg-purple-500" },
   { key: "Waiting_Payment", label: "Оплата", color: "bg-orange-500" },
@@ -134,7 +134,7 @@ export default function DealsPage() {
         <h1 className="text-2xl font-bold text-gray-800">Сделки</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новая сделка
         </button>
@@ -205,7 +205,7 @@ export default function DealsPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Сохранить
           </button>
@@ -312,7 +312,7 @@ export default function DealsPage() {
                     {deal.status !== "Deal_Closed" && (
                       <button
                         onClick={() => setStatusDealId(deal.id)}
-                        className="text-blue-600 text-xs hover:underline"
+                        className="text-primary-600 text-xs hover:underline"
                       >
                         Сменить статус
                       </button>

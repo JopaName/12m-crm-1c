@@ -1,5 +1,5 @@
 import { Router, Response } from "express";
-import { prisma } from "../index";
+import { prisma } from "../db";
 import { AuthRequest } from "../middleware/auth";
 import { createAuditLog } from "../utils/helpers";
 import multer from "multer";

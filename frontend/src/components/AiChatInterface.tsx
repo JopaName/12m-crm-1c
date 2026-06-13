@@ -122,13 +122,13 @@ export default function AiChatInterface() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+      <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-primary-600 to-primary-700 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <span className="text-2xl">\uD83E\uDD16</span> AI-Координатор
             </h2>
-            <p className="text-sm text-blue-100">Умный помощник для управления CRM</p>
+            <p className="text-sm text-primary-100">Умный помощник для управления CRM</p>
           </div>
           {isAdmin && (
             <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full uppercase tracking-wide">
@@ -144,7 +144,7 @@ export default function AiChatInterface() {
             <div
               className={`max-w-[80%] px-4 py-3 rounded-xl text-sm whitespace-pre-wrap ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
+                  ? "bg-primary-600 text-white rounded-br-sm"
                   : "bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100"
               }`}
             >
@@ -178,14 +178,14 @@ export default function AiChatInterface() {
       )}
 
       {isAdmin && messages.length <= 2 && (
-        <div className="px-4 py-2 bg-blue-50 border-t border-blue-100">
-          <p className="text-xs text-blue-700 font-medium mb-2">Админ-действия:</p>
+        <div className="px-4 py-2 bg-primary-50 border-t border-primary-100">
+          <p className="text-xs text-primary-700 font-medium mb-2">Админ-действия:</p>
           <div className="flex flex-wrap gap-2">
             {["Создай пользователя", "Покажи сотрудников", "Удали пользователя"].map((s) => (
               <button
                 key={s}
                 onClick={() => sendMessage(s)}
-                className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full hover:bg-blue-200 transition"
+                className="px-3 py-1 bg-primary-100 text-primary-700 text-xs rounded-full hover:bg-primary-200 transition"
               >
                 {s}
               </button>
@@ -218,13 +218,13 @@ export default function AiChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Введите запрос..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             disabled={loading}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50 font-medium"
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm disabled:opacity-50 font-medium"
           >
             Отправить
           </button>
