@@ -101,7 +101,7 @@ export default function TasksPage() {
         <h1 className="text-2xl font-bold text-gray-800">Поручения и задачи</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новая задача
         </button>
@@ -185,7 +185,7 @@ export default function TasksPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Сохранить
           </button>
@@ -277,7 +277,7 @@ export default function TasksPage() {
                         task.status === "Completed"
                           ? "bg-green-100 text-green-700"
                           : task.status === "InProgress"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-primary-100 text-primary-700"
                             : "bg-gray-100 text-gray-500"
                       }`}
                     >
@@ -303,7 +303,7 @@ export default function TasksPage() {
                             data: { status: "InProgress" },
                           })
                         }
-                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        className="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
                       >
                         В работу
                       </button>

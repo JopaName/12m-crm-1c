@@ -1,0 +1,1768 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "12M CRM API",
+    "version": "1.0.0",
+    "description": "Full REST API for 12M CRM.\n\nAuth: JWT Bearer in `Authorization: Bearer <token>`.\nLogin: `POST /api/auth/login`.\n\nAI Assistant: `POST /api/ai/coordinator` with 40+ tools."
+  },
+  "servers": [
+    {
+      "url": "http://95.81.114.106/api"
+    },
+    {
+      "url": "http://localhost:3000/api"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Clients"
+    },
+    {
+      "name": "Leads"
+    },
+    {
+      "name": "Deals"
+    },
+    {
+      "name": "Products"
+    },
+    {
+      "name": "Warehouse"
+    },
+    {
+      "name": "Production"
+    },
+    {
+      "name": "Installation"
+    },
+    {
+      "name": "Service"
+    },
+    {
+      "name": "Rent"
+    },
+    {
+      "name": "Invoices"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "Legal"
+    },
+    {
+      "name": "Procurement"
+    },
+    {
+      "name": "Tasks"
+    },
+    {
+      "name": "Roles"
+    },
+    {
+      "name": "Notifications"
+    },
+    {
+      "name": "Telemetry"
+    },
+    {
+      "name": "Dashboard"
+    },
+    {
+      "name": "AI"
+    },
+    {
+      "name": "Integration"
+    },
+    {
+      "name": "Chat"
+    },
+    {
+      "name": "Audit"
+    },
+    {
+      "name": "Health"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Server health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login",
+        "responses": {
+          "200": {
+            "description": "JWT + user"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current user",
+        "responses": {
+          "200": {
+            "description": "User"
+          }
+        }
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "List users",
+        "responses": {
+          "200": {
+            "description": "User[]"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create user",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/auth/users/{id}": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Update user",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Archive user",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/clients": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "List clients",
+        "responses": {
+          "200": {
+            "description": "Client[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Create client",
+        "responses": {
+          "201": {
+            "description": "Client"
+          }
+        }
+      }
+    },
+    "/api/clients/{id}": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Get client",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Client"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/deals": {
+      "get": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "List deals",
+        "responses": {
+          "200": {
+            "description": "Deal[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Create deal",
+        "responses": {
+          "201": {
+            "description": "Deal"
+          }
+        }
+      }
+    },
+    "/api/deals/{id}": {
+      "get": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Get deal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deal"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/deals/{id}/status": {
+      "put": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Update status",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "List products",
+        "responses": {
+          "200": {
+            "description": "Product[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Create product",
+        "responses": {
+          "201": {
+            "description": "Product"
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Get product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/products/items": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "List items",
+        "responses": {
+          "200": {
+            "description": "Item[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Create item",
+        "responses": {
+          "201": {
+            "description": "Item"
+          }
+        }
+      }
+    },
+    "/api/products/items/{id}/status": {
+      "put": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Update item status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/warehouse": {
+      "get": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Warehouse data",
+        "responses": {
+          "200": {
+            "description": "Movements+cells+balance"
+          }
+        }
+      }
+    },
+    "/api/warehouse/categories": {
+      "get": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Categories",
+        "responses": {
+          "200": {
+            "description": "Category[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Create category",
+        "responses": {
+          "201": {
+            "description": "Category"
+          }
+        }
+      }
+    },
+    "/api/warehouse/categories/{id}": {
+      "put": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Update category",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Delete category",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/warehouse/categories/{categoryId}/items": {
+      "get": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Items in category",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Create item",
+        "responses": {
+          "201": {
+            "description": "Item"
+          }
+        }
+      }
+    },
+    "/api/warehouse/items/{id}": {
+      "get": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Get item",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Update item",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Delete item",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/warehouse/transfer": {
+      "post": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Transfer between categories",
+        "responses": {
+          "201": {
+            "description": "Transfer"
+          }
+        }
+      }
+    },
+    "/api/warehouse/transfers": {
+      "get": {
+        "tags": [
+          "Warehouse"
+        ],
+        "summary": "Transfer history",
+        "responses": {
+          "200": {
+            "description": "Transfer[]"
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "List tasks",
+        "responses": {
+          "200": {
+            "description": "Task[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Create task",
+        "responses": {
+          "201": {
+            "description": "Task"
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Update task",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/production": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "List orders",
+        "responses": {
+          "200": {
+            "description": "Order[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Create order",
+        "responses": {
+          "201": {
+            "description": "Order"
+          }
+        }
+      }
+    },
+    "/api/production/{id}": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Get order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Update order",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Archive order",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/production/{id}/status": {
+      "put": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Update status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/production/routes": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Routes",
+        "responses": {
+          "200": {
+            "description": "Route[]"
+          }
+        }
+      }
+    },
+    "/api/installation": {
+      "get": {
+        "tags": [
+          "Installation"
+        ],
+        "summary": "List installations",
+        "responses": {
+          "200": {
+            "description": "Installation[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Installation"
+        ],
+        "summary": "Schedule",
+        "responses": {
+          "201": {
+            "description": "Installation"
+          }
+        }
+      }
+    },
+    "/api/installation/{id}": {
+      "get": {
+        "tags": [
+          "Installation"
+        ],
+        "summary": "Get installation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Installation"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Installation"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/installation/calendar": {
+      "get": {
+        "tags": [
+          "Installation"
+        ],
+        "summary": "Calendar",
+        "responses": {
+          "200": {
+            "description": "Event[]"
+          }
+        }
+      }
+    },
+    "/api/invoices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List invoices",
+        "responses": {
+          "200": {
+            "description": "Invoice[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create",
+        "responses": {
+          "201": {
+            "description": "Invoice"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/payments": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List payments",
+        "responses": {
+          "200": {
+            "description": "Payment[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Record",
+        "responses": {
+          "201": {
+            "description": "Payment"
+          }
+        }
+      }
+    },
+    "/api/payments/{id}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Get payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment"
+          }
+        }
+      }
+    },
+    "/api/payments/{id}/confirm": {
+      "put": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Confirm payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Confirmed"
+          }
+        }
+      }
+    },
+    "/api/service": {
+      "get": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "List service cases",
+        "responses": {
+          "200": {
+            "description": "Case[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "Create",
+        "responses": {
+          "201": {
+            "description": "Case"
+          }
+        }
+      }
+    },
+    "/api/service/{id}": {
+      "get": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "Get case",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Case"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/rent": {
+      "get": {
+        "tags": [
+          "Rent"
+        ],
+        "summary": "List contracts",
+        "responses": {
+          "200": {
+            "description": "Contract[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Rent"
+        ],
+        "summary": "Create",
+        "responses": {
+          "201": {
+            "description": "Contract"
+          }
+        }
+      }
+    },
+    "/api/rent/{id}": {
+      "get": {
+        "tags": [
+          "Rent"
+        ],
+        "summary": "Get contract",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Rent"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/rent/billing": {
+      "get": {
+        "tags": [
+          "Rent"
+        ],
+        "summary": "Billing records",
+        "responses": {
+          "200": {
+            "description": "Record[]"
+          }
+        }
+      }
+    },
+    "/api/legal": {
+      "get": {
+        "tags": [
+          "Legal"
+        ],
+        "summary": "List documents",
+        "responses": {
+          "200": {
+            "description": "Document[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Legal"
+        ],
+        "summary": "Create",
+        "responses": {
+          "201": {
+            "description": "Document"
+          }
+        }
+      }
+    },
+    "/api/legal/{id}": {
+      "put": {
+        "tags": [
+          "Legal"
+        ],
+        "summary": "Update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Legal"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/procurement": {
+      "get": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "All procurement data",
+        "responses": {
+          "200": {
+            "description": "Data"
+          }
+        }
+      }
+    },
+    "/api/procurement/suppliers": {
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Create supplier",
+        "responses": {
+          "201": {
+            "description": "Supplier"
+          }
+        }
+      }
+    },
+    "/api/procurement/suppliers/{id}": {
+      "get": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Get supplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supplier"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/procurement/requests": {
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Create purchase request",
+        "responses": {
+          "201": {
+            "description": "Request"
+          }
+        }
+      }
+    },
+    "/api/procurement/orders": {
+      "post": {
+        "tags": [
+          "Procurement"
+        ],
+        "summary": "Create supplier order",
+        "responses": {
+          "201": {
+            "description": "Order"
+          }
+        }
+      }
+    },
+    "/api/roles": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "List roles",
+        "responses": {
+          "200": {
+            "description": "Role[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Create role",
+        "responses": {
+          "201": {
+            "description": "Role"
+          }
+        }
+      }
+    },
+    "/api/roles/{id}": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get role",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Archive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "List (paginated)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications"
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification"
+          }
+        }
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Unread count",
+        "responses": {
+          "200": {
+            "description": "Count"
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark all read",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/telemetry/devices": {
+      "get": {
+        "tags": [
+          "Telemetry"
+        ],
+        "summary": "List devices",
+        "responses": {
+          "200": {
+            "description": "Device[]"
+          }
+        }
+      }
+    },
+    "/api/telemetry/devices/{id}": {
+      "get": {
+        "tags": [
+          "Telemetry"
+        ],
+        "summary": "Get device",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device"
+          }
+        }
+      }
+    },
+    "/api/telemetry/readings": {
+      "get": {
+        "tags": [
+          "Telemetry"
+        ],
+        "summary": "Readings",
+        "responses": {
+          "200": {
+            "description": "Reading[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telemetry"
+        ],
+        "summary": "Create reading",
+        "responses": {
+          "201": {
+            "description": "Reading"
+          }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dashboard analytics",
+        "responses": {
+          "200": {
+            "description": "Dashboard data"
+          }
+        }
+      }
+    },
+    "/api/integrations/logs": {
+      "get": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "Integration logs",
+        "responses": {
+          "200": {
+            "description": "Log[]"
+          }
+        }
+      }
+    },
+    "/api/integrations/sync/1c": {
+      "post": {
+        "tags": [
+          "Integration"
+        ],
+        "summary": "1C sync",
+        "responses": {
+          "200": {
+            "description": "Result"
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Conversations",
+        "responses": {
+          "200": {
+            "description": "Conversations"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Audit logs",
+        "responses": {
+          "200": {
+            "description": "Log[]"
+          }
+        }
+      }
+    },
+    "/api/ai/sessions": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "List sessions",
+        "responses": {
+          "200": {
+            "description": "Session[]"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Create session",
+        "responses": {
+          "201": {
+            "description": "Session"
+          }
+        }
+      }
+    },
+    "/api/ai/sessions/{id}": {
+      "patch": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Update title",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Delete session",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ai/sessions/{id}/messages": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message[]"
+          }
+        }
+      }
+    },
+    "/api/ai/sessions/{id}/files": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Files",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File[]"
+          }
+        }
+      }
+    },
+    "/api/ai/upload": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Upload file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload result"
+          }
+        }
+      }
+    },
+    "/api/ai/coordinator": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "AI Coordinator - 40+ tools",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response"
+          }
+        }
+      }
+    }
+  }
+}

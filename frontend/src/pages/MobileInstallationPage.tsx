@@ -63,7 +63,7 @@ export default function MobileInstallationPage() {
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
                   t.status === "InProgress"
-                    ? "bg-blue-100 text-blue-700"
+                    ? "bg-primary-100 text-primary-700"
                     : "bg-yellow-100 text-yellow-700"
                 }`}
               >
@@ -95,7 +95,7 @@ export default function MobileInstallationPage() {
                       data: { status: "InProgress" },
                     })
                   }
-                  className="flex-1 min-w-[120px] py-4 bg-blue-600 text-white rounded-xl text-lg font-semibold active:bg-blue-700 transition-colors"
+                  className="flex-1 min-w-[120px] py-4 bg-primary-600 text-white rounded-xl text-lg font-semibold active:bg-primary-700 transition-colors"
                 >
                   ▶ Начать
                 </button>

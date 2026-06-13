@@ -1,5 +1,5 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { prisma } from "../index";
+import { prisma } from "../db";
 
 export function setupTelemetrySocket(io: SocketIOServer) {
   io.on("connection", (socket: Socket) => {

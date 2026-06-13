@@ -1,63 +1,38 @@
 import { Router, Response } from "express";
-import { createNotification } from "../services/notificationService";
-import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { TaskService } from "../services/TaskService";
+import { createTaskSchema, updateTaskSchema } from "../validators";
 
 const router = Router();
+const service = new TaskService();
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   try {
-    const filter: any = { isArchived: false };
-    if (req.user!.roleName === "Agent") {
-      filter.assigneeId = req.user!.id;
-    }
-    const tasks = await prisma.task.findMany({
-      where: filter,
-      include: {
-        createdBy: { select: { firstName: true, lastName: true } },
-        assignee: { select: { firstName: true, lastName: true } },
-        deal: { select: { dealNumber: true } },
-      },
-      orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-    });
+    const tasks = await service.getAll(req.user!.id, req.user!.roleName);
     res.json(tasks);
-  } catch (error) {
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const task = await prisma.task.create({
-      data: { ...req.body, createdById: req.user!.id, status: "New" },
-    });
+    const data = createTaskSchema.parse(req.body);
+    const task = await service.create(data, req.user!.id);
     res.status(201).json(task);
-    if (task.assigneeId) {
-      await createNotification({
-        userId: task.assigneeId,
-        type: "TASK_ASSIGNED",
-        title: `Назначена задача: ${task.title}`,
-        message: task.description || "",
-        entityType: "Task",
-        entityId: task.id,
-        link: `/tasks`,
-      });
-    }
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create task" });
   }
 });
 
 router.put("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const data: any = { ...req.body };
-    if (data.status === "Completed") data.completedAt = new Date();
-    const task = await prisma.task.update({
-      where: { id: req.params.id },
-      data,
-    });
+    const data = updateTaskSchema.parse(req.body);
+    const task = await service.update(req.params.id, data, req.user!.id);
     res.json(task);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to update task" });
   }
 });

@@ -1,49 +1,36 @@
 import { Router, Response } from "express";
-import { prisma } from "../index";
 import { AuthRequest } from "../middleware/auth";
+import { PaymentService } from "../services/PaymentService";
+import { createPaymentSchema } from "../validators";
 
 const router = Router();
+const service = new PaymentService();
 
 router.get("/", async (_req: AuthRequest, res: Response) => {
   try {
-    const payments = await prisma.payment.findMany({
-      where: { isArchived: false },
-      include: { client: true, invoice: true, deal: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const payments = await service.getAll("", "");
     res.json(payments);
-  } catch (error) {
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to fetch payments" });
   }
 });
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const payment = await prisma.payment.create({
-      data: {
-        ...req.body,
-        paymentNumber: `PAY-${Date.now()}`,
-        status: "Pending",
-      },
-    });
+    const data = createPaymentSchema.parse(req.body);
+    const payment = await service.create(data, req.user!.id);
     res.status(201).json(payment);
-  } catch (error) {
+  } catch (e: any) {
+    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
     res.status(500).json({ error: "Failed to create payment" });
   }
 });
 
 router.put("/:id/confirm", async (req: AuthRequest, res: Response) => {
   try {
-    const payment = await prisma.payment.update({
-      where: { id: req.params.id },
-      data: {
-        status: "Confirmed",
-        confirmedById: req.user!.id,
-        paidAt: new Date(),
-      },
-    });
+    const payment = await service.confirm(req.params.id, req.user!.id);
     res.json(payment);
-  } catch (error) {
+  } catch (e: any) {
     res.status(500).json({ error: "Failed to confirm payment" });
   }
 });

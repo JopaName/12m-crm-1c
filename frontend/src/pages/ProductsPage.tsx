@@ -85,7 +85,7 @@ export default function ProductsPage() {
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             + Новый товар
           </button>
@@ -165,7 +165,7 @@ export default function ProductsPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Сохранить
           </button>
@@ -308,7 +308,7 @@ export default function ProductsPage() {
                           : item.status === "Sold"
                             ? "bg-gray-100 text-gray-500"
                             : item.status === "InRent"
-                              ? "bg-blue-100 text-blue-700"
+                              ? "bg-primary-100 text-primary-700"
                               : "bg-yellow-100 text-yellow-700"
                       }`}
                     >

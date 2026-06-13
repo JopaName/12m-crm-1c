@@ -98,6 +98,11 @@ export const warehouseAPI = {
   getTransfers: () => api.get("/warehouse/transfers"),
 };
 
+export const logsAPI = {
+  getLogs: (params?: any) => api.get("/logs", { params }),
+  cleanLogs: (days: number) => api.delete("/logs", { params: { days } }),
+};
+
 export const installationAPI = {
   getAll: () => api.get("/installation"),
   create: (data: any) => api.post("/installation", data),
@@ -112,14 +117,21 @@ export const rentAPI = {
 };
 
 export const legalAPI = {
-  getAll: () => api.get("/legal"),
+  getAll: (category?: string) => api.get("/legal", { params: { category } }),
+  getById: (id: string) => api.get(`/legal/${id}`),
   create: (data: any) => api.post("/legal", data),
   update: (id: string, data: any) => api.put(`/legal/${id}`, data),
+  getCategories: () => api.get("/legal/categories"),
+  getTypes: (category?: string) => api.get("/legal/types", { params: { category } }),
+  addComment: (id: string, content: string) => api.post(`/legal/${id}/comments`, { content }),
 };
 
 export const procurementAPI = {
   getAll: () => api.get("/procurement"),
   createRequest: (data: any) => api.post("/procurement/requests", data),
+  updateRequest: (id: string, data: any) => api.put(`/procurement/requests/${id}`, data),
+  deleteRequest: (id: string) => api.delete(`/procurement/requests/${id}`),
+  uploadFile: (file: File) => { const fd = new FormData(); fd.append("file", file); return api.post("/procurement/upload", fd, { headers: { "Content-Type": "multipart/form-data" } }); },
   createSupplier: (data: any) => api.post("/procurement/suppliers", data),
   updateSupplier: (id: string, data: any) => api.put(`/procurement/suppliers/${id}`, data),
   deleteSupplier: (id: string) => api.delete(`/procurement/suppliers/${id}`),
@@ -179,5 +191,13 @@ export const chatAPI = {
   getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),
   send: (data: { receiverId: string; content: string }) =>
     api.post("/chat/send", data),
+  sendFile: (receiverId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("receiverId", receiverId);
+    return api.post("/chat/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
   markRead: (userId: string) => api.put(`/chat/read/${userId}`),
 };

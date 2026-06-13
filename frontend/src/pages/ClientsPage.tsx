@@ -58,7 +58,7 @@ export default function ClientsPage() {
         <h1 className="text-2xl font-bold text-gray-800">Клиенты</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новый клиент
         </button>
@@ -74,31 +74,31 @@ export default function ClientsPage() {
               placeholder="Название *"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
             <input
               placeholder="Телефон"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="ИНН"
               value={form.inn}
               onChange={(e) => setForm({ ...form, inn: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <select
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="Direct">Прямое обращение</option>
               <option value="Agent">Личный поиск</option>
@@ -109,7 +109,7 @@ export default function ClientsPage() {
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="New">Новый</option>
               <option value="Active">Активный</option>
@@ -119,18 +119,18 @@ export default function ClientsPage() {
               placeholder="Адрес"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
             <input
               placeholder="Примечание"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             Сохранить
           </button>
@@ -238,7 +238,7 @@ export default function ClientsPage() {
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       client.status === "Active" ? "bg-green-100 text-green-700" :
-                      client.status === "New" ? "bg-blue-100 text-blue-700" :
+                      client.status === "New" ? "bg-primary-100 text-primary-700" :
                       "bg-gray-100 text-gray-500"
                     }`}>
                       {client.status || "-"}

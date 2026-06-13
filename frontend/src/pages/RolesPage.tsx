@@ -89,6 +89,11 @@ const PERMISSION_GROUPS = [
     key: "integrations",
     perms: ["view", "create", "edit", "delete"],
   },
+  {
+    label: "Чат",
+    key: "chat",
+    perms: ["view"],
+  },
 ];
 
 const PERM_LABELS: Record<string, string> = {
@@ -229,7 +234,7 @@ export default function RolesPage() {
         <h1 className="text-2xl font-bold text-gray-800">Роли и права</h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Новая роль
         </button>
@@ -330,7 +335,7 @@ export default function RolesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
                 >
                   {editingId ? "Сохранить" : "Создать"}
                 </button>
@@ -393,14 +398,14 @@ export default function RolesPage() {
                       {role._count?.users ?? 0}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      <span className="px-2 py-0.5 bg-primary-100 text-primary-700 rounded-full text-xs font-medium">
                         {permCount} / {PERMISSION_GROUPS.length} разделов
                       </span>
                     </td>
                     <td className="px-4 py-3 flex gap-1">
                       <button
                         onClick={() => openEdit(role)}
-                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        className="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
                       >
                         Ред.
                       </button>

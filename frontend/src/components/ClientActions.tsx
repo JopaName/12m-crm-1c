@@ -19,7 +19,7 @@ const ACTION_TYPES: Record<string, { icon: string; label: string }> = {
 
 const STATUS_OPTIONS = [
   { value: "PLAN", label: "План", color: "bg-gray-100 text-gray-600" },
-  { value: "IN_PROGRESS", label: "В работе", color: "bg-blue-100 text-blue-700" },
+  { value: "IN_PROGRESS", label: "В работе", color: "bg-primary-100 text-primary-700" },
   { value: "COMPLETED", label: "Выполнено", color: "bg-green-100 text-green-700" },
   { value: "CANCELLED", label: "Отменено", color: "bg-red-100 text-red-600" },
 ];
@@ -82,16 +82,16 @@ function ActionStep({
         )}
         <div className="flex gap-4">
           <div className="flex flex-col items-center pt-1">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-lg flex-shrink-0">
               ✏️
             </div>
           </div>
-          <div className="flex-1 p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-3">
+          <div className="flex-1 p-4 bg-primary-50 rounded-xl border border-primary-200 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               >
                 {Object.entries(ACTION_TYPES).map(([key, val]) => (
                   <option key={key} value={key}>{val.icon} {val.label}</option>
@@ -100,7 +100,7 @@ function ActionStep({
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -110,18 +110,18 @@ function ActionStep({
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Название"
             />
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
               rows={2}
               placeholder="Описание / результат"
             />
             <div className="flex gap-2">
-              <button onClick={handleSave} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs">Сохранить</button>
+              <button onClick={handleSave} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">Сохранить</button>
               <button onClick={() => setEditing(false)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-xs">Отмена</button>
             </div>
           </div>
@@ -191,7 +191,7 @@ function ActionStep({
               {action.status === "PLAN" && (
                 <button
                   onClick={() => onStatusChange(action.id, "IN_PROGRESS")}
-                  className="p-1.5 hover:bg-blue-100 rounded-lg text-blue-600"
+                  className="p-1.5 hover:bg-primary-100 rounded-lg text-primary-600"
                   title="В работу"
                 >
                   ▶
@@ -343,7 +343,7 @@ export default function ClientActions({ clientId }: Props) {
         </h2>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
         >
           + Добавить действие
         </button>
@@ -358,7 +358,7 @@ export default function ClientActions({ clientId }: Props) {
             <select
               value={newAction.type}
               onChange={(e) => setNewAction({ ...newAction, type: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               {Object.entries(ACTION_TYPES).map(([key, val]) => (
                 <option key={key} value={key}>
@@ -369,7 +369,7 @@ export default function ClientActions({ clientId }: Props) {
             <select
               value={newAction.status}
               onChange={(e) => setNewAction({ ...newAction, status: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -382,20 +382,20 @@ export default function ClientActions({ clientId }: Props) {
             placeholder="Название действия *"
             value={newAction.title}
             onChange={(e) => setNewAction({ ...newAction, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             required
           />
           <textarea
             placeholder="Описание / результат"
             value={newAction.description}
             onChange={(e) => setNewAction({ ...newAction, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
             rows={2}
           />
           <div className="flex gap-2">
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
             >
               Сохранить
             </button>

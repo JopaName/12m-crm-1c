@@ -1,254 +1,485 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { legalAPI, dealsAPI, clientsAPI } from "../api";
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+
+type DocStatus = "Draft" | "Approved" | "Sent" | "Signed" | "Archived";
+
+const STATUS_LABELS: Record<DocStatus, string> = {
+  Draft: "Черновик",
+  Approved: "Утверждён",
+  Sent: "Отправлен",
+  Signed: "Подписан",
+  Archived: "Архив",
+};
+
+const STATUS_COLORS: Record<DocStatus, string> = {
+  Draft: "bg-yellow-100 text-yellow-700",
+  Approved: "bg-purple-100 text-purple-700",
+  Sent: "bg-blue-100 text-blue-700",
+  Signed: "bg-green-100 text-green-700",
+  Archived: "bg-gray-100 text-gray-500",
+};
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  Contract_Sale: "Купли-продажи",
+  Contract_Rental: "Аренды",
+  Contract_Rental_Service: "Аренды + сервис",
+  Contract_Installation_Client: "Монтажа (с клиентом)",
+  Contract_Installation_Agent: "Монтажа (с агентом)",
+  Contract_Supply: "Поставки",
+  Invoice: "Счёт на оплату",
+  InvoiceUFPS: "УПД",
+  Invoice_Rental: "Счёт арендатору",
+  Goods_Delivery_Note: "Товарная накладная",
+  Materials_WriteOff: "Акт списания",
+  Receipt_Note: "Приходная накладная",
+  Act_Transfer: "Приёма-передачи",
+  Act_Installation: "Монтажных работ",
+  Act_Return: "Возврата из аренды",
+  Act_Service: "Сервисных работ",
+  Act_Defect: "О браке",
+  Addendum_Price: "Изменение цены",
+  Addendum_Terms: "Изменение сроков",
+  Addendum_Rental: "Продление аренды",
+  Specification: "Спецификация",
+  Project_PDF: "Проект СЭС",
+  Warranty_Certificate: "Гарантийный талон",
+  Claim_Client: "Претензия клиента",
+  Claim_Supplier: "Претензия поставщику",
+  Claim_Installer: "Претензия монтажникам",
+  Task_Order: "Наряд-заказ",
+  Internal_Act: "Внутренний акт",
+};
+
+const TAB_ICONS: Record<string, string> = {
+  Contract: "\u{1F4DC}",
+  Invoice: "\u{1F4B0}",
+  Act: "\u{1F4CB}",
+  Addendum: "\u{1F4DD}",
+  Claim: "\u26A0\uFE0F",
+  Technical: "\u{1F4D1}",
+  Internal: "\u{1F4C2}",
+};
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return "-";
+  return new Date(d).toLocaleDateString("ru", { day: "numeric", month: "short", year: "numeric" });
+}
 
 export default function LegalPage() {
   const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("Contract");
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
   const [form, setForm] = useState({
-    documentType: "Contract",
-    dealId: "",
+    documentType: "Contract_Sale",
     clientId: "",
+    dealId: "",
     documentNumber: "",
+    description: "",
+    amount: "",
   });
 
-  const { data: documents } = useQuery({
-    queryKey: ["legal"],
-    queryFn: () => legalAPI.getAll().then((r) => r.data),
+  const { data: categories } = useQuery({
+    queryKey: ["legal-categories"],
+    queryFn: () => legalAPI.getCategories().then((r) => r.data),
   });
+
+  const { data: documents, isLoading } = useQuery({
+    queryKey: ["legal", activeTab],
+    queryFn: () => legalAPI.getAll(activeTab).then((r) => r.data),
+  });
+
+  const { data: docTypes } = useQuery({
+    queryKey: ["legal-types", activeTab],
+    queryFn: () => legalAPI.getTypes(activeTab).then((r) => r.data),
+  });
+
   const { data: deals } = useQuery({
     queryKey: ["deals"],
     queryFn: () => dealsAPI.getAll().then((r) => r.data),
   });
+
   const { data: clients } = useQuery({
     queryKey: ["clients"],
     queryFn: () => clientsAPI.getAll().then((r) => r.data),
   });
 
-  const docTypes = [
-    "Contract",
-    "InvoiceUFPS",
-    "Act",
-    "Deed",
-    "Addendum",
-    "Claim",
-  ];
+  const { data: detail } = useQuery({
+    queryKey: ["legal-detail", selectedDoc],
+    queryFn: () => (selectedDoc ? legalAPI.getById(selectedDoc).then((r) => r.data) : null),
+    enabled: !!selectedDoc,
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => legalAPI.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["legal"] });
       toast.success("Документ создан");
-      setShowForm(false);
-      setForm({
-        documentType: "Contract",
-        dealId: "",
-        clientId: "",
-        documentNumber: "",
-      });
+      setShowCreate(false);
+      setForm({ documentType: "Contract_Sale", clientId: "", dealId: "", documentNumber: "", description: "", amount: "" });
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка создания"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      legalAPI.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => legalAPI.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["legal"] });
-      toast.success("Статус обновлён");
+      queryClient.invalidateQueries({ queryKey: ["legal-detail"] });
+      toast.success("Обновлено");
     },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const commentMutation = useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) => legalAPI.addComment(id, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["legal-detail"] });
+      setCommentText("");
+      toast.success("Комментарий добавлен");
+    },
+  });
+
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.clientId) {
-      toast.error("Выберите клиента");
-      return;
-    }
+    if (!form.clientId) { toast.error("Выберите клиента"); return; }
     createMutation.mutate(form);
   };
 
+  const advanceStatus = (doc: any) => {
+    const flow: DocStatus[] = ["Draft", "Approved", "Sent", "Signed"];
+    const idx = flow.indexOf(doc.status as DocStatus);
+    if (idx < flow.length - 1) {
+      updateMutation.mutate({ id: doc.id, data: { status: flow[idx + 1] } });
+    }
+  };
+
+  const currentCategory = categories?.find((c: any) => c.key === activeTab);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Договоры и юридические документы
-        </h1>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-gray-800">{"\u{1F4C4}"} Документы</h1>
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          onClick={() => setShowCreate(true)}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm flex items-center gap-1"
         >
-          + Новый документ
+          <span>+</span> Новый документ
         </button>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <select
-              value={form.documentType}
-              onChange={(e) =>
-                setForm({ ...form, documentType: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              {docTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <select
-              value={form.clientId}
-              onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              required
-            >
-              <option value="">Выберите клиента</option>
-              {clients?.map((c: any) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={form.dealId}
-              onChange={(e) => setForm({ ...form, dealId: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">Связать со сделкой</option>
-              {deals?.map((d: any) => (
-                <option key={d.id} value={d.id}>
-                  {d.dealNumber}
-                </option>
-              ))}
-            </select>
-            <input
-              placeholder="Номер документа"
-              value={form.documentNumber}
-              onChange={(e) =>
-                setForm({ ...form, documentNumber: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
+      {/* Category tabs */}
+      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+        {(categories || []).map((cat: any) => (
           <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            key={cat.key}
+            onClick={() => { setActiveTab(cat.key); setSelectedDoc(null); }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              activeTab === cat.key
+                ? "bg-primary-600 text-white shadow-sm"
+                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+            }`}
           >
-            Создать
+            {TAB_ICONS[cat.key] || ""} {cat.label}
           </button>
-        </form>
-      )}
+        ))}
+      </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Тип
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Номер
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Сделка
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Статус
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Версия
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                Действия
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {documents?.map((doc: any) => (
-              <tr key={doc.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm text-gray-800">
-                  {doc.documentType}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {doc.documentNumber || "-"}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {doc.deal?.dealNumber || "-"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      doc.status === "Signed"
-                        ? "bg-green-100 text-green-700"
-                        : doc.status === "Sent"
-                          ? "bg-blue-100 text-blue-700"
-                          : doc.status === "Approved"
-                            ? "bg-purple-100 text-purple-700"
-                            : doc.status === "Draft"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-gray-100 text-gray-500"
-                    }`}
+      {/* Main content: table or detail */}
+      {selectedDoc && detail ? (
+        <DetailView
+          doc={detail}
+          onBack={() => setSelectedDoc(null)}
+          onStatusChange={(status: string) => updateMutation.mutate({ id: detail.id, data: { status } })}
+          commentText={commentText}
+          onCommentChange={setCommentText}
+          onCommentSend={() => commentMutation.mutate({ id: detail.id, content: commentText })}
+          currentUser={user}
+        />
+      ) : (
+        <>
+          {/* Create modal */}
+          {showCreate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl">
+                <h2 className="text-lg font-semibold mb-4">Новый документ</h2>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  <select
+                    value={form.documentType}
+                    onChange={(e) => setForm({ ...form, documentType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   >
-                    {doc.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-400">
-                  v{doc.versionNumber}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    {doc.status === "Draft" && (
-                      <button
-                        onClick={() =>
-                          updateMutation.mutate({
-                            id: doc.id,
-                            data: { status: "Approved" },
-                          })
-                        }
-                        className="text-purple-600 text-xs hover:underline"
-                      >
-                        Утвердить
-                      </button>
-                    )}
-                    {doc.status === "Approved" && (
-                      <button
-                        onClick={() =>
-                          updateMutation.mutate({
-                            id: doc.id,
-                            data: { status: "Sent" },
-                          })
-                        }
-                        className="text-blue-600 text-xs hover:underline"
-                      >
-                        Отправить
-                      </button>
-                    )}
-                    {doc.status === "Sent" && (
-                      <button
-                        onClick={() =>
-                          updateMutation.mutate({
-                            id: doc.id,
-                            data: { status: "Signed" },
-                          })
-                        }
-                        className="text-green-600 text-xs hover:underline"
-                      >
-                        Подписать
-                      </button>
-                    )}
+                    {(docTypes || []).map((t: string) => (
+                      <option key={t} value={t}>{t} — {DOC_TYPE_LABELS[t] || t}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={form.clientId}
+                    onChange={(e) => setForm({ ...form, clientId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    required
+                  >
+                    <option value="">Выберите клиента</option>
+                    {(clients || []).map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={form.dealId}
+                    onChange={(e) => setForm({ ...form, dealId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="">Связать со сделкой</option>
+                    {(deals || []).map((d: any) => (
+                      <option key={d.id} value={d.id}>{d.dealNumber || d.id.slice(0, 8)}</option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      placeholder="Номер документа"
+                      value={form.documentNumber}
+                      onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <input
+                      placeholder="Сумма"
+                      type="number"
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <textarea
+                    placeholder="Описание"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    rows={2}
+                  />
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
+                    <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">Создать</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Documents table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Тип</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Номер</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Клиент</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Сделка</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Дата</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Статус</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Версия</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {isLoading ? (
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">Загрузка...</td></tr>
+                ) : documents?.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">Нет документов</td></tr>
+                ) : (
+                  documents?.map((doc: any) => (
+                    <tr key={doc.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedDoc(doc.id)}>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-800">{doc.documentType}</div>
+                        <div className="text-xs text-gray-400">{DOC_TYPE_LABELS[doc.documentType] || ""}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{doc.documentNumber || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{doc.client?.name || doc.deal?.client?.name || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{doc.deal?.dealNumber || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{formatDate(doc.createdAt)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[doc.status as DocStatus] || "bg-gray-100 text-gray-500"}`}>
+                          {STATUS_LABELS[doc.status as DocStatus] || doc.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400">v{doc.versionNumber}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          {doc.status === "Draft" && (
+                            <button onClick={() => advanceStatus(doc)} className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200">
+                              {"\u2713"} Утвердить
+                            </button>
+                          )}
+                          {doc.status === "Approved" && (
+                            <button onClick={() => advanceStatus(doc)} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                              {"\u2192"} Отправить
+                            </button>
+                          )}
+                          {doc.status === "Sent" && (
+                            <button onClick={() => advanceStatus(doc)} className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">
+                              {"\u{1F4CB}"} Подписать
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function DetailView({
+  doc, onBack, onStatusChange, commentText, onCommentChange, onCommentSend, currentUser,
+}: {
+  doc: any;
+  onBack: () => void;
+  onStatusChange: (status: string) => void;
+  commentText: string;
+  onCommentChange: (v: string) => void;
+  onCommentSend: () => void;
+  currentUser: any;
+}) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <button onClick={onBack} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1">
+        {"\u2190"} Назад к списку
+      </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: main info */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">{doc.documentType}</h2>
+              <p className="text-sm text-gray-400">{DOC_TYPE_LABELS[doc.documentType] || ""}</p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[doc.status as DocStatus] || "bg-gray-100 text-gray-500"}`}>
+              {STATUS_LABELS[doc.status as DocStatus] || doc.status}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-400">Номер:</span>
+              <span className="ml-2 text-gray-800 font-medium">{doc.documentNumber || "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Дата:</span>
+              <span className="ml-2 text-gray-800">{formatDate(doc.documentDate || doc.createdAt)}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Клиент:</span>
+              <span className="ml-2 text-gray-800">{doc.client?.name || doc.deal?.client?.name || "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Сделка:</span>
+              <span className="ml-2 text-gray-800">{doc.deal?.dealNumber || "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Сумма:</span>
+              <span className="ml-2 text-gray-800 font-semibold">{doc.amount ? `${doc.amount.toLocaleString()} \u20BD` : "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Версия:</span>
+              <span className="ml-2 text-gray-800">v{doc.versionNumber}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Ответственный:</span>
+              <span className="ml-2 text-gray-800">{doc.responsibleLawyer ? `${doc.responsibleLawyer.firstName} ${doc.responsibleLawyer.lastName}` : "-"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400">Подписание:</span>
+              <span className="ml-2 text-gray-800">{doc.signatureMethod || "-"}</span>
+            </div>
+          </div>
+
+          {doc.description && (
+            <div>
+              <span className="text-sm text-gray-400">Описание:</span>
+              <p className="text-sm text-gray-700 mt-1">{doc.description}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            {doc.status === "Draft" && (
+              <button onClick={() => onStatusChange("Approved")} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
+                {"\u2713"} Утвердить
+              </button>
+            )}
+            {doc.status === "Approved" && (
+              <button onClick={() => onStatusChange("Sent")} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                {"\u{1F4E8}"} Отправить
+              </button>
+            )}
+            {doc.status === "Sent" && (
+              <button onClick={() => onStatusChange("Signed")} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                {"\u{1F4CB}"} Подписать
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right: files + comments */}
+        <div className="space-y-4">
+          {/* Files */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Файлы</h3>
+            {doc.fileDraft ? (
+              <a href={doc.fileDraft} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                {"\u{1F4C4}"} Черновик (v{doc.versionNumber - 1})
+              </a>
+            ) : <span className="text-xs text-gray-400">Нет файлов</span>}
+            {doc.fileSigned && (
+              <a href={doc.fileSigned} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-green-600 hover:underline mt-1">
+                {"\u{1F4C4}"} Подписанный
+              </a>
+            )}
+          </div>
+
+          {/* Comments */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Комментарии</h3>
+            <div className="space-y-2 max-h-48 overflow-y-auto mb-2">
+              {(doc.comments || []).length === 0 && (
+                <p className="text-xs text-gray-400">Нет комментариев</p>
+              )}
+              {(doc.comments || []).map((c: any) => (
+                <div key={c.id} className="bg-gray-50 rounded-lg p-2">
+                  <div className="text-xs text-gray-400">
+                    {c.user?.firstName} {c.user?.lastName}
+                  </div>
+                  <div className="text-sm text-gray-700">{c.content}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={commentText}
+                onChange={(e) => onCommentChange(e.target.value)}
+                placeholder="Комментарий..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+              />
+              <button
+                onClick={onCommentSend}
+                disabled={!commentText.trim()}
+                className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50"
+              >
+                {"\u2192"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

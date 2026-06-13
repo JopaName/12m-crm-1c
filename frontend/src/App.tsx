@@ -17,6 +17,7 @@ import LegalPage from "./pages/LegalPage";
 import ServicePage from "./pages/ServicePage";
 import TasksPage from "./pages/TasksPage";
 import AuditPage from "./pages/AuditPage";
+import LogViewerPage from "./pages/LogViewerPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
 import ChatPage from "./pages/ChatPage";
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="roles" element={<RolesPage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route path="logs" element={<LogViewerPage />} />
         <Route path="chat" element={<ChatPage />} />
       </Route>
     </Routes>

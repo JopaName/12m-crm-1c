@@ -1,4 +1,4 @@
-import { prisma } from "../index";
+import { prisma } from "../db";
 
 export async function calculateLaborCost(
   roleId: string,
