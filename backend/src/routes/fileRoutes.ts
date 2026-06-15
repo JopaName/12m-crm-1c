@@ -56,8 +56,6 @@ router.post("/upload/:entityType/:entityId/:fieldName", authMiddleware, upload.s
 
 router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const access = await fileService.checkAccess(req.params.id, req.user!.id, req.user!.roleName);
-    if (!access) return res.status(403).json({ error: "Access denied" });
     const { stream, record } = await fileService.download(req.params.id, req.user!.id, req.user!.roleName);
     res.setHeader("Content-Type", record.mimeType);
     res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));
@@ -109,8 +107,6 @@ router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Respon
 router.get("/download/:entityType/:entityId/:fieldName", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { entityType, entityId, fieldName } = req.params;
-    const access = await fileService.checkEntityAccess(entityType, entityId, req.user!.id, req.user!.roleName);
-    if (!access) return res.status(403).json({ error: "Access denied" });
     const { stream, record } = await fileService.downloadByField(entityType, entityId, fieldName, req.user!.id, req.user!.roleName);
     res.setHeader("Content-Type", record.mimeType);
     res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));

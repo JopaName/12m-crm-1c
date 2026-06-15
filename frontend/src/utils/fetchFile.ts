@@ -27,7 +27,7 @@ function handleAuthFailure(): void {
 
 function getFileNameFromDisposition(disposition: string | null, fallback: string): string {
   if (!disposition) return fallback;
-  var match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+  var match = disposition.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
   if (match) return decodeURIComponent(match[1].trim());
   match = disposition.match(/filename="?([^";]+)"?/i);
   if (match) return match[1].trim();
