@@ -31,7 +31,7 @@ export class ProcurementService extends BaseService {
   }
 
   async create(data: any, userId: string) {
-    return super.create({ ...data, status: "New" }, userId, { createdById: userId });
+    return super.create({ ...data, status: data.status || "Не прочитано" }, userId, { createdById: userId });
   }
 
   async createSupplier(data: any) {

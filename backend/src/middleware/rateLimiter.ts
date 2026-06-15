@@ -7,6 +7,7 @@ export const authLimiter = rateLimit({
   message: { error: "Too many authentication attempts, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 export const apiLimiter = rateLimit({
@@ -15,4 +16,5 @@ export const apiLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });

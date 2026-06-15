@@ -61,6 +61,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cors({ origin: config.cors.origin }));
+app.set("trust proxy", 1);
 app.use(morgan("dev"));
 
 app.use("/api/auth", authLimiter);
