@@ -102,7 +102,7 @@ export class FileService {
         data: {
           entityType, entityId, fieldName,
           version: nextVersion,
-          fileName: sanitizeFilename(originalName),
+          fileName: originalName,
           fileUrl, fileSize, mimeType: declaredMime,
           uploadedById: userId,
         },
@@ -111,7 +111,7 @@ export class FileService {
       await tx.auditLog.create({
         data: {
           entityType: "File", entityId: record.id, action: "UPLOAD", userId,
-          newValue: JSON.stringify({ entityType, entityId, fieldName, fileName: sanitizeFilename(originalName), fileSize, mimeType: declaredMime }),
+          newValue: JSON.stringify({ entityType, entityId, fieldName, fileName: originalName, fileSize, mimeType: declaredMime }),
         },
       });
 
@@ -124,6 +124,10 @@ export class FileService {
   }
 
   async download(recordId: string, userId?: string, roleName?: string) {
+    logError("Download access check", {
+      source: "FileService.download",
+      metadata: { recordId, userId, roleName },
+    });
     const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
     if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
     if (record.deleted) throw Object.assign(new Error("File has been deleted"), { statusCode: 410 });
@@ -132,6 +136,10 @@ export class FileService {
   }
 
   async downloadByField(entityType: string, entityId: string, fieldName: string, userId?: string, roleName?: string) {
+    logError("DownloadByField access check", {
+      source: "FileService.downloadByField",
+      metadata: { entityType, entityId, fieldName, userId, roleName },
+    });
     const record = await prisma.fileRecord.findFirst({ where: { entityType, entityId, fieldName, deleted: false } });
     if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
     const stream = this.storage.createReadStream(record.fileUrl);

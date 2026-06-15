@@ -27,7 +27,7 @@ function handleAuthFailure(): void {
 
 function getFileNameFromDisposition(disposition: string | null, fallback: string): string {
   if (!disposition) return fallback;
-  var match = disposition.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+  var match = disposition.match(/filename\*=(?:UTF-8'')?([^;]+)/i);
   if (match) return decodeURIComponent(match[1].trim());
   match = disposition.match(/filename="?([^";]+)"?/i);
   if (match) return match[1].trim();
@@ -94,8 +94,8 @@ export function isUnsafePreview(mimeType: string, fileName: string): boolean {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 ??";
-  var units = ["??", "????", "????", "????"];
+  if (bytes === 0) return "0 B";
+  var units = ["B", "KB", "MB", "GB"];
   var i = Math.floor(Math.log(bytes) / Math.log(1024));
   if (i >= units.length) i = units.length - 1;
   return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i];

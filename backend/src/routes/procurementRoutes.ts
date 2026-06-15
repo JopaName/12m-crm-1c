@@ -1,5 +1,5 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware } from "../middleware/auth";
 import { prisma } from "../db";
 import { ProcurementService } from "../services/ProcurementService";
 import { createPurchaseRequestSchema, createSupplierSchema, createSupplierOrderSchema } from "../validators";
@@ -132,7 +132,7 @@ router.post("/upload", async (req: AuthRequest, res: Response) => {
 
 
 
-router.get("/download/:id", async (req: AuthRequest, res: Response) => {
+router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const record = await prisma.purchaseRequest.findUnique({ where: { id: req.params.id } });
     if (!record || !record.fileUrl) {
