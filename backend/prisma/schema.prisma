@@ -1083,3 +1083,26 @@ model FileRecord {
   @@index([deleted, deletedAt])
 }
 
+
+model File {
+  id            String    @id @default(uuid())
+  originalName  String
+  storageName   String    @unique
+  mimeType      String
+  sizeBytes     Int
+  checksum      String
+  entityType    String
+  entityId      String
+  fieldName     String
+  version       Int       @default(1)
+  uploadedById  String
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+  deletedById   String?
+  previewEnabled Boolean @default(true)
+
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, fieldName])
+  @@index([deletedAt])
+  @@index([checksum])
+}

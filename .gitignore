@@ -7,3 +7,8 @@ uploads/
 coverage/
 .DS_Store
 *.log
+
+# Backup files
+*.bak
+deploy*.js
+backend/prisma/migrations/_add_file_model/

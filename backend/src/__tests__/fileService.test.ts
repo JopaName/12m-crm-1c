@@ -1,7 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { FileService } from "../services/FileService";
+import { FileValidatorService } from "../services/FileValidatorService";
+import { LocalStorageProvider } from "../storage/providers/LocalStorageProvider";
 
 const prisma = new PrismaClient();
 const tempDir = "/tmp/file-test-temp";
@@ -9,6 +12,7 @@ const tempDir = "/tmp/file-test-temp";
 describe("FileService Integration", () => {
   let fileService: FileService;
   let testUserId: string;
+  let testFileId: string;
 
   beforeAll(async () => {
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -16,6 +20,7 @@ describe("FileService Integration", () => {
     if (!admin) throw new Error("No admin user found. Run seed first.");
     testUserId = admin.id;
     fileService = new FileService();
+    await prisma.file.deleteMany({});
   });
 
   afterAll(async () => {
@@ -23,95 +28,155 @@ describe("FileService Integration", () => {
     await prisma.$disconnect();
   });
 
-  test("1. Upload a file from temp path", async () => {
-    const tempFile = path.join(tempDir, "test-upload.txt");
-    fs.writeFileSync(tempFile, "Hello, integration test!");
-    const record = await fileService.uploadFromTemp(tempFile, "hello.txt", "text/plain", 22, "legal", "test-entity-id", "fileDraft", testUserId);
-    expect(record).toBeDefined();
-    expect(record.fileName).toBe("hello.txt");
-    expect(record.fileUrl).toContain("/uploads/legal/test-entity-id/");
-    expect(fs.existsSync(tempFile)).toBe(false);
-    await fileService.delete(record.id, testUserId);
-  });
-
-  test("2. Reject oversized file", async () => {
-    const tempFile = path.join(tempDir, "too-large.bin");
-    const bigBuf = Buffer.alloc(60 * 1024 * 1024);
-    fs.writeFileSync(tempFile, bigBuf);
-    await expect(fileService.uploadFromTemp(tempFile, "big.bin", "application/octet-stream", 60 * 1024 * 1024, "legal", "eid", "fileDraft", testUserId)).rejects.toThrow(/too large/);
-    expect(fs.existsSync(tempFile)).toBe(false);
-  });
-
-  test("3. Reject disallowed MIME type", async () => {
-    const tempFile = path.join(tempDir, "evil.exe");
-    fs.writeFileSync(tempFile, "fake exe content");
-    await expect(fileService.uploadFromTemp(tempFile, "evil.exe", "application/x-msdownload", 100, "legal", "eid", "fileDraft", testUserId)).rejects.toThrow(/not allowed/);
-    expect(fs.existsSync(tempFile)).toBe(false);
-  });
-
-  test("4. Reject content type mismatch", async () => {
-    const tempFile = path.join(tempDir, "fake-pdf.txt");
-    fs.writeFileSync(tempFile, "This is not a PDF at all");
-    await expect(fileService.uploadFromTemp(tempFile, "fake.pdf", "application/pdf", 20, "legal", "eid", "fileDraft", testUserId)).rejects.toThrow(/content does not match/);
-    expect(fs.existsSync(tempFile)).toBe(false);
-  });
-
-  test("5. List files with pagination", async () => {
-    const tempFile = path.join(tempDir, "page-test.txt");
-    const ids: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      fs.writeFileSync(tempFile, "File " + i);
-      const record = await fileService.uploadFromTemp(tempFile, "file-" + i + ".txt", "text/plain", 6, "legal", "paginated-entity", "notes", testUserId);
-      ids.push(record.id);
+  afterEach(async () => {
+    if (testFileId) {
+      try { await fileService.permanentDelete(testFileId); } catch { }
+      testFileId = "";
     }
-    const result = await fileService.list("legal", "paginated-entity", undefined, { page: 1, pageSize: 2 });
-    expect(result.files.length).toBe(2);
-    expect(result.total).toBe(5);
-    for (const id of ids) await fileService.delete(id, testUserId);
   });
 
-  test("6. Delete by entity (cascading)", async () => {
-    const tempFile = path.join(tempDir, "cascade-test.txt");
-    const entityId = "cascade-test-entity";
-    for (let i = 0; i < 3; i++) {
-      fs.writeFileSync(tempFile, "Cascade " + i);
-      await fileService.uploadFromTemp(tempFile, "cascade-" + i + ".txt", "text/plain", 8, "service", entityId, "docs", testUserId);
-    }
-    const deletedCount = await fileService.deleteByEntity("service", entityId);
-    expect(deletedCount).toBe(3);
-    const remaining = await fileService.list("service", entityId);
-    expect(remaining.total).toBe(0);
+  test("FileValidator: reject bad extension", () => {
+    const validator = new FileValidatorService();
+    const result = validator.validateExtension("evil.exe");
+    expect(result.valid).toBe(false);
+    expect(result.statusCode).toBe(415);
   });
 
-  test("7. Download via stream", async () => {
-    const tempFile = path.join(tempDir, "stream-test.txt");
-    fs.writeFileSync(tempFile, "Stream me!");
-    const record = await fileService.uploadFromTemp(tempFile, "stream-test.txt", "text/plain", 9, "legal", "stream-entity", "fileDraft", testUserId);
-    const { stream } = await fileService.download(record.id);
-    expect(stream).toBeDefined();
-    expect(typeof stream.pipe).toBe("function");
-    await fileService.delete(record.id, testUserId);
+  test("FileValidator: accept pdf extension", () => {
+    const validator = new FileValidatorService();
+    const result = validator.validateExtension("doc.pdf");
+    expect(result.valid).toBe(true);
+    expect(result.mimeType).toBe("application/pdf");
   });
 
-  test("8. Content-Disposition header format", () => {
-    const { getContentDisposition } = require("../utils/fileUtils");
-    const result = getContentDisposition("image/png", "Тест.png");
-    expect(result).toContain("inline;");
-    expect(result).toContain("filename*=UTF-8''");
-    expect(decodeURIComponent(result.match(/filename\*=(?:UTF-8'')?(%[0-9A-Fa-f]{2})+/)?.[0] || "")).toBeDefined();
+  test("FileValidator: reject oversized file", () => {
+    const validator = new FileValidatorService();
+    const result = validator.validateSize(60 * 1024 * 1024);
+    expect(result.valid).toBe(false);
+    expect(result.statusCode).toBe(413);
   });
 
-  test("9. checkEntityAccess allows access for unknown entity type", async () => {
-    const result = await fileService.checkEntityAccess("nonexistent-type", "bad-id", "some-user", "SomeRole");
-    expect(result).toBe(true);
+  test("FileValidator: reject empty file", () => {
+    const validator = new FileValidatorService();
+    const result = validator.validateSize(0);
+    expect(result.valid).toBe(false);
+    expect(result.statusCode).toBe(400);
   });
 
-  test("10. Orphaned file cleanup", async () => {
-    const tempFile = path.join(tempDir, "orphan-test.txt");
-    fs.writeFileSync(tempFile, "Orphan me!");
-    const record = await fileService.uploadFromTemp(tempFile, "orphan.txt", "text/plain", 10, "legal", "orphan-entity", "fileDraft", testUserId);
-    const result = await fileService.cleanupOrphanedFiles();
+  test("FileValidator: accept valid size", () => {
+    const validator = new FileValidatorService();
+    const result = validator.validateSize(1024);
+    expect(result.valid).toBe(true);
+  });
+
+  test("FileValidator: magic bytes match", () => {
+    const f = path.join(tempDir, "magic-test.pdf");
+    fs.writeFileSync(f, Buffer.from([0x25, 0x50, 0x44, 0x46]));
+    const validator = new FileValidatorService();
+    const result = validator.validateMagicBytes(f, "application/pdf");
+    expect(result.valid).toBe(true);
+    fs.unlinkSync(f);
+  });
+
+  test("FileValidator: magic bytes mismatch", () => {
+    const f = path.join(tempDir, "fake-pdf.txt");
+    fs.writeFileSync(f, "Not a PDF at all");
+    const validator = new FileValidatorService();
+    const result = validator.validateMagicBytes(f, "application/pdf");
+    expect(result.valid).toBe(false);
+    expect(result.statusCode).toBe(422);
+    fs.unlinkSync(f);
+  });
+
+  test("LocalStorageProvider: save and read", async () => {
+    const storage = new LocalStorageProvider();
+    const name = crypto.randomUUID() + ".txt";
+    await storage.save(name, { buffer: Buffer.from("hello"), originalName: "test.txt", mimeType: "text/plain", size: 5 });
+    const data = await storage.read(name);
+    expect(data.toString()).toBe("hello");
+    await storage.delete(name);
+    expect(storage.exists(name)).toBe(false);
+  });
+
+  test("Upload a valid text file", async () => {
+    const f = path.join(tempDir, "upload-test.txt");
+    fs.writeFileSync(f, "Hello, integration test!");
+    const result = await fileService.upload(f, "hello.txt", "text/plain", 22, "legal", "test-entity-id", "fileDraft", testUserId);
     expect(result).toBeDefined();
-    await fileService.delete(record.id, testUserId);
+    expect(result.originalName).toBe("hello.txt");
+    expect(fs.existsSync(f)).toBe(false);
+    testFileId = result.id;
+  });
+
+  test("Download file", async () => {
+    const f = path.join(tempDir, "download-test.txt");
+    fs.writeFileSync(f, "Download me!");
+    const result = await fileService.upload(f, "download.txt", "text/plain", 11, "legal", "download-entity", "fileDraft", testUserId);
+    testFileId = result.id;
+    const { stream, record } = await fileService.download(result.id, testUserId, "Director");
+    expect(stream).toBeDefined();
+    expect(record.originalName).toBe("download.txt");
+    expect(record.mimeType).toBe("text/plain");
+  });
+
+  test("Download deleted file returns 410", async () => {
+    const f = path.join(tempDir, "deleted-test.txt");
+    fs.writeFileSync(f, "Delete me");
+    const result = await fileService.upload(f, "del.txt", "text/plain", 9, "legal", "del-entity", "fileDraft", testUserId);
+    await fileService.softDelete(result.id, testUserId, "Director");
+    await expect(fileService.download(result.id, testUserId, "Director")).rejects.toHaveProperty("statusCode", 410);
+  });
+
+  test("Download non-existent file returns 404", async () => {
+    await expect(fileService.download("nonexistent-id", testUserId, "Director")).rejects.toHaveProperty("statusCode", 404);
+  });
+
+  test("Preview blocks unsafe type", async () => {
+    const f = path.join(tempDir, "unsafe.html");
+    fs.writeFileSync(f, "<html>bad</html>");
+    const storage = fileService.getStorage();
+    const name = crypto.randomUUID() + ".html";
+    await storage.save(name, { buffer: fs.readFileSync(f), originalName: "bad.html", mimeType: "text/html", size: 15 });
+    const db = await prisma.file.create({
+      data: { originalName: "bad.html", storageName: name, mimeType: "text/html", sizeBytes: 15, checksum: "x", entityType: "legal", entityId: "test", fieldName: "fileDraft", uploadedById: testUserId },
+    });
+    await expect(fileService.preview(db.id, testUserId, "Director")).rejects.toHaveProperty("statusCode", 415);
+    await storage.delete(name);
+    await prisma.file.delete({ where: { id: db.id } });
+  });
+
+  test("List files with pagination", async () => {
+    const f = path.join(tempDir, "list-test.txt");
+    for (let i = 0; i < 3; i++) {
+      fs.writeFileSync(f, "File " + i);
+      const r = await fileService.upload(f, "f" + i + ".txt", "text/plain", 6, "legal", "list-entity", "notes", testUserId);
+      testFileId = r.id;
+    }
+    const result = await fileService.list("legal", "list-entity", undefined, { page: 1, pageSize: 2 });
+    expect(result.files.length).toBe(2);
+    expect(result.total).toBe(3);
+  });
+
+  test("Soft delete and verify", async () => {
+    const f = path.join(tempDir, "soft-del.txt");
+    fs.writeFileSync(f, "Soft delete me");
+    const result = await fileService.upload(f, "soft.txt", "text/plain", 13, "legal", "soft-entity", "fileDraft", testUserId);
+    await fileService.softDelete(result.id, testUserId, "Director");
+    const list = await fileService.list("legal", "soft-entity");
+    expect(list.total).toBe(0);
+    const listWithDeleted = await fileService.list("legal", "soft-entity", undefined, { includeDeleted: true });
+    expect(listWithDeleted.total).toBe(1);
+  });
+
+  test("getMeta returns file metadata", async () => {
+    const f = path.join(tempDir, "meta-test.txt");
+    fs.writeFileSync(f, "Meta data");
+    const result = await fileService.upload(f, "meta.txt", "text/plain", 9, "legal", "meta-entity", "fileDraft", testUserId);
+    testFileId = result.id;
+    const meta = await fileService.getMeta(result.id, testUserId, "Director");
+    expect(meta.originalName).toBe("meta.txt");
+    expect(meta.sizeBytes).toBe(9);
+    expect(meta.checksum).toBeDefined();
+    expect(meta.checksum.length).toBe(64);
   });
 });
