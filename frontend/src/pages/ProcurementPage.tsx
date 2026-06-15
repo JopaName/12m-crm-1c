@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { procurementAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
+import FilePreviewModal from "../components/FilePreviewModal";
 import { Plus, Search, LayoutDashboard, List, Archive, Clock, User, FileText, Package, ChevronDown, Calendar, AlertCircle, ArrowLeft, ArrowRight, Trash2, Edit3, X, Check, Inbox, ShoppingCart, Truck, Eye, EyeOff, Users, Building2, ClipboardList, Phone, Mail, CreditCard, Ban, SortDesc, Paperclip, Link, ExternalLink, Download } from "lucide-react";
 
 const STATUSES = [
@@ -70,6 +71,7 @@ export default function ProcurementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterResponsible, setFilterResponsible] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
   const [form, setForm] = useState({
     productName: "",
     quantity: 1,
@@ -247,7 +249,10 @@ export default function ProcurementPage() {
         <>
           {/* Stats Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3 shadow-sm">
+            <div onClick={() => setFilterStatus("")}
+              className={cn("bg-white rounded-xl border p-3 flex items-center gap-3 shadow-sm cursor-pointer transition-all hover:shadow-md",
+                !filterStatus ? "ring-2 ring-offset-2 ring-primary-500 shadow-lg" : ""
+              )}>
               <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center">
                 <ClipboardList className="w-4 h-4 text-primary-600" />
               </div>
@@ -359,7 +364,7 @@ export default function ProcurementPage() {
                         </div>
                       )}
                       {col.items.map((r: any) => (
-                        <RequestCard key={r.id} request={r} userMap={userMap} supplierMap={supplierMap}
+                        <RequestCard key={r.id} request={r} userMap={userMap} supplierMap={supplierMap} onFileOpen={(url, name) => setPreviewFile({ url, name })}
                           onEdit={() => setEditId(r.id)} onStatusChange={handleStatusChange} />
                       ))}
                     </div>
@@ -380,7 +385,7 @@ export default function ProcurementPage() {
               )}
               <div className="divide-y divide-gray-100">
                 {(showArchived ? [...active, ...archived] : active).map((r: any) => (
-                  <RequestRow key={r.id} request={r} userMap={userMap} supplierMap={supplierMap}
+                  <RequestRow key={r.id} request={r} userMap={userMap} supplierMap={supplierMap} onFileOpen={(url, name) => setPreviewFile({ url, name })}
                     onEdit={() => setEditId(r.id)} onStatusChange={handleStatusChange} />
                 ))}
               </div>
@@ -399,13 +404,19 @@ export default function ProcurementPage() {
         onClose={() => setEditId(null)} users={users} suppliers={data?.suppliers || []} isEdit
         onUpdate={(id, d) => updateReq.mutate({ id, data: d })} onDelete={(id) => deleteReq.mutate(id)}
         isPending={updateReq.isPending} />}
+\n      {previewFile && (
+        <FilePreviewModal
+          fileUrl={previewFile.url}
+          fileName={previewFile.name}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
 
-      /* ======== RequestCard ======== */
     </div>
   );
 }
-function RequestCard({ request, userMap, supplierMap, onEdit, onStatusChange }: {
-  request: any; userMap: Record<string, string>; supplierMap: Record<string, any>; onEdit: () => void; onStatusChange: (id: string, status: string) => void;
+function RequestCard({ request, userMap, supplierMap, onEdit, onStatusChange, onFileOpen }: {
+  request: any; userMap: Record<string, string>; supplierMap: Record<string, any>; onEdit: () => void; onStatusChange: (id: string, status: string) => void; onFileOpen: (url: string, name: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -461,7 +472,7 @@ function RequestCard({ request, userMap, supplierMap, onEdit, onStatusChange }: 
         </div>
         {r.note && <p className="text-[11px] text-gray-400 italic mt-1.5 line-clamp-2 border-l-2 border-gray-200 pl-2">{r.note}</p>}
         {r.fileUrl && (
-          <button onClick={(e) => { e.stopPropagation(); window.open(`${API_BASE}/api/procurement/download/${r.id}`, "_blank"); }}
+          <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/files/download/${r.id}`, r.fileName || "Файл"); }}
             className="mt-1.5 flex items-center gap-1 text-[10px] text-primary-600 hover:text-primary-700 bg-primary-50 px-1.5 py-0.5 rounded cursor-pointer">
             <Paperclip className="w-3 h-3" />{r.fileName || "Файл"}</button>
         )}
@@ -498,8 +509,8 @@ function RequestCard({ request, userMap, supplierMap, onEdit, onStatusChange }: 
 }
 
 /* ======== RequestRow ======== */
-function RequestRow({ request, userMap, supplierMap, onEdit, onStatusChange }: {
-  request: any; userMap: Record<string, string>; supplierMap: Record<string, any>; onEdit: () => void; onStatusChange: (id: string, status: string) => void;
+function RequestRow({ request, userMap, supplierMap, onEdit, onStatusChange, onFileOpen }: {
+  request: any; userMap: Record<string, string>; supplierMap: Record<string, any>; onEdit: () => void; onStatusChange: (id: string, status: string) => void; onFileOpen: (url: string, name: string) => void;
 }) {
   const r = request;
   const overdue = isOverdue(r.dueDate);
@@ -527,7 +538,7 @@ function RequestRow({ request, userMap, supplierMap, onEdit, onStatusChange }: {
           {overdue && <span className="text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded whitespace-nowrap">Просрочено</span>}
           {r.isArchived && <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Архив</span>}
           {r.fileUrl && (
-            <button onClick={(e) => { e.stopPropagation(); window.open(`${API_BASE}/api/procurement/download/${r.id}`, "_blank"); }}
+            <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/files/download/${r.id}`, r.fileName || "Файл"); }}
               className="text-[10px] text-primary-500 hover:text-primary-700 flex items-center gap-0.5 whitespace-nowrap cursor-pointer"
               title={r.fileName || "Файл"}>
               <Paperclip className="w-3 h-3" /></button>

@@ -144,7 +144,13 @@ export const createPurchaseRequestSchema = z.object({
   productId: z.string().optional(),
   productName: z.string().optional(),
   quantity: z.number().int().positive(),
+  status: z.string().optional(),
   supplierId: z.string().optional(),
+  responsibleUserId: z.string().optional(),
+  dueDate: z.string().optional(),
+  note: z.string().max(5000).optional(),
+  fileUrl: z.string().optional(),
+  fileName: z.string().optional(),
   urgency: z.string().max(50).optional(),
   notes: z.string().max(5000).optional(),
 });

@@ -186,6 +186,24 @@ export const actionFilesAPI = {
     api.delete(`/clients/${clientId}/actions/${actionId}/files/${fileId}`),
 };
 
+
+export const filesAPI = {
+  download: (id: string) => api.get(`/files/download/${id}`, { responseType: "blob" }),
+  downloadByEntity: (entityType: string, entityId: string, fieldName?: string) =>
+    api.get(`/files/download/${entityType}/${entityId}/${fieldName}`, { responseType: "blob" }),
+  list: (entityType: string, entityId: string, fieldName?: string, page?: number, pageSize?: number) =>
+    api.get(`/files/${entityType}/${entityId}`, { params: { field: fieldName, page, pageSize } }),
+  upload: (entityType: string, entityId: string, fieldName: string, file: File) => {
+    var fd = new FormData();
+    fd.append("file", file);
+    fd.append("fieldName", fieldName);
+    return api.post(`/files/upload/${entityType}/${entityId}`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  delete: (id: string) => api.delete(`/files/${id}`),
+};
+
 export const chatAPI = {
   getConversations: () => api.get("/chat/conversations"),
   getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),
