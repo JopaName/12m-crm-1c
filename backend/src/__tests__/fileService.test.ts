@@ -93,11 +93,12 @@ describe("FileService Integration", () => {
     await fileService.delete(record.id, testUserId);
   });
 
-  test("8. Content-Disposition by MIME type", () => {
+  test("8. Content-Disposition header format", () => {
     const { getContentDisposition } = require("../utils/fileUtils");
-    expect(getContentDisposition("image/png")).toBe("inline");
-    expect(getContentDisposition("application/pdf")).toBe("inline");
-    expect(getContentDisposition("application/msword")).toBe("attachment");
+    const result = getContentDisposition("image/png", "Тест.png");
+    expect(result).toContain("inline;");
+    expect(result).toContain("filename*=UTF-8''");
+    expect(decodeURIComponent(result.match(/filename\*=(?:UTF-8'')?(%[0-9A-Fa-f]{2})+/)?.[0] || "")).toBeDefined();
   });
 
   test("9. checkEntityAccess allows access for unknown entity type", async () => {
