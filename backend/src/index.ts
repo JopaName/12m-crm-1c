@@ -41,6 +41,7 @@ import chatRoutes from "./routes/chatRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import fileRoutes from "./routes/fileRoutes";
 import crudRoutes from "./routes/crudRoutes";
+import { FILE_LIMITS } from "./utils/fileUtils";
 dotenv.config();
 async function ensureAdminUser() {
   const adminExists = await prisma.user.findFirst({

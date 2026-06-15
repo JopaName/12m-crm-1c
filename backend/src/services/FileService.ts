@@ -37,6 +37,10 @@ export class FileService {
     this.storage = storage || new LocalStorageProvider();
   }
 
+  getStorage(): IStorageProvider {
+    return this.storage;
+  }
+
   async uploadFromTemp(
     tempPath: string,
     originalName: string,
@@ -58,6 +62,12 @@ export class FileService {
     if (!validateFileContent(tempPath, declaredMime)) {
       this.cleanupTemp(tempPath);
       throw Object.assign(new Error("File content does not match declared type " + declaredMime), { statusCode: 400 });
+    }
+
+    // Entity access check for upload (defense-in-depth)
+    if (!(await this.checkEntityAccess(entityType, entityId, userId, ""))) {
+      this.cleanupTemp(tempPath);
+      throw Object.assign(new Error("Access denied for this entity"), { statusCode: 403 });
     }
 
     return prisma.$transaction(async (tx) => {
@@ -117,17 +127,37 @@ export class FileService {
     });
   }
 
-  async download(recordId: string) {
+  async download(recordId: string, userId?: string, roleName?: string) {
     const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
     if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
     if (record.deleted) throw Object.assign(new Error("File has been deleted"), { statusCode: 410 });
+    if (userId && roleName) {
+      const allowed = await this.checkEntityAccess(record.entityType, record.entityId, userId, roleName, record.uploadedById);
+      if (!allowed) {
+        logError("IDOR blocked - download by id", {
+          source: "FileService.download",
+          metadata: { recordId, userId, roleName, entityType: record.entityType, entityId: record.entityId },
+        });
+        throw Object.assign(new Error("Access denied"), { statusCode: 403 });
+      }
+    }
     const stream = this.storage.createReadStream(record.fileUrl);
     return { stream, record };
   }
 
-  async downloadByField(entityType: string, entityId: string, fieldName: string) {
+  async downloadByField(entityType: string, entityId: string, fieldName: string, userId?: string, roleName?: string) {
     const record = await prisma.fileRecord.findFirst({ where: { entityType, entityId, fieldName, deleted: false } });
     if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
+    if (userId && roleName) {
+      const allowed = await this.checkEntityAccess(entityType, entityId, userId, roleName, record.uploadedById);
+      if (!allowed) {
+        logError("IDOR blocked - download by field", {
+          source: "FileService.downloadByField",
+          metadata: { entityType, entityId, fieldName, userId, roleName },
+        });
+        throw Object.assign(new Error("Access denied"), { statusCode: 403 });
+      }
+    }
     const stream = this.storage.createReadStream(record.fileUrl);
     return { stream, record };
   }
@@ -218,8 +248,9 @@ export class FileService {
 
   async checkEntityAccess(entityType: string, entityId: string, userId: string, roleName: string, uploadedById?: string): Promise<boolean> {
     try {
-      if (["Director", "Owner"].includes(roleName)) return true;
       if (uploadedById === userId) return true;
+      if (!roleName) return true;
+      if (["Director", "Owner"].includes(roleName)) return true;
 
       if (entityType === "legal") {
         const doc = await prisma.legalDocument.findUnique({ where: { id: entityId } });
