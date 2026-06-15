@@ -50,12 +50,49 @@ router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Respon
     if (!access) return res.status(403).json({ error: "Access denied" });
     const { stream, record } = await fileService.download(req.params.id);
     res.setHeader("Content-Type", record.mimeType);
-    res.setHeader("Content-Disposition", getContentDisposition(record.mimeType) + '; filename="' + record.fileName + '"');
+    res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));
     res.setHeader("Content-Length", record.fileSize);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    var aborted = false;
+    req.on("close", function() {
+      aborted = true;
+      stream.destroy();
+    });
+
+    stream.on("error", function(err: Error) {
+      if (aborted) return;
+      logError("Stream error during file download", {
+        source: "fileRoutes.download",
+        metadata: { recordId: req.params.id, error: err.message },
+      });
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Stream error during download" });
+      }
+    });
+
+    var timeoutId = setTimeout(function() {
+      if (!aborted) {
+        stream.destroy();
+        if (!res.headersSent) {
+          res.status(504).json({ error: "Download timeout" });
+        }
+      }
+    }, 30000);
+
+    stream.on("end", function() {
+      clearTimeout(timeoutId);
+    });
+
     stream.pipe(res);
   } catch (e: any) {
-    logError("File download error", { source: "fileRoutes.download", metadata: { recordId: req.params.id, error: e.message } });
-    res.status(e.statusCode || 500).json({ error: e.message || "Download failed" });
+    logError("File download error", {
+      source: "fileRoutes.download",
+      metadata: { recordId: req.params.id, error: e.message },
+    });
+    if (!res.headersSent) {
+      res.status(e.statusCode || 500).json({ error: e.message || "Download failed" });
+    }
   }
 });
 
@@ -66,19 +103,62 @@ router.get("/download/:entityType/:entityId/:fieldName", authMiddleware, async (
     if (!access) return res.status(403).json({ error: "Access denied" });
     const { stream, record } = await fileService.downloadByField(entityType, entityId, fieldName);
     res.setHeader("Content-Type", record.mimeType);
-    res.setHeader("Content-Disposition", getContentDisposition(record.mimeType) + '; filename="' + record.fileName + '"');
+    res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));
     res.setHeader("Content-Length", record.fileSize);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    var aborted = false;
+    req.on("close", function() {
+      aborted = true;
+      stream.destroy();
+    });
+
+    stream.on("error", function(err: Error) {
+      if (aborted) return;
+      logError("Stream error during file download by field", {
+        source: "fileRoutes.downloadByField",
+        metadata: { entityType: entityType, entityId: entityId, fieldName: fieldName, error: err.message },
+      });
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Stream error during download" });
+      }
+    });
+
+    var timeoutId = setTimeout(function() {
+      if (!aborted) {
+        stream.destroy();
+        if (!res.headersSent) {
+          res.status(504).json({ error: "Download timeout" });
+        }
+      }
+    }, 30000);
+
+    stream.on("end", function() {
+      clearTimeout(timeoutId);
+    });
+
     stream.pipe(res);
   } catch (e: any) {
-    logError("File download by field error", { source: "fileRoutes.downloadByField", metadata: { entityType: req.params.entityType, entityId: req.params.entityId, fieldName: req.params.fieldName, error: e.message } });
-    res.status(e.statusCode || 500).json({ error: e.message || "Download failed" });
+    logError("File download by field error", {
+      source: "fileRoutes.downloadByField",
+      metadata: { entityType: req.params.entityType, entityId: req.params.entityId, fieldName: req.params.fieldName, error: e.message },
+    });
+    if (!res.headersSent) {
+      res.status(e.statusCode || 500).json({ error: e.message || "Download failed" });
+    }
   }
 });
 
 router.delete("/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const access = await fileService.checkAccess(req.params.id, req.user!.id, req.user!.roleName);
-    if (!access) return res.status(403).json({ error: "Access denied" });
+    if (!access) {
+      logError("Delete denied - access check failed", {
+        source: "fileRoutes.delete",
+        metadata: { recordId: req.params.id, userId: req.user!.id, roleName: req.user!.roleName },
+      });
+      return res.status(403).json({ error: "Access denied" });
+    }
     await fileService.delete(req.params.id, req.user!.id);
     res.json({ success: true });
   } catch (e: any) {
@@ -97,6 +177,17 @@ router.get("/:entityType/:entityId", authMiddleware, async (req: AuthRequest, re
   } catch (e: any) {
     logError("File list error", { source: "fileRoutes.list", metadata: { entityType: req.params.entityType, entityId: req.params.entityId, error: e.message } });
     res.status(500).json({ error: e.message || "Failed to list files" });
+  }
+});
+
+router.post("/cleanup/expired", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user!.roleName !== "Director") return res.status(403).json({ error: "Only Director can run cleanup" });
+    const result = await fileService.cleanupExpiredDeletedFiles();
+    res.json({ deletedCount: result });
+  } catch (e: any) {
+    logError("File cleanup expired error", { source: "fileRoutes.cleanupExpired", metadata: { error: e.message } });
+    res.status(500).json({ error: e.message || "Cleanup failed" });
   }
 });
 

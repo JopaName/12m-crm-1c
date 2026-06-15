@@ -1061,18 +1061,25 @@ model Log {
 }
 
 model FileRecord {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   entityType   String
   entityId     String
   fieldName    String
+  version      Int       @default(1)
   fileName     String
   fileUrl      String
   fileSize     Int
   mimeType     String
   uploadedById String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  deleted      Boolean   @default(false)
+  deletedAt    DateTime?
+  deletedById  String?
+  previewEnabled Boolean @default(true)
 
   @@index([entityType, entityId])
   @@index([entityType, entityId, fieldName])
+  @@index([deleted])
+  @@index([deleted, deletedAt])
 }
 

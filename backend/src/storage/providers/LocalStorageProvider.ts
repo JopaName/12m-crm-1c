@@ -43,14 +43,26 @@ export class LocalStorageProvider implements IStorageProvider {
     const absTargetDir = path.join(UPLOADS_ROOT, targetDir);
     if (!fs.existsSync(absTargetDir)) fs.mkdirSync(absTargetDir, { recursive: true });
     const targetPath = path.join(absTargetDir, targetName);
-    fs.renameSync(tempPath, targetPath);
+    try {
+      fs.renameSync(tempPath, targetPath);
+    } catch (err) {
+      // Cross-device link fallback: copy + unlink
+      fs.copyFileSync(tempPath, targetPath);
+      try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
+    }
     return "/uploads/" + targetDir + "/" + targetName;
   }
 
   async delete(fileUrl: string): Promise<void> {
     if (!fileUrl || !fileUrl.startsWith("/uploads/")) return;
     const fullPath = path.join(UPLOADS_ROOT, fileUrl.replace("/uploads/", ""));
-    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    try {
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch (err) {
+      console.error("Failed to delete file:", fullPath, (err as Error).message);
+    }
   }
 
   getFullPath(fileUrl: string): string {
@@ -63,7 +75,37 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 
   createReadStream(fileUrl: string): fs.ReadStream {
-    return fs.createReadStream(this.getFullPath(fileUrl));
+    var fullPath = this.getFullPath(fileUrl);
+    if (!fs.existsSync(fullPath)) {
+      var err = new Error("File not found on disk: " + fileUrl);
+      (err as any).statusCode = 404;
+      throw err;
+    }
+    var stream = fs.createReadStream(fullPath, { highWaterMark: 64 * 1024 });
+
+    var destroyed = false;
+    stream.on("error", function(err: Error) {
+      if (!destroyed) {
+        destroyed = true;
+        stream.destroy();
+      }
+    });
+
+    var timeoutId = setTimeout(function() {
+      if (!destroyed) {
+        destroyed = true;
+        stream.destroy(new Error("Read stream timeout"));
+      }
+    }, 30000);
+
+    stream.on("close", function() {
+      clearTimeout(timeoutId);
+      if (!destroyed) {
+        destroyed = true;
+      }
+    });
+
+    return stream;
   }
 
   getFileSize(fileUrl: string): number {
