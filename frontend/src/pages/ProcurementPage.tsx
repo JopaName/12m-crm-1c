@@ -472,7 +472,7 @@ function RequestCard({ request, userMap, supplierMap, onEdit, onStatusChange, on
         </div>
         {r.note && <p className="text-[11px] text-gray-400 italic mt-1.5 line-clamp-2 border-l-2 border-gray-200 pl-2">{r.note}</p>}
         {r.fileUrl && (
-          <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/files/download/${r.id}`, r.fileName || "Файл"); }}
+          <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/procurement/download/${r.id}`, r.fileName || "Файл"); }}
             className="mt-1.5 flex items-center gap-1 text-[10px] text-primary-600 hover:text-primary-700 bg-primary-50 px-1.5 py-0.5 rounded cursor-pointer">
             <Paperclip className="w-3 h-3" />{r.fileName || "Файл"}</button>
         )}
@@ -538,7 +538,7 @@ function RequestRow({ request, userMap, supplierMap, onEdit, onStatusChange, onF
           {overdue && <span className="text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded whitespace-nowrap">Просрочено</span>}
           {r.isArchived && <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Архив</span>}
           {r.fileUrl && (
-            <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/files/download/${r.id}`, r.fileName || "Файл"); }}
+            <button onClick={(e) => { e.stopPropagation(); onFileOpen(`${API_BASE}/api/procurement/download/${r.id}`, r.fileName || "Файл"); }}
               className="text-[10px] text-primary-500 hover:text-primary-700 flex items-center gap-0.5 whitespace-nowrap cursor-pointer"
               title={r.fileName || "Файл"}>
               <Paperclip className="w-3 h-3" /></button>

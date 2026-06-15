@@ -144,10 +144,11 @@ export function getContentDisposition(mimeType: string, fileName: string): strin
   else disposition = "attachment";
 
   var safeName = fileName.replace(/[\r\n"]/g, "_").replace(/\\/g, "/");
+  var asciiName = safeName.replace(/[^\x20-\x7E]/g, function(m: string) { return encodeURIComponent(m); });
   var encodedName = encodeURIComponent(safeName).replace(/%20/g, " ");
 
   return disposition
-    + `; filename="${safeName.replace(/[^ -~]/g, "?")}"`
+    + `; filename="${asciiName}"`
     + `; filename*=UTF-8''${encodedName}`;
 }
 
