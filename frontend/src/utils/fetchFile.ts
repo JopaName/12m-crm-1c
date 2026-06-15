@@ -70,6 +70,29 @@ export async function fetchFileWithAuth(url: string): Promise<FileFetchResult> {
   };
 }
 
+export const UNSAFE_PREVIEW_EXTENSIONS = [
+  "html", "htm", "js", "jsx", "ts", "tsx", "svg", "xml",
+  "php", "phtml", "php3", "php4", "php5", "pht",
+  "asp", "aspx", "jsp", "cfm", "shtml",
+  "wasm", "swf",
+] as readonly string[];
+
+export const UNSAFE_PREVIEW_MIME_PREFIXES = [
+  "text/html", "text/javascript", "application/javascript",
+  "application/x-javascript", "text/ecmascript", "application/ecmascript",
+  "image/svg+xml", "application/xml", "text/xml",
+  "application/x-httpd-php",
+] as readonly string[];
+
+export function isUnsafePreview(mimeType: string, fileName: string): boolean {
+  var ext = getFileExtension(fileName);
+  if (UNSAFE_PREVIEW_EXTENSIONS.includes(ext as any)) return true;
+  for (var prefix of UNSAFE_PREVIEW_MIME_PREFIXES) {
+    if (mimeType.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 ??";
   var units = ["??", "????", "????", "????"];
