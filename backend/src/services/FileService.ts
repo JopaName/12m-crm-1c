@@ -1,165 +1,246 @@
-import { prisma } from "../db";
-import { IStorageProvider } from "../storage/IStorageProvider";
-import { LocalStorageProvider } from "../storage/providers/LocalStorageProvider";
-import { sanitizeFilename, generateStorageName, isAllowedMimeType, isUnsafePreviewType, formatFileSize, FILE_LIMITS, validateFileContent } from "../utils/fileUtils";
-import { logError } from "../utils/logger";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { prisma } from '../db';
+import { IStorageProvider } from '../interfaces/IStorageProvider';
+import { IFileValidator } from '../interfaces/IFileValidator';
+import { IFileService, UploadResult, DownloadResult, PreviewResult, FileMeta, ListOptions, ListResult } from '../interfaces/IFileService';
+import { LocalStorageProvider } from '../storage/providers/LocalStorageProvider';
+import { FileValidatorService } from './FileValidatorService';
+import { logError } from '../utils/logger';
 
-const SINGLE_FIELDS = ["fileDraft", "fileSigned", "photoBefore", "photoAfter", "clientSignature"];
+const SINGLE_FIELDS = ['fileDraft', 'fileSigned', 'photoBefore', 'photoAfter', 'clientSignature'];
 
 const MODEL_MAP: Record<string, string> = {
-  legal: "legalDocument",
-  telemetry: "telemetryReading",
-  installation: "installationTask",
-  deal: "deal",
-  service: "serviceCase",
+  legal: 'legalDocument',
+  telemetry: 'telemetryReading',
+  installation: 'installationTask',
+  deal: 'deal',
+  service: 'serviceCase',
 };
 
-interface ListOptions {
-  page?: number;
-  pageSize?: number;
-}
-
-interface ListResult {
-  files: any[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export class FileService {
+export class FileService implements IFileService {
   private storage: IStorageProvider;
+  private validator: IFileValidator;
 
-  constructor(storage?: IStorageProvider) {
+  constructor(storage?: IStorageProvider, validator?: IFileValidator) {
     this.storage = storage || new LocalStorageProvider();
+    this.validator = validator || new FileValidatorService();
   }
 
   getStorage(): IStorageProvider {
     return this.storage;
   }
 
-  async uploadFromTemp(
-    tempPath: string,
-    originalName: string,
-    declaredMime: string,
-    fileSize: number,
-    entityType: string,
-    entityId: string,
-    fieldName: string,
-    userId: string,
-  ) {
-    if (fileSize > FILE_LIMITS.maxSizeBytes) {
+  async upload(tempPath: string, originalName: string, declaredMime: string, fileSize: number, entityType: string, entityId: string, fieldName: string, userId: string): Promise<UploadResult> {
+    const validation = await this.validator.validateChain(tempPath, originalName, declaredMime, fileSize, entityType, entityId);
+    if (!validation.valid) {
       this.cleanupTemp(tempPath);
-      throw Object.assign(new Error("File too large (max " + formatFileSize(FILE_LIMITS.maxSizeBytes) + ")"), { statusCode: 413 });
-    }
-    if (!isAllowedMimeType(declaredMime)) {
-      this.cleanupTemp(tempPath);
-      throw Object.assign(new Error("File type " + declaredMime + " is not allowed"), { statusCode: 400 });
-    }
-    if (!validateFileContent(tempPath, declaredMime)) {
-      this.cleanupTemp(tempPath);
-      throw Object.assign(new Error("File content does not match declared type " + declaredMime), { statusCode: 400 });
+      const err = new Error(validation.error!) as any;
+      err.statusCode = validation.statusCode || 400;
+      throw err;
     }
 
-    // Entity access check for upload (defense-in-depth)
-    if (!(await this.checkEntityAccess(entityType, entityId, userId, ""))) {
+    if (!(await this.checkEntityAccess(entityType, entityId, userId, ''))) {
       this.cleanupTemp(tempPath);
-      throw Object.assign(new Error("Access denied for this entity"), { statusCode: 403 });
+      const err = new Error('Access denied for this entity') as any;
+      err.statusCode = 403;
+      throw err;
     }
+
+    const checksum = await this.computeChecksum(tempPath);
 
     return prisma.$transaction(async (tx) => {
-      const existingCount = await tx.fileRecord.count({ where: { entityType, entityId, fieldName } });
-      if (existingCount >= FILE_LIMITS.maxFilesPerEntity) {
-        this.cleanupTemp(tempPath);
-        throw Object.assign(new Error("Max " + FILE_LIMITS.maxFilesPerEntity + " files per entity"), { statusCode: 400 });
-      }
-
       if (SINGLE_FIELDS.includes(fieldName)) {
-        const old = await tx.fileRecord.findFirst({ where: { entityType, entityId, fieldName } });
+        const old = await tx.file.findFirst({ where: { entityType, entityId, fieldName, deletedAt: null } });
         if (old) {
-          await this.storage.delete(old.fileUrl);
-          await tx.fileRecord.delete({ where: { id: old.id } });
+          await this.storage.delete(old.storageName);
+          await tx.file.update({ where: { id: old.id }, data: { deletedAt: new Date(), deletedById: userId } });
         }
       }
 
-      const ext = path.extname(originalName) || "";
-      const uniqueName = generateStorageName(ext);
-      const subDir = entityType + "/" + entityId;
+      const ext = path.extname(originalName) || '';
+      const storageName = crypto.randomUUID() + ext;
 
-      const fileUrl = this.storage.move(tempPath, subDir, uniqueName);
+      await this.storage.saveFromPath(storageName, tempPath);
 
-      var currentMax = await tx.fileRecord.findFirst({
+      const currentMax = await tx.file.findFirst({
         where: { entityType, entityId, fieldName },
-        orderBy: { version: "desc" },
+        orderBy: { version: 'desc' },
         select: { version: true },
       });
-      var nextVersion = (currentMax?.version || 0) + 1;
+      const nextVersion = (currentMax?.version || 0) + 1;
 
-      const record = await tx.fileRecord.create({
+      const record = await tx.file.create({
         data: {
-          entityType, entityId, fieldName,
+          originalName,
+          storageName,
+          mimeType: declaredMime,
+          sizeBytes: fileSize,
+          checksum,
+          entityType,
+          entityId,
+          fieldName,
           version: nextVersion,
-          fileName: originalName,
-          fileUrl, fileSize, mimeType: declaredMime,
           uploadedById: userId,
         },
       });
 
       await tx.auditLog.create({
         data: {
-          entityType: "File", entityId: record.id, action: "UPLOAD", userId,
-          newValue: JSON.stringify({ entityType, entityId, fieldName, fileName: originalName, fileSize, mimeType: declaredMime }),
+          entityType: 'File',
+          entityId: record.id,
+          action: 'UPLOAD',
+          userId,
+          newValue: JSON.stringify({ entityType, entityId, fieldName, originalName, fileSize, mimeType: declaredMime }),
         },
       });
 
       if (SINGLE_FIELDS.includes(fieldName)) {
-        await this.updateParentField(tx, entityType, entityId, fieldName, fileUrl);
+        await this.updateParentField(tx, entityType, entityId, fieldName, storageName);
       }
 
-      return record;
+      return {
+        id: record.id,
+        originalName: record.originalName,
+        storageName: record.storageName,
+        mimeType: record.mimeType,
+        sizeBytes: record.sizeBytes,
+        checksum: record.checksum,
+        entityType: record.entityType,
+        entityId: record.entityId,
+        fieldName: record.fieldName,
+        version: record.version,
+        createdAt: record.createdAt,
+      };
     });
   }
 
-  async download(recordId: string, userId?: string, roleName?: string) {
-    logError("Download access check", {
-      source: "FileService.download",
-      metadata: { recordId, userId, roleName },
-    });
-    const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
-    if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
-    if (record.deleted) throw Object.assign(new Error("File has been deleted"), { statusCode: 410 });
-    const stream = this.storage.createReadStream(record.fileUrl);
-    return { stream, record };
+  async download(id: string, userId: string, roleName: string): Promise<DownloadResult> {
+    const record = await prisma.file.findUnique({ where: { id } });
+    if (!record) {
+      const err = new Error('File not found') as any;
+      err.statusCode = 404;
+      throw err;
+    }
+    if (record.deletedAt) {
+      const err = new Error('File has been deleted') as any;
+      err.statusCode = 410;
+      throw err;
+    }
+
+    const access = await this.checkAccess(id, userId, roleName);
+    if (!access) {
+      const err = new Error('Access denied') as any;
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const fileSize = this.storage.getFileSize(record.storageName);
+    const stream = this.storage.createReadStream(record.storageName);
+
+    return {
+      stream,
+      record: {
+        id: record.id,
+        originalName: record.originalName,
+        mimeType: record.mimeType,
+        sizeBytes: record.sizeBytes,
+        entityType: record.entityType,
+        entityId: record.entityId,
+        previewEnabled: record.previewEnabled,
+        deletedAt: record.deletedAt,
+      },
+      fileSize: fileSize || record.sizeBytes,
+    };
   }
 
-  async downloadByField(entityType: string, entityId: string, fieldName: string, userId?: string, roleName?: string) {
-    logError("DownloadByField access check", {
-      source: "FileService.downloadByField",
-      metadata: { entityType, entityId, fieldName, userId, roleName },
-    });
-    const record = await prisma.fileRecord.findFirst({ where: { entityType, entityId, fieldName, deleted: false } });
-    if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
-    const stream = this.storage.createReadStream(record.fileUrl);
-    return { stream, record };
+  async preview(id: string, userId: string, roleName: string, range?: string): Promise<PreviewResult> {
+    const result = await this.download(id, userId, roleName);
+
+    if (this.validator.isUnsafePreview(result.record.mimeType)) {
+      const err = new Error('File type cannot be previewed') as any;
+      err.statusCode = 415;
+      throw err;
+    }
+
+    const disposition = result.record.mimeType.startsWith('image/') || result.record.mimeType === 'application/pdf' || result.record.mimeType === 'text/plain'
+      ? 'inline' as const
+      : 'attachment' as const;
+
+    return {
+      stream: result.stream,
+      mimeType: result.record.mimeType,
+      sizeBytes: result.fileSize,
+      disposition,
+    };
   }
 
-  async delete(recordId: string, userId: string) {
-    const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
-    if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
-    if (record.deleted) throw Object.assign(new Error("File already deleted"), { statusCode: 410 });
+  async getMeta(id: string, userId: string, roleName: string): Promise<FileMeta> {
+    const record = await prisma.file.findUnique({ where: { id } });
+    if (!record) {
+      const err = new Error('File not found') as any;
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const access = await this.checkAccess(id, userId, roleName);
+    if (!access) {
+      const err = new Error('Access denied') as any;
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return {
+      id: record.id,
+      originalName: record.originalName,
+      storageName: record.storageName,
+      mimeType: record.mimeType,
+      sizeBytes: record.sizeBytes,
+      checksum: record.checksum,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      fieldName: record.fieldName,
+      version: record.version,
+      previewEnabled: record.previewEnabled,
+      uploadedById: record.uploadedById,
+      createdAt: record.createdAt,
+      deletedAt: record.deletedAt,
+    };
+  }
+
+  async softDelete(id: string, userId: string, roleName: string): Promise<void> {
+    const record = await prisma.file.findUnique({ where: { id } });
+    if (!record) {
+      const err = new Error('File not found') as any;
+      err.statusCode = 404;
+      throw err;
+    }
+    if (record.deletedAt) {
+      const err = new Error('File already deleted') as any;
+      err.statusCode = 410;
+      throw err;
+    }
+
+    const access = await this.checkAccess(id, userId, roleName);
+    if (!access) {
+      const err = new Error('Access denied') as any;
+      err.statusCode = 403;
+      throw err;
+    }
 
     await prisma.$transaction(async (tx) => {
-      await tx.fileRecord.update({
-        where: { id: recordId },
-        data: { deleted: true, deletedAt: new Date(), deletedById: userId },
+      await tx.file.update({
+        where: { id },
+        data: { deletedAt: new Date(), deletedById: userId },
       });
 
       await tx.auditLog.create({
         data: {
-          entityType: "File", entityId: recordId, action: "DELETE", userId,
+          entityType: 'File',
+          entityId: id,
+          action: 'DELETE',
+          userId,
           oldValue: JSON.stringify(record),
         },
       });
@@ -169,63 +250,86 @@ export class FileService {
       }
     });
 
-    this.storage.delete(record.fileUrl).catch(function(err: Error) {
-      logError("Failed to delete physical file after soft-delete", {
-        source: "FileService.delete",
-        metadata: { recordId: recordId, fileUrl: record.fileUrl, error: err.message },
+    this.storage.delete(record.storageName).catch((err: Error) => {
+      logError('Failed to delete physical file after soft-delete', {
+        source: 'FileService.softDelete',
+        metadata: { recordId: id, storageName: record.storageName, error: err.message },
       });
     });
   }
 
-  async deleteByEntity(entityType: string, entityId: string): Promise<number> {
-    const records = await prisma.fileRecord.findMany({ where: { entityType, entityId } });
-    for (const record of records) {
-      await this.storage.delete(record.fileUrl);
+  async permanentDelete(id: string): Promise<void> {
+    const record = await prisma.file.findUnique({ where: { id } });
+    if (!record) {
+      const err = new Error('File not found') as any;
+      err.statusCode = 404;
+      throw err;
     }
-    const result = await prisma.fileRecord.deleteMany({ where: { entityType, entityId } });
-    return result.count;
+
+    await prisma.$transaction(async (tx) => {
+      await this.storage.delete(record.storageName);
+      await tx.file.delete({ where: { id } });
+      await tx.auditLog.create({
+        data: {
+          entityType: 'File',
+          entityId: id,
+          action: 'PERMANENT_DELETE',
+          userId: 'system',
+          oldValue: JSON.stringify(record),
+        },
+      });
+    });
   }
 
   async list(entityType: string, entityId: string, fieldName?: string, options?: ListOptions): Promise<ListResult> {
     const page = Math.max(1, options?.page || 1);
-    const pageSize = Math.min(FILE_LIMITS.maxPageSize, Math.max(1, options?.pageSize || FILE_LIMITS.defaultPageSize));
+    const pageSize = Math.min(100, Math.max(1, options?.pageSize || 20));
 
     const where: any = { entityType, entityId };
     if (fieldName) where.fieldName = fieldName;
+    if (!options?.includeDeleted) where.deletedAt = null;
 
     const [files, total] = await Promise.all([
-      prisma.fileRecord.findMany({
+      prisma.file.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      prisma.fileRecord.count({ where }),
+      prisma.file.count({ where }),
     ]);
 
-    return { files, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+    return {
+      files: files.map(f => ({
+        id: f.id,
+        originalName: f.originalName,
+        storageName: f.storageName,
+        mimeType: f.mimeType,
+        sizeBytes: f.sizeBytes,
+        checksum: f.checksum,
+        entityType: f.entityType,
+        entityId: f.entityId,
+        fieldName: f.fieldName,
+        version: f.version,
+        previewEnabled: f.previewEnabled,
+        uploadedById: f.uploadedById,
+        createdAt: f.createdAt,
+        deletedAt: f.deletedAt,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
-  async checkAccess(recordId: string, userId: string, roleName: string): Promise<boolean> {
+  async checkAccess(id: string, userId: string, roleName: string): Promise<boolean> {
     try {
-      const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
-      if (!record) {
-        logError("File access denied - record not found", {
-          source: "FileService.checkAccess",
-          metadata: { recordId: recordId, userId: userId, roleName: roleName },
-        });
-        return false;
-      }
-      const allowed = await this.checkEntityAccess(record.entityType, record.entityId, userId, roleName, record.uploadedById);
-      if (!allowed) {
-        logError("File access denied - entity access check failed", {
-          source: "FileService.checkAccess",
-          metadata: { recordId: recordId, userId: userId, roleName: roleName, entityType: record.entityType, entityId: record.entityId, fileUrl: record.fileUrl },
-        });
-      }
-      return allowed;
+      const record = await prisma.file.findUnique({ where: { id } });
+      if (!record) return false;
+      return this.checkEntityAccess(record.entityType, record.entityId, userId, roleName, record.uploadedById);
     } catch (err) {
-      logError("checkAccess error", { stack: (err as Error).stack, source: "FileService.checkAccess" });
+      logError('checkAccess error', { stack: (err as Error).stack, source: 'FileService.checkAccess' });
       return false;
     }
   }
@@ -234,60 +338,43 @@ export class FileService {
     try {
       if (uploadedById === userId) return true;
       if (!roleName) return true;
-      if (["Director", "Owner"].includes(roleName)) return true;
+      if (['Director', 'Owner'].includes(roleName)) return true;
 
-      if (entityType === "legal") {
+      if (entityType === 'legal') {
         const doc = await prisma.legalDocument.findUnique({ where: { id: entityId } });
         return doc?.responsibleLawyerId === userId;
       }
-      if (entityType === "installation") {
+      if (entityType === 'installation') {
         const task = await prisma.installationTask.findUnique({ where: { id: entityId } });
         return task?.installerId === userId;
       }
-      if (entityType === "deal") {
+      if (entityType === 'deal') {
         const deal = await prisma.deal.findUnique({ where: { id: entityId } });
         return deal?.responsibleAgentId === userId;
       }
       return true;
     } catch (err) {
-      logError("checkEntityAccess error", {
+      logError('checkEntityAccess error', {
         stack: (err as Error).stack,
-        source: "FileService.checkEntityAccess",
+        source: 'FileService.checkEntityAccess',
         metadata: { entityType, entityId, userId, roleName },
       });
       return false;
     }
   }
 
-
-  async permanentDelete(recordId: string): Promise<void> {
-    const record = await prisma.fileRecord.findUnique({ where: { id: recordId } });
-    if (!record) throw Object.assign(new Error("File not found"), { statusCode: 404 });
-
-    await prisma.$transaction(async (tx) => {
-      await this.storage.delete(record.fileUrl);
-      await tx.fileRecord.delete({ where: { id: recordId } });
-      await tx.auditLog.create({
-        data: {
-          entityType: "File", entityId: recordId, action: "PERMANENT_DELETE", userId: "system",
-          oldValue: JSON.stringify(record),
-        },
-      });
-    });
-  }
-
   async cleanupExpiredDeletedFiles(olderThanDays: number = 30): Promise<number> {
     const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
-    const expired = await prisma.fileRecord.findMany({
-      where: { deleted: true, deletedAt: { lte: cutoff } },
+    const expired = await prisma.file.findMany({
+      where: { deletedAt: { lte: cutoff } },
     });
 
     for (const record of expired) {
       try {
         await this.permanentDelete(record.id);
       } catch (err) {
-        logError("Failed to permanently delete expired file", {
-          source: "FileService.cleanupExpiredDeletedFiles",
+        logError('Failed to permanently delete expired file', {
+          source: 'FileService.cleanupExpiredDeletedFiles',
           metadata: { recordId: record.id, error: (err as Error).message },
         });
       }
@@ -295,55 +382,53 @@ export class FileService {
     return expired.length;
   }
 
-  async getFileSizeLimit(): Promise<number> {
-    return FILE_LIMITS.maxSizeBytes;
-  }
-
-  getUnsafePreviewTypes(): readonly string[] {
-    return FILE_LIMITS.unsafePreviewTypes;
-  }
-
-  async checkQuota(entityType: string, entityId: string): Promise<{ current: number; limit: number }> {
-    const current = await prisma.fileRecord.count({ where: { entityType: entityType, entityId: entityId, deleted: false } });
-    return { current: current, limit: FILE_LIMITS.maxFilesPerEntity };
-  }
-
   async cleanupOrphanedFiles(): Promise<{ deletedRecords: number; deletedFiles: number }> {
-    const records = await prisma.fileRecord.findMany();
+    const records = await prisma.file.findMany();
     let deletedFiles = 0;
     let deletedRecords = 0;
 
     for (const record of records) {
-      const fullPath = this.storage.getFullPath(record.fileUrl);
-      if (!fs.existsSync(fullPath)) {
-        await prisma.fileRecord.delete({ where: { id: record.id } });
+      if (!this.storage.exists(record.storageName)) {
+        await prisma.file.delete({ where: { id: record.id } });
         deletedRecords++;
       }
     }
 
-    const uploadsRoot = path.join(__dirname, "../../uploads");
+    const uploadsRoot = path.join(__dirname, '../../uploads');
 
-    function walkDir(dir: string, relativeBase: string): void {
+    const walkDir = (dir: string): void => {
       if (!fs.existsSync(dir)) return;
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          if (entry.name === "temp") continue;
-          walkDir(fullPath, relativeBase + "/" + entry.name);
+          if (entry.name === 'temp') continue;
+          walkDir(fullPath);
         } else if (entry.isFile()) {
-          const fileUrl = "/uploads" + relativeBase + "/" + entry.name;
-          const exists = records.some(r => r.fileUrl === fileUrl);
+          const exists = records.some(r => r.storageName === entry.name || this.storage.getFullPath(r.storageName) === fullPath);
           if (!exists) {
             fs.unlinkSync(fullPath);
             deletedFiles++;
           }
         }
       }
-    }
+    };
 
-    walkDir(uploadsRoot, "");
+    walkDir(uploadsRoot);
     return { deletedRecords, deletedFiles };
+  }
+
+  private async computeChecksum(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256');
+      const stream = fs.createReadStream(filePath);
+      stream.on('data', (chunk) => hash.update(chunk));
+      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('error', (err) => {
+        try { stream.destroy(); } catch { /* ignore */ }
+        reject(err);
+      });
+    });
   }
 
   private async updateParentField(tx: any, entityType: string, entityId: string, fieldName: string, value: string | null) {
@@ -355,8 +440,8 @@ export class FileService {
         data: { [fieldName]: value },
       });
     } catch (e: any) {
-      logError("Failed to update parent field", {
-        source: "FileService.updateParentField",
+      logError('Failed to update parent field', {
+        source: 'FileService.updateParentField',
         metadata: { entityType, entityId, fieldName, error: e.message },
       });
     }

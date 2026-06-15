@@ -196,6 +196,11 @@ export default function Layout() {
               {collapsed ? "\u2192" : "\u2190"}
             </button>
           </div>
+          {!collapsed && (
+            <div className="mt-1.5 text-[10px] text-gray-300 text-center select-none">
+              v1.0.0
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
@@ -272,6 +277,11 @@ export default function Layout() {
               {"\u23FB"}
             </button>
           </div>
+          {!collapsed && (
+            <div className="mt-1.5 text-[10px] text-gray-300 text-center select-none">
+              v1.0.0
+            </div>
+          )}
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto">

@@ -3,7 +3,6 @@ import { AuthRequest, authMiddleware } from "../middleware/auth";
 import { prisma } from "../db";
 import { ProcurementService } from "../services/ProcurementService";
 import { createPurchaseRequestSchema, createSupplierSchema, createSupplierOrderSchema } from "../validators";
-import { getContentDisposition } from "../utils/fileUtils";
 import { logError } from "../utils/logger";
 import fs from "fs";
 import path from "path";
@@ -130,52 +129,23 @@ router.post("/upload", async (req: AuthRequest, res: Response) => {
   }
 });
 
-
-
-router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/download/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const record = await prisma.purchaseRequest.findUnique({ where: { id: req.params.id } });
-    if (!record || !record.fileUrl) {
-      return res.status(404).json({ error: "File not found" });
-    }
-    const filePath = path.join(__dirname, "../../", record.fileUrl.replace(/^\//, ""));
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "File not found on disk" });
-    }
-    const ext = path.extname(filePath).toLowerCase();
-    var mimeType = "application/octet-stream";
-    var mimeMap: Record<string, string> = {
-      ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-      ".gif": "image/gif", ".webp": "image/webp", ".pdf": "application/pdf",
-      ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ".xls": "application/vnd.ms-excel", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      ".txt": "text/plain", ".zip": "application/zip", ".rar": "application/x-rar-compressed",
-    };
-    if (mimeMap[ext]) mimeType = mimeMap[ext];
-    var fileName = record.fileName || path.basename(filePath);
-    var stat = fs.statSync(filePath);
-    var stream = fs.createReadStream(filePath);
-    res.setHeader("Content-Type", mimeType);
-    res.setHeader("Content-Disposition", getContentDisposition(mimeType, fileName));
-    res.setHeader("Content-Length", stat.size);
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    var aborted = false;
-    req.on("close", function() { aborted = true; stream.destroy(); });
-    stream.on("error", function(err: Error) {
-      if (aborted) return;
-      logError("Stream error during procurement download", {
-        source: "procurementRoutes.download",
-        metadata: { recordId: req.params.id, error: err.message },
-      });
-      if (!res.headersSent) res.status(500).json({ error: "Download failed" });
+    const { prisma } = require("../db");
+    const request = await prisma.purchaseRequest.findUnique({
+      where: { id: req.params.id },
     });
-    stream.pipe(res);
+    if (!request || !request.fileUrl) return res.status(404).json({ error: "File not found" });
+
+    const filePath = path.join(__dirname, "../..", request.fileUrl);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found on disk" });
+
+    const fileName = request.fileName || path.basename(filePath);
+    res.setHeader("Content-Disposition", 'attachment; filename="' + fileName + '"');
+    fs.createReadStream(filePath).pipe(res);
   } catch (e: any) {
-    logError("Procurement file download error", {
-      source: "procurementRoutes.download",
-      metadata: { recordId: req.params.id, error: e.message },
-    });
-    if (!res.headersSent) res.status(500).json({ error: e.message || "Download failed" });
+    logError(e);
+    res.status(500).json({ error: "Failed to download file" });
   }
 });
 
