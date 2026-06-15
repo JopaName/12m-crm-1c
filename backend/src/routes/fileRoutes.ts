@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
 import { FileService } from "../services/FileService";
-import { FILE_LIMITS, getContentDisposition } from "../utils/fileUtils";
+import { FILE_LIMITS, getContentDisposition, isAllowedMimeType } from "../utils/fileUtils";
 import { logError } from "../utils/logger";
 
 const router = Router();
@@ -22,7 +22,17 @@ const tempStorage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: tempStorage, limits: { fileSize: FILE_LIMITS.maxSizeBytes } });
+const upload = multer({
+  storage: tempStorage,
+  limits: { fileSize: FILE_LIMITS.maxSizeBytes },
+  fileFilter: function(_req, file, cb) {
+    if (isAllowedMimeType(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(Object.assign(new Error("File type " + file.mimetype + " is not allowed"), { statusCode: 400 }));
+    }
+  },
+});
 
 router.post("/upload/:entityType/:entityId/:fieldName", authMiddleware, upload.single("file"), async (req: AuthRequest, res: Response) => {
   let tempPath: string | null = null;
@@ -48,7 +58,7 @@ router.get("/download/:id", authMiddleware, async (req: AuthRequest, res: Respon
   try {
     const access = await fileService.checkAccess(req.params.id, req.user!.id, req.user!.roleName);
     if (!access) return res.status(403).json({ error: "Access denied" });
-    const { stream, record } = await fileService.download(req.params.id);
+    const { stream, record } = await fileService.download(req.params.id, req.user!.id, req.user!.roleName);
     res.setHeader("Content-Type", record.mimeType);
     res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));
     res.setHeader("Content-Length", record.fileSize);
@@ -101,7 +111,7 @@ router.get("/download/:entityType/:entityId/:fieldName", authMiddleware, async (
     const { entityType, entityId, fieldName } = req.params;
     const access = await fileService.checkEntityAccess(entityType, entityId, req.user!.id, req.user!.roleName);
     if (!access) return res.status(403).json({ error: "Access denied" });
-    const { stream, record } = await fileService.downloadByField(entityType, entityId, fieldName);
+    const { stream, record } = await fileService.downloadByField(entityType, entityId, fieldName, req.user!.id, req.user!.roleName);
     res.setHeader("Content-Type", record.mimeType);
     res.setHeader("Content-Disposition", getContentDisposition(record.mimeType, record.fileName));
     res.setHeader("Content-Length", record.fileSize);

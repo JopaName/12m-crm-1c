@@ -19,7 +19,7 @@ export interface IStorageProvider {
   move(tempPath: string, targetDir: string, targetName: string): string;
   delete(fileUrl: string): Promise<void>;
   getFullPath(fileUrl: string): string;
-  createReadStream(fileUrl: string): fs.ReadStream;
+  createReadStream(fileUrl: string, start?: number, end?: number): fs.ReadStream;
   getFileSize(fileUrl: string): number;
   read(fileUrl: string): Promise<Buffer>;
 }

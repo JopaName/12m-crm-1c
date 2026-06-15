@@ -74,14 +74,17 @@ export class LocalStorageProvider implements IStorageProvider {
     return fs.promises.readFile(this.getFullPath(fileUrl));
   }
 
-  createReadStream(fileUrl: string): fs.ReadStream {
+  createReadStream(fileUrl: string, start?: number, end?: number): fs.ReadStream {
     var fullPath = this.getFullPath(fileUrl);
     if (!fs.existsSync(fullPath)) {
       var err = new Error("File not found on disk: " + fileUrl);
       (err as any).statusCode = 404;
       throw err;
     }
-    var stream = fs.createReadStream(fullPath, { highWaterMark: 64 * 1024 });
+    var options: any = { highWaterMark: 64 * 1024 };
+    if (start !== undefined) options.start = start;
+    if (end !== undefined) options.end = end;
+    var stream = fs.createReadStream(fullPath, options);
 
     var destroyed = false;
     stream.on("error", function(err: Error) {
@@ -107,6 +110,8 @@ export class LocalStorageProvider implements IStorageProvider {
 
     return stream;
   }
+
+
 
   getFileSize(fileUrl: string): number {
     const fullPath = this.getFullPath(fileUrl);

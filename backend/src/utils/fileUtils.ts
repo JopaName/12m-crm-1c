@@ -51,15 +51,21 @@ export function sanitizeFilename(name: string): string {
   if (Buffer.byteLength(name, "utf-8") > FILE_LIMITS.maxOriginalNameLength) {
     name = Buffer.from(name).slice(0, FILE_LIMITS.maxOriginalNameLength).toString("utf-8").replace(/\0/g, "");
   }
-  let result = "";
-  for (const ch of name) {
+  var result = "";
+  for (var i = 0; i < name.length; i++) {
+    var ch = name[i];
+    var code = name.charCodeAt(i);
+    if (code <= 0x1F || code === 0x7F) {
+      result += "_";
+      continue;
+    }
     result += CYRILLIC_MAP[ch] || ch;
   }
-  result = result.replace(/[<>:"\/\\|?*\x00-\x1f]/g, "_");
+  result = result.replace(/[<>:"/\\|?*]/g, "_");
   result = result.replace(/\s+/g, " ").trim();
   if (result.length > FILE_LIMITS.maxFileNameLength) {
-    const ext = path.extname(result);
-    const base = result.slice(0, FILE_LIMITS.maxFileNameLength - ext.length);
+    var ext = path.extname(result);
+    var base = result.slice(0, FILE_LIMITS.maxFileNameLength - ext.length);
     result = base + ext;
   }
   return result || "unnamed";
@@ -93,7 +99,7 @@ const ZIP_HEADER = Buffer.from([0x50, 0x4B, 0x03, 0x04]);
 
 export function validateFileContent(filePath: string, declaredMime: string): boolean {
   if (!fs.existsSync(filePath)) return false;
-  var fd: number | null = null;
+  var fd: number = -1;
   try {
     var buf = Buffer.alloc(16);
     fd = fs.openSync(filePath, "r");
@@ -124,7 +130,7 @@ export function validateFileContent(filePath: string, declaredMime: string): boo
   } catch (e) {
     return false;
   } finally {
-    if (fd !== null) {
+    if (fd >= 0) {
       try { fs.closeSync(fd); } catch { /* ignore */ }
     }
   }
