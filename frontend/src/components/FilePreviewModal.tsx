@@ -1,418 +1,243 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  X, Download, FileText, File, Image, Film, Music, Archive, AlertCircle, Loader2,
-  ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize, RotateCw
-} from "lucide-react";
-import {
-  fetchFileWithAuth, formatFileSize, categorizeFile, getFileExtension,
-  FileCategory, FileFetchResult, AppFileError, isUnsafePreview
-} from "../utils/fetchFile";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Editor from '@monaco-editor/react';
+import SignatureCanvas from 'react-signature-canvas';
+import ReactCrop, { type Crop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import toast from 'react-hot-toast';
 
-interface FilePreviewModalProps {
-  fileUrl: string;
-  fileName: string;
-  onClose: () => void;
+const TEXT_EXT = ['txt', 'csv', 'json', 'xml', 'md', 'yaml', 'yml', 'ini', 'cfg', 'log', 'env', 'sh', 'bat', 'ps1', 'js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'php', 'java', 'c', 'cpp', 'h', 'hpp', 'css', 'scss', 'less', 'html', 'htm', 'sql', 'go', 'rust'];
+const OFFICE_EXT = ['doc', 'docx', 'xls', 'xlsx'];
+const IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+const LANG_MAP: Record<string, string> = {
+  js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
+  py: 'python', rb: 'ruby', php: 'php', java: 'java',
+  c: 'c', cpp: 'cpp', h: 'c', hpp: 'cpp',
+  css: 'css', scss: 'scss', less: 'less', html: 'html', htm: 'html',
+  json: 'json', xml: 'xml', md: 'markdown', yaml: 'yaml', yml: 'yaml',
+  sh: 'shell', bat: 'bat', ps1: 'powershell',
+  sql: 'sql', go: 'go', rust: 'rust',
+};
+
+function getLang(ext: string): string {
+  return LANG_MAP[ext] || 'plaintext';
 }
 
-interface DocxPreviewProps {
-  blob: Blob;
-  fileName: string;
-}
+export default function FilePreviewModal({ file, onClose, token }: { file: any; onClose: () => void; token?: string | null }) {
+  const ext = file.fileName?.split('.').pop()?.toLowerCase() || '';
+  const isText = TEXT_EXT.includes(ext);
+  const isOffice = OFFICE_EXT.includes(ext);
+  const isImage = IMG_EXT.includes(ext);
+  const isPdf = ext === 'pdf';
+  const isPython = ext === 'py';
 
-function DocxPreviewComponent({ blob, fileName }: DocxPreviewProps) {
-  var containerRef = useRef<HTMLDivElement>(null);
-  var [loading, setLoading] = useState(true);
-  var [error, setError] = useState(false);
+  const baseUrl = file.downloadUrl || file.fileUrl || ('/api/files/download/' + file.id);
+  const authUrl = token ? baseUrl + '?token=' + encodeURIComponent(token) : baseUrl;
+
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [edited, setEdited] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const [pyOut, setPyOut] = useState<string | null>(null);
+  const [pyRunning, setPyRunning] = useState(false);
+
+  const imgRef = useRef<HTMLImageElement>(null);
+  const sigRef = useRef<SignatureCanvas>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<Crop | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    try {
-      var mammoth = (window as any).mammoth;
-      if (!mammoth) {
-        import("mammoth").then(function(mod) {
-          renderDocx(mod, containerRef.current!, blob, setLoading, setError);
-        }).catch(function() {
-          setError(true);
-          setLoading(false);
-        });
-      } else {
-        renderDocx(mammoth, containerRef.current, blob, setLoading, setError);
-      }
-    } catch (e) {
-      setError(true);
-      setLoading(false);
-    }
-  }, [blob]);
-
-  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
-  if (error) return <FallbackPreview fileName={fileName} blob={blob} message="???? ?????????????? ???????????????????? ????????????????" />;
-  return <div ref={containerRef} className="w-full max-h-[70vh] overflow-auto bg-white p-6 rounded border border-gray-200 prose prose-sm max-w-none" />;
-}
-
-function renderDocx(mod: any, container: HTMLDivElement, blob: Blob, setLoading: (v: boolean) => void, setError: (v: boolean) => void) {
-  var reader = new FileReader();
-  reader.onload = function() {
-    var arrayBuffer = reader.result as ArrayBuffer;
-    mod.convertToHtml({ arrayBuffer: arrayBuffer })
-      .then(function(result: any) {
-        container.innerHTML = result.value || "<p>???????????? ????????????????</p>";
+    if (isOffice) { setLoading(false); return; }
+    const h: Record<string, string> = {};
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    fetch(authUrl, { headers: h })
+      .then(r => { if (!r.ok) throw Error(); return isText ? r.text() : r.blob(); })
+      .then(d => {
+        if (isText) { setContent(d as string); setEdited(d as string); }
+        else setBlobUrl(URL.createObjectURL(d as Blob));
         setLoading(false);
       })
-      .catch(function() {
-        setError(true);
-        setLoading(false);
-      });
-  };
-  reader.onerror = function() {
-    setError(true);
-    setLoading(false);
-  };
-  reader.readAsArrayBuffer(blob);
-}
+      .catch(() => { setError(true); setLoading(false); });
+  }, [file, token]);
 
-interface XlsxPreviewProps {
-  blob: Blob;
-  fileName: string;
-}
-
-function XlsxPreviewComponent({ blob, fileName }: XlsxPreviewProps) {
-  var [sheets, setSheets] = useState<Array<{ name: string; rows: any[][] }>>([]);
-  var [activeSheet, setActiveSheet] = useState(0);
-  var [loading, setLoading] = useState(true);
-  var [error, setError] = useState(false);
-
-  useEffect(() => {
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    const fd = new FormData();
+    fd.append('file', new Blob([edited], { type: 'text/plain' }), file.fileName);
     try {
-      var XLSX = (window as any).XLSX;
-      if (!XLSX) {
-        import("xlsx").then(function(mod) {
-          renderXLSX(mod, blob, setSheets, setLoading, setError);
-        }).catch(function() {
-          setError(true);
-          setLoading(false);
-        });
-      } else {
-        renderXLSX(XLSX, blob, setSheets, setLoading, setError);
+      const h: Record<string, string> = {};
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      const r = await fetch('/api/files/' + file.id, { method: 'PUT', headers: h, body: fd });
+      if (!r.ok) throw Error();
+      setContent(edited);
+      setEditing(false);
+      toast.success('Saved');
+    } catch {
+      toast.error('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }, [edited, file, token]);
+
+  const handleRunPython = useCallback(async () => {
+    setPyRunning(true);
+    setPyOut(null);
+    try {
+      const h: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      const r = await fetch('/api/files/execute', { method: 'POST', headers: h, body: JSON.stringify({ code: editing ? edited : content }) });
+      const d = await r.json();
+      if (d.error) setPyOut('Error: ' + d.error);
+      else setPyOut((d.stdout || '') + (d.stderr ? '\nStderr:\n' + d.stderr : '') + '\nExit code: ' + d.exitCode);
+    } catch {
+      setPyOut('Network error');
+    } finally {
+      setPyRunning(false);
+    }
+  }, [editing, edited, content, token]);
+
+  const handleSaveImage = useCallback(async () => {
+    if (!completedCrop || !imgRef.current) return;
+    const canvas = document.createElement('canvas');
+    const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
+    const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+    canvas.width = completedCrop.width * scaleX;
+    canvas.height = completedCrop.height * scaleY;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(
+      imgRef.current,
+      completedCrop.x * scaleX, completedCrop.y * scaleY,
+      completedCrop.width * scaleX, completedCrop.height * scaleY,
+      0, 0,
+      completedCrop.width * scaleX, completedCrop.height * scaleY,
+    );
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      setSaving(true);
+      const fd = new FormData();
+      fd.append('file', blob, file.fileName);
+      try {
+        const h: Record<string, string> = {};
+        if (token) h['Authorization'] = 'Bearer ' + token;
+        const r = await fetch('/api/files/' + file.id, { method: 'PUT', headers: h, body: fd });
+        if (!r.ok) throw Error();
+        toast.success('Saved');
+      } catch {
+        toast.error('Save failed');
+      } finally {
+        setSaving(false);
       }
-    } catch (e) {
-      setError(true);
-      setLoading(false);
-    }
-  }, [blob]);
+    }, 'image/png');
+  }, [completedCrop, file, token]);
 
-  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
-  if (error) return <FallbackPreview fileName={fileName} blob={blob} message="???? ?????????????? ???????????????????? ??????????????" />;
-  if (sheets.length === 0) return <div className="text-gray-400 text-sm py-8 text-center">???????? ????????</div>;
-
-  var sheet = sheets[activeSheet];
-
-  return (
-    <div className="w-full max-h-[70vh] overflow-auto bg-white rounded border border-gray-200">
-      {sheets.length > 1 && (
-        <div className="flex gap-1 p-2 border-b border-gray-200 bg-gray-50 sticky top-0 z-10 flex-wrap">
-          {sheets.map(function(s, i) {
-            return (
-              <button key={i}
-                onClick={function() { setActiveSheet(i); }}
-                className={"px-3 py-1.5 text-xs rounded " + (i === activeSheet ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100")}>
-                {s.name}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <table className="w-full text-xs">
-        <tbody>
-          {sheet.rows.map(function(row, ri) {
-            return (
-              <tr key={ri} className={ri === 0 ? "bg-gray-100 font-semibold" : ""}>
-                {row.map(function(cell, ci) {
-                  return (
-                    <td key={ci} className="border border-gray-200 px-2 py-1 whitespace-nowrap">
-                      {String(cell ?? "")}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function renderXLSX(mod: any, blob: Blob, setSheets: any, setLoading: (v: boolean) => void, setError: (v: boolean) => void) {
-  var reader = new FileReader();
-  reader.onload = function() {
+  const handleSaveSignature = useCallback(async () => {
+    if (!sigRef.current || sigRef.current.isEmpty()) return;
+    const dataUrl = sigRef.current.toDataURL('image/png');
+    const blob = await (await fetch(dataUrl)).blob();
+    setSaving(true);
+    const fd = new FormData();
+    fd.append('file', blob, 'signature.png');
     try {
-      var wb = mod.read(reader.result, { type: "array" });
-      var result = wb.SheetNames.map(function(name: string) {
-        var ws = wb.Sheets[name];
-        var rows = mod.utils.sheet_to_json(ws, { header: 1, defval: "" });
-        return { name: name, rows: rows };
-      });
-      setSheets(result);
-      setLoading(false);
-    } catch (e) {
-      setError(true);
-      setLoading(false);
+      const h: Record<string, string> = {};
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      const r = await fetch('/api/files/' + file.id, { method: 'PUT', headers: h, body: fd });
+      if (!r.ok) throw Error();
+      toast.success('Signature saved');
+    } catch {
+      toast.error('Save failed');
+    } finally {
+      setSaving(false);
     }
-  };
-  reader.onerror = function() {
-    setError(true);
-    setLoading(false);
-  };
-  reader.readAsArrayBuffer(blob);
-}
+  }, [file, token]);
 
-function FallbackPreview({ fileName, blob, message }: { fileName: string; blob?: Blob; message: string }) {
-  var ext = getFileExtension(fileName);
-  return (
-    <div className="flex flex-col items-center justify-center py-12 px-6">
-      <File className="w-16 h-16 text-gray-300 mb-4" />
-      <p className="text-sm text-gray-500 mb-1">{message}</p>
-      <p className="text-xs text-gray-400">.{ext} ?? {blob ? formatFileSize(blob.size) : ""}</p>
-    </div>
-  );
-}
-
-function OtherFilePreview({ fileName, fileSize }: { fileName: string; fileSize: number }) {
-  var ext = getFileExtension(fileName).toUpperCase() || "?";
-  var iconMap: Record<string, React.ReactNode> = {
-    ZIP: <Archive className="w-12 h-12 text-amber-500" />,
-    RAR: <Archive className="w-12 h-12 text-amber-600" />,
-    "7Z": <Archive className="w-12 h-12 text-amber-700" />,
-    EXE: <FileText className="w-12 h-12 text-gray-500" />,
-    PSD: <Image className="w-12 h-12 text-blue-500" />,
-    DWG: <FileText className="w-12 h-12 text-red-500" />,
-    AI: <FileText className="w-12 h-12 text-orange-500" />,
-  };
-  var icon = iconMap[ext] || <File className="w-12 h-12 text-gray-400" />;
+  const ofUrl = isOffice ? 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(authUrl) : '';
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6">
-      <div className="mb-4">{icon}</div>
-      <p className="text-sm font-medium text-gray-700 mb-1">.{ext}</p>
-      <p className="text-xs text-gray-400 mb-4">{formatFileSize(fileSize)}</p>
-      <p className="text-xs text-gray-400">???????????????????????? ???????????????????? ?????? ?????????? ???????? ????????????</p>
-    </div>
-  );
-}
-
-function UnsafeFilePreview({ fileName, fileSize, mimeType }: { fileName: string; fileSize: number; mimeType: string }) {
-  var ext = getFileExtension(fileName).toUpperCase() || "?";
-  return (
-    <div className="flex flex-col items-center justify-center py-12 px-6">
-      <AlertCircle className="w-16 h-16 text-amber-400 mb-4" />
-      <h4 className="text-sm font-semibold text-gray-700 mb-1">????????????? ??? ???????????????????? ????????????????</h4>
-      <p className="text-xs text-gray-400 text-center max-w-md mb-1">
-        ???? ??? ?????????? ?????? ??? ????????? ??????? ????????????????????? ?????? ? ??? ??????????????? ????????? ?????????? ? ??? ???????????? ??????. ???????????????? ???????? ??? ?????????? ??????????????.
-      </p>
-      <p className="text-xs text-gray-400">.{ext} ?? {formatFileSize(fileSize)}</p>
-    </div>
-  );
-}
-
-export default function FilePreviewModal({ fileUrl, fileName, onClose }: FilePreviewModalProps) {
-  var [result, setResult] = useState<FileFetchResult | null>(null);
-  var [loading, setLoading] = useState(true);
-  var [error, setError] = useState<string | null>(null);
-  var [blobUrl, setBlobUrl] = useState<string | null>(null);
-  var [zoom, setZoom] = useState(1);
-  var [rotation, setRotation] = useState(0);
-  var [page, setPage] = useState(0);
-  var [showToolbar, setShowToolbar] = useState(true);
-
-  var category = result ? categorizeFile(result.mimeType, result.fileName) : null;
-  var ext = getFileExtension(fileName);
-
-  var loadFile = useCallback(function() {
-    setLoading(true);
-    setError(null);
-    if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
-
-    fetchFileWithAuth(fileUrl)
-      .then(function(r) {
-        setResult(r);
-        var url = URL.createObjectURL(r.blob);
-        setBlobUrl(url);
-        setLoading(false);
-      })
-      .catch(function(err) {
-        if (err instanceof AppFileError) {
-          if (err.statusCode === 401) {
-            setError("?????????? ???????????? ??????? ??????????????????. ???????????????????? ??????????.");
-            return;
-          }
-          setError(err.message);
-        } else {
-          setError("???????????? ???????????????? ??????????");
-        }
-        setLoading(false);
-      });
-  }, [fileUrl]);
-
-  useEffect(function() {
-    loadFile();
-    return function() {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
-  }, []);
-
-  useEffect(function() {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return function() { document.removeEventListener("keydown", handleKey); };
-  }, [onClose]);
-
-  var handleDownload = function() {
-    if (!result) return;
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(result.blob);
-    a.download = result.fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
-  };
-
-  var content: React.ReactNode = null;
-
-  if (loading) {
-    content = (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500 mb-3" />
-        <p className="text-sm text-gray-400">????????????????...</p>
-      </div>
-    );
-  } else if (error) {
-    content = (
-      <div className="flex flex-col items-center justify-center py-16">
-        <AlertCircle className="w-10 h-10 text-red-400 mb-3" />
-        <p className="text-sm text-red-500">{error}</p>
-        <button onClick={loadFile} className="mt-4 px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700">
-          ??????????????????
-        </button>
-      </div>
-    );
-  } else if (result && blobUrl) {
-    var unsafe = isUnsafePreview(result.mimeType, result.fileName);
-    if (unsafe) {
-      content = <UnsafeFilePreview fileName={result.fileName} fileSize={result.fileSize} mimeType={result.mimeType} />;
-    } else if (category === "image") {
-      content = (
-        <div className="flex items-center justify-center overflow-auto" style={{ maxHeight: "calc(70vh - 40px)" }}>
-          <img
-            src={blobUrl}
-            alt={result.fileName}
-            className="object-contain transition-transform duration-200"
-            style={{ transform: "scale(" + zoom + ") rotate(" + rotation + "deg)", maxWidth: "100%" }}
-          />
-        </div>
-      );
-    } else if (category === "pdf") {
-      content = (
-        <iframe
-          src={blobUrl + "#toolbar=1"}
-          className="w-full h-[70vh] rounded"
-          title={result.fileName}
-        />
-      );
-    } else if (category === "docx") {
-      content = <DocxPreviewComponent blob={result.blob} fileName={result.fileName} />;
-    } else if (category === "xlsx") {
-      content = <XlsxPreviewComponent blob={result.blob} fileName={result.fileName} />;
-    } else if (category === "text") {
-      content = <TextPreviewComponent blob={result.blob} />;
-    } else if (category === "video") {
-      content = (
-        <video controls className="max-w-full max-h-[70vh] rounded" src={blobUrl}>
-          ?????? ?????????????? ???? ???????????????????????? ??????????
-        </video>
-      );
-    } else if (category === "audio") {
-      content = (
-        <div className="flex flex-col items-center justify-center py-8">
-          <Music className="w-16 h-16 text-gray-300 mb-4" />
-          <audio controls className="w-full max-w-md" src={blobUrl}>
-            ?????? ?????????????? ???? ???????????????????????? ??????????
-          </audio>
-        </div>
-      );
-    } else if (category === "archive") {
-      content = <OtherFilePreview fileName={result.fileName} fileSize={result.fileSize} />;
-    } else {
-      content = <OtherFilePreview fileName={result.fileName} fileSize={result.fileSize} />;
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col mx-4" onClick={function(e) { e.stopPropagation(); }}>
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col mx-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <File className="w-4 h-4 text-primary-500 shrink-0" />
-            <h3 className="text-sm font-semibold text-gray-800 truncate">{fileName || result?.fileName || "????????"}</h3>
-            {result && (
-              <span className="text-[11px] text-gray-400 shrink-0">{formatFileSize(result.fileSize)}</span>
+          <h3 className="text-sm font-semibold text-gray-800 truncate">{file.fileName}</h3>
+          <div className="flex items-center gap-2">
+            {isText && !editing && (
+              <button onClick={() => setEditing(true)} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">Edit</button>
             )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {category === "image" && (
+            {isText && editing && (
               <>
-                <button onClick={function() { setZoom(function(z) { return Math.min(z + 0.25, 3); }); }}
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500" title="????????????????????"><ZoomIn className="w-4 h-4" /></button>
-                <button onClick={function() { setZoom(function(z) { return Math.max(z - 0.25, 0.25); }); }}
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500" title="????????????????"><ZoomOut className="w-4 h-4" /></button>
-                <button onClick={function() { setRotation(function(r) { return r + 90; }); }}
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500" title="??????????????????"><RotateCw className="w-4 h-4" /></button>
-                <button onClick={function() { setZoom(1); setRotation(0); }}
-                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500" title="????????????????"><Maximize className="w-4 h-4" /></button>
-                <span className="w-px h-4 bg-gray-200 mx-1" />
+                <button onClick={() => { setEdited(content); setEditing(false); }} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">Cancel</button>
+                <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">{saving ? 'Saving...' : 'Save'}</button>
               </>
             )}
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs font-medium transition-colors"
-              title="??????????????"
-            >
-              <Download className="w-3.5 h-3.5" />??????????????
-            </button>
-            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 ml-1 transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            {isImage && completedCrop && (
+              <button onClick={handleSaveImage} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">{saving ? 'Saving...' : 'Save Crop'}</button>
+            )}
+            {isPdf && (
+              <button onClick={handleSaveSignature} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">{saving ? 'Saving...' : 'Save Signature'}</button>
+            )}
+            {isPython && (
+              <button onClick={handleRunPython} disabled={pyRunning} className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs">{pyRunning ? 'Running...' : 'Run Code'}</button>
+            )}
+            <a href={authUrl} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">Download</a>
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 ml-1">???</button>
           </div>
         </div>
+        <div className="flex-1 overflow-auto p-4 min-h-[300px] flex items-center justify-center">
+          {loading && <p className="text-gray-400 text-sm">Loading...</p>}
+          {error && <p className="text-red-500 text-sm">Failed to load file</p>}
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-4 min-h-[300px] bg-gray-50/50">
-          {content}
+          {!loading && !error && isText && (
+            <div className="w-full h-[65vh] border border-gray-200 rounded overflow-hidden">
+              <Editor
+                height="100%"
+                language={getLang(ext)}
+                value={editing ? edited : content}
+                onChange={(val) => { if (editing) setEdited(val || ''); }}
+                options={{
+                  readOnly: !editing,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  scrollBeyondLastLine: false,
+                }}
+              />
+            </div>
+          )}
+
+          {!loading && !error && isPython && pyOut !== null && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gray-900 text-green-400 text-xs p-3 max-h-32 overflow-auto font-mono">
+              {pyOut}
+            </div>
+          )}
+
+          {!loading && !error && isOffice && (
+            <iframe src={ofUrl} className="w-full h-[70vh] border border-gray-200 rounded" title="Office Preview" />
+          )}
+
+          {!loading && !error && isImage && blobUrl && (
+            <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)}>
+              <img ref={imgRef} src={blobUrl} alt={file.fileName} className="max-w-full max-h-[65vh] object-contain" />
+            </ReactCrop>
+          )}
+
+          {!loading && !error && isPdf && blobUrl && (
+            <div className="w-full relative">
+              <embed src={blobUrl} type="application/pdf" className="w-full h-[65vh] rounded border border-gray-200" />
+              <div className="mt-4 border border-gray-200 rounded p-2 bg-gray-50">
+                <p className="text-xs text-gray-500 mb-2">Signature</p>
+                <SignatureCanvas ref={sigRef} penColor="black" canvasProps={{ className: 'w-full h-32 border border-gray-300 rounded bg-white' }} />
+                <button onClick={() => sigRef.current?.clear()} className="mt-1 text-xs text-gray-500 hover:text-gray-700">Clear</button>
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && !isText && !isOffice && !isImage && !isPdf && (
+            <p className="text-gray-400 text-sm">Preview not available for this file type</p>
+          )}
         </div>
       </div>
     </div>
-  );
-}
-
-function TextPreviewComponent({ blob }: { blob: Blob }) {
-  var [text, setText] = useState("");
-  var [loading, setLoading] = useState(true);
-
-  useEffect(function() {
-    var reader = new FileReader();
-    reader.onload = function() { setText(reader.result as string || ""); setLoading(false); };
-    reader.onerror = function() { setText("???????????? ???????????? ??????????"); setLoading(false); };
-    reader.readAsText(blob);
-  }, [blob]);
-
-  if (loading) return <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>;
-
-  return (
-    <pre className="w-full text-xs text-gray-700 whitespace-pre-wrap break-all max-h-[70vh] overflow-auto bg-white p-4 rounded border border-gray-200 font-mono">
-      {text}
-    </pre>
   );
 }

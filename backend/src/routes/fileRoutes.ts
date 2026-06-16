@@ -7,6 +7,7 @@ import { FileService } from '../services/FileService';
 import { config } from '../config';
 import { getContentDisposition } from '../utils/fileUtils';
 import { logError } from '../utils/logger';
+import { execFile } from 'child_process';
 
 const router = Router();
 const fileService = new FileService();
@@ -149,6 +150,23 @@ router.get('/preview/:id', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
+router.put('/:id', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  let tempPath: string | null = null;
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    tempPath = req.file.path;
+    const result = await fileService.replace(req.params.id, tempPath, req.file.originalname, req.file.mimetype, req.file.size, req.user!.id, req.user!.roleName);
+    tempPath = null;
+    res.json(result);
+  } catch (e: any) {
+    if (tempPath && fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch { }
+    }
+    logError('File replace error', { source: 'fileRoutes.replace', metadata: { recordId: req.params.id, error: e.message } });
+    res.status(e.statusCode || 500).json({ error: e.message || 'Replace failed' });
+  }
+});
+
 router.get('/:id/meta', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const meta = await fileService.getMeta(req.params.id, req.user!.id, req.user!.roleName);
@@ -180,6 +198,37 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
   } catch (e: any) {
     logError('File delete error', { source: 'fileRoutes.delete', metadata: { recordId: req.params.id, error: e.message } });
     res.status(e.statusCode || 500).json({ error: e.message || 'Delete failed' });
+  }
+});
+
+router.post('/execute', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { code, stdin } = req.body;
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'code field is required' });
+    }
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const child = execFile(pythonCmd, ['-c', code], {
+      timeout: 10000,
+      maxBuffer: 1024 * 1024,
+    });
+    let stdout = '';
+    let stderr = '';
+    if (stdin) {
+      child.stdin?.write(stdin);
+      child.stdin?.end();
+    }
+    child.stdout?.on('data', (d) => { stdout += d; });
+    child.stderr?.on('data', (d) => { stderr += d; });
+    child.on('close', (exitCode) => {
+      res.json({ exitCode, stdout, stderr });
+    });
+    child.on('error', (err) => {
+      res.status(500).json({ error: err.message });
+    });
+  } catch (e: any) {
+    logError('Python execute error', { source: 'fileRoutes.execute', metadata: { error: e.message } });
+    res.status(500).json({ error: e.message || 'Execution failed' });
   }
 });
 
