@@ -69,6 +69,7 @@ export interface ListResult {
 
 export interface IFileService {
   upload(tempPath: string, originalName: string, declaredMime: string, fileSize: number, entityType: string, entityId: string, fieldName: string, userId: string): Promise<UploadResult>;
+  replace(id: string, tempPath: string, originalName: string, declaredMime: string, fileSize: number, userId: string, roleName: string): Promise<UploadResult>;
   download(id: string, userId: string, roleName: string): Promise<DownloadResult>;
   preview(id: string, userId: string, roleName: string, range?: string): Promise<PreviewResult>;
   getMeta(id: string, userId: string, roleName: string): Promise<FileMeta>;

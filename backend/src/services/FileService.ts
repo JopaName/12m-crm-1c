@@ -116,6 +116,88 @@ export class FileService implements IFileService {
     });
   }
 
+  async replace(id: string, tempPath: string, originalName: string, declaredMime: string, fileSize: number, userId: string, roleName: string): Promise<UploadResult> {
+    const record = await prisma.file.findUnique({ where: { id } });
+    if (!record) {
+      const err = new Error('File not found') as any;
+      err.statusCode = 404;
+      throw err;
+    }
+    if (record.deletedAt) {
+      const err = new Error('File has been deleted') as any;
+      err.statusCode = 410;
+      throw err;
+    }
+    const access = await this.checkAccess(id, userId, roleName);
+    if (!access) {
+      this.cleanupTemp(tempPath);
+      const err = new Error('Access denied') as any;
+      err.statusCode = 403;
+      throw err;
+    }
+    const extResult = this.validator.validateExtension(originalName);
+    if (!extResult.valid) {
+      this.cleanupTemp(tempPath);
+      const err = new Error(extResult.error!) as any;
+      err.statusCode = extResult.statusCode || 400;
+      throw err;
+    }
+    const sizeResult = this.validator.validateSize(fileSize);
+    if (!sizeResult.valid) {
+      this.cleanupTemp(tempPath);
+      const err = new Error(sizeResult.error!) as any;
+      err.statusCode = sizeResult.statusCode || 400;
+      throw err;
+    }
+    const magicResult = this.validator.validateMagicBytes(tempPath, declaredMime);
+    if (!magicResult.valid) {
+      this.cleanupTemp(tempPath);
+      const err = new Error(magicResult.error!) as any;
+      err.statusCode = magicResult.statusCode || 400;
+      throw err;
+    }
+    const checksum = await this.computeChecksum(tempPath);
+    await this.storage.delete(record.storageName);
+    const ext = path.extname(originalName) || '';
+    const storageName = crypto.randomUUID() + ext;
+    await this.storage.saveFromPath(storageName, tempPath);
+    const nextVersion = record.version + 1;
+    const updated = await prisma.file.update({
+      where: { id },
+      data: {
+        originalName,
+        storageName,
+        mimeType: declaredMime,
+        sizeBytes: fileSize,
+        checksum,
+        version: nextVersion,
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        entityType: 'File',
+        entityId: id,
+        action: 'REPLACE',
+        userId,
+        oldValue: JSON.stringify({ storageName: record.storageName, version: record.version }),
+        newValue: JSON.stringify({ storageName, version: nextVersion, originalName, fileSize, mimeType: declaredMime }),
+      },
+    });
+    return {
+      id: updated.id,
+      originalName: updated.originalName,
+      storageName: updated.storageName,
+      mimeType: updated.mimeType,
+      sizeBytes: updated.sizeBytes,
+      checksum: updated.checksum,
+      entityType: updated.entityType,
+      entityId: updated.entityId,
+      fieldName: updated.fieldName,
+      version: updated.version,
+      createdAt: updated.createdAt,
+    };
+  }
+
   async download(id: string, userId: string, roleName: string): Promise<DownloadResult> {
     const record = await prisma.file.findUnique({ where: { id } });
     if (!record) {
