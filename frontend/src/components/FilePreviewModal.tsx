@@ -4,6 +4,8 @@ import SignatureCanvas from 'react-signature-canvas';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import toast from 'react-hot-toast';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 const TEXT_EXT = ['txt', 'csv', 'json', 'xml', 'md', 'yaml', 'yml', 'ini', 'cfg', 'log', 'env', 'sh', 'bat', 'ps1', 'js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'php', 'java', 'c', 'cpp', 'h', 'hpp', 'css', 'scss', 'less', 'html', 'htm', 'sql', 'go', 'rust'];
 const OFFICE_EXT = ['doc', 'docx', 'xls', 'xlsx'];
@@ -36,6 +38,7 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
 
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [content, setContent] = useState('');
+  const [officeHtml, setOfficeHtml] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -51,15 +54,50 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
   const [completedCrop, setCompletedCrop] = useState<Crop | null>(null);
 
   useEffect(() => {
-    if (isOffice) { setLoading(false); return; }
     const h: Record<string, string> = {};
     if (token) h['Authorization'] = 'Bearer ' + token;
+    const ext2 = file.fileName?.split('.').pop()?.toLowerCase() || '';
+    const isDoc = ['doc', 'docx'].includes(ext2);
+    const isXls = ['xls', 'xlsx'].includes(ext2);
+    const isOfficeFile = isDoc || isXls;
+
     fetch(authUrl, { headers: h })
-      .then(r => { if (!r.ok) throw Error(); return isText ? r.text() : r.blob(); })
-      .then(d => {
-        if (isText) { setContent(d as string); setEdited(d as string); }
-        else setBlobUrl(URL.createObjectURL(d as Blob));
-        setLoading(false);
+      .then(async (r) => {
+        if (!r.ok) throw Error();
+        if (isText) return { type: 'text', data: await r.text() };
+        if (isOfficeFile) return { type: 'office', data: await r.arrayBuffer(), isDoc, isXls };
+        return { type: 'blob', data: await r.blob() };
+      })
+      .then(async (d: any) => {
+        if (d.type === 'text') { setContent(d.data); setEdited(d.data); }
+        else if (d.type === 'office') {
+          try {
+            if (d.isDoc) {
+              const result = await mammoth.convertToHtml({ arrayBuffer: d.data });
+              setOfficeHtml(result.value);
+            } else {
+              const wb = XLSX.read(d.data, { type: 'array' });
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              if (ws) {
+                const html = XLSX.utils.sheet_to_html(ws);
+                const styledHtml = '<div class="xlsx-table"><style>'
+                  + '.xlsx-table table { border-collapse: collapse; width: 100%; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }'
+                  + '.xlsx-table table td, .xlsx-table table th { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; white-space: nowrap; }'
+                  + '.xlsx-table table th { background: #f3f4f6; font-weight: 600; color: #374151; }'
+                  + '.xlsx-table table tr:nth-child(even) { background-color: #f9fafb; }'
+                  + '.xlsx-table table tr:hover { background-color: #e5e7eb; }'
+                  + '</style>' + html + '</div>';
+                setOfficeHtml(styledHtml);
+              } else {
+                setError(true);
+              }
+            }
+          } catch {
+            setError(true);
+          }
+          setLoading(false);
+        }
+        else { setBlobUrl(URL.createObjectURL(d.data)); setLoading(false); }
       })
       .catch(() => { setError(true); setLoading(false); });
   }, [file, token]);
@@ -155,8 +193,6 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
     }
   }, [file, token]);
 
-  const ofUrl = isOffice ? 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(authUrl) : '';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col mx-4" onClick={e => e.stopPropagation()}>
@@ -182,7 +218,7 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
               <button onClick={handleRunPython} disabled={pyRunning} className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs">{pyRunning ? 'Running...' : 'Run Code'}</button>
             )}
             <a href={authUrl} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs">Download</a>
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 ml-1">???</button>
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded text-gray-500 ml-1">X</button>
           </div>
         </div>
         <div className="flex-1 overflow-auto p-4 min-h-[300px] flex items-center justify-center">
@@ -213,7 +249,9 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
           )}
 
           {!loading && !error && isOffice && (
-            <iframe src={ofUrl} className="w-full h-[70vh] border border-gray-200 rounded" title="Office Preview" />
+            <div className="w-full h-[65vh] border border-gray-200 rounded overflow-auto bg-white p-4 text-sm"
+              dangerouslySetInnerHTML={{ __html: officeHtml || '<p class="text-gray-400">Failed to render preview</p>' }}
+            />
           )}
 
           {!loading && !error && isImage && blobUrl && (

@@ -81,4 +81,15 @@ router.delete("/items/:id", async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: "Failed to delete item" }); }
 });
 
+router.get("/transfers", async (_req: any, res: Response) => {
+  try {
+    const transfers = await prisma.warehouseTransfer.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(transfers);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to fetch transfers" });
+  }
+});
+
 export default router;

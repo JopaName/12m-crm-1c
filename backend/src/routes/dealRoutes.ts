@@ -49,4 +49,22 @@ router.put("/:id/status", async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.put("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const deal = await service.update(req.params.id, req.body, req.user!.id);
+    res.json(deal);
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to update deal" });
+  }
+});
+
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    await service.archive(req.params.id, req.user!.id);
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to delete deal" });
+  }
+});
+
 export default router;

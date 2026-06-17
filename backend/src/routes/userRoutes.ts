@@ -5,11 +5,12 @@ import { prisma } from "../db";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
 import { UserService } from "../services/UserService";
 import { loginSchema, createUserSchema, updateUserSchema } from "../validators";
+import { authLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 const service = new UserService();
 
-router.post("/login", async (req, res: Response) => {
+router.post("/login", authLimiter, async (req, res: Response) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
     const result = await service.login(email, password);

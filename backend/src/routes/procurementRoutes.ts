@@ -137,13 +137,16 @@ router.get("/download/:id", async (req: AuthRequest, res: Response) => {
     });
     if (!request || !request.fileUrl) return res.status(404).json({ error: "File not found" });
 
-    const filePath = path.join(__dirname, "../..", request.fileUrl);
+    const filePath = path.join(__dirname, "../..", request.fileUrl.replace(/^\//, ""));
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found on disk" });
 
     const fileName = request.fileName || path.basename(filePath);
-    res.setHeader("Content-Disposition", 'attachment; filename="' + fileName + '"');
+    const encodedName = encodeURIComponent(fileName);
+    res.type(path.extname(filePath));
+    res.setHeader("Content-Disposition", 'attachment; filename="' + encodedName + '"; filename*=UTF-8' + encodedName);
     fs.createReadStream(filePath).pipe(res);
   } catch (e: any) {
+    console.error("Download error:", e?.message || e);
     logError(e);
     res.status(500).json({ error: "Failed to download file" });
   }
