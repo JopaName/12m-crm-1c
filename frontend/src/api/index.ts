@@ -59,6 +59,8 @@ export const dealsAPI = {
   create: (data: any) => api.post("/deals", data),
   updateStatus: (id: string, status: string) =>
     api.put(`/deals/${id}/status`, { status }),
+  update: (id: string, data: any) => api.put(`/deals/${id}`, data),
+  delete: (id: string) => api.delete(`/deals/${id}`),
 };
 
 export const productsAPI = {

@@ -65,8 +65,8 @@ app.use(cors({ origin: config.cors.origin }));
 app.set("trust proxy", 1);
 app.use(morgan("dev"));
 
-app.use("/api/auth", authLimiter);
 app.use("/api", apiLimiter);
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(function(_req, res, next) { res.setHeader("Content-Security-Policy", "default-src 'self'; frame-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'"); next(); });
@@ -126,11 +126,11 @@ app.get("/api/reference", (_req, res) => {
   res.json(docs);
 });
 app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.use("/api", authMiddleware, crudRoutes);
 app.use("/api/chat", authMiddleware, chatRoutes);
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
 // Log unhandled errors globally
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);

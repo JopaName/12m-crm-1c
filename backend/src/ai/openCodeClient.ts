@@ -1,8 +1,8 @@
 import axios from "axios";
 
-const AI_BASE_URL = "https://opencode.ai/zen/v1";
-const AI_MODEL = "qwen3.5-plus";
-const DEFAULT_API_KEY = "sk-cdLb8Z2vT2ob7i5Dh7PL8InaOvoCIx8wyqdgBE4Onanbvj9TpoCMzpKunl15V1gm";
+const AI_BASE_URL = "https://api.deepseek.com/v1";
+const AI_MODEL = "deepseek-chat";
+const DEFAULT_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -18,22 +18,23 @@ export async function callAI(
   const key = apiKey || DEFAULT_API_KEY;
   try {
     const systemMsg = messages.find(m => m.role === "system")?.content || "";
-    const convMessages = messages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: m.content }));
+    const convMessages: { role: string; content: string }[] = [];
+    if (systemMsg) convMessages.push({ role: "system", content: systemMsg });
+    messages.filter(m => m.role !== "system").forEach(m => convMessages.push({ role: m.role, content: m.content }));
 
     const body: any = {
       model: AI_MODEL,
       max_tokens: maxTokens,
       messages: convMessages,
     };
-    if (systemMsg) body.system = systemMsg;
     if (temperature !== undefined) body.temperature = temperature;
 
     const res = await axios.post(
-      AI_BASE_URL + "/messages",
+      AI_BASE_URL + "/chat/completions",
       body,
       {
         headers: {
-          "x-api-key": key,
+          "Authorization": "Bearer " + key,
           "Content-Type": "application/json",
         },
         timeout: 120000,

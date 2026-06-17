@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 
-export async function logError(message: string, opts?: {
+export async function logError(message: any, opts?: {
   level?: string;
   source?: string;
   stack?: string;
@@ -9,10 +9,11 @@ export async function logError(message: string, opts?: {
   userId?: string;
 }) {
   try {
+    const msg = typeof message === "string" ? message : message?.message || JSON.stringify(message);
     await prisma.log.create({
       data: {
         level: opts?.level || "error",
-        message,
+        message: msg,
         source: opts?.source || "app",
         stack: opts?.stack || null,
         metadata: opts?.metadata ? JSON.stringify(opts.metadata) : null,
