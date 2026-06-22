@@ -21,7 +21,7 @@ export class RoleService extends BaseService {
       include: { _count: { select: { users: true } }, permissions: true },
       orderBy: { name: "asc" },
     });
-    return roles.map((r) => ({ ...r, permissions: this.parsePermissions(r) }));
+    return roles.map((r: any) => ({ ...r, permissions: this.parsePermissions(r) }));
   }
 
   async getById(id: string) {

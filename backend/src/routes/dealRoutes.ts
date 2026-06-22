@@ -54,6 +54,7 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
     const deal = await service.update(req.params.id, req.body, req.user!.id);
     res.json(deal);
   } catch (e: any) {
+    console.error("DEAL UPDATE ERROR:", e?.message || e, e?.stack?.substring(0, 200));
     res.status(e.statusCode || 500).json({ error: e.message || "Failed to update deal" });
   }
 });

@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { callAI, ChatMessage } from "../ai/openCodeClient";
+import { prisma } from "../db";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { executeTool } from "../ai/toolExecutor";
 import { ALL_TOOLS } from "../ai/tools";
@@ -9,7 +9,6 @@ import path from "path";
 import fs from "fs";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const uploadDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -34,7 +33,8 @@ async function getAllCrmData() {
     prisma.task.findMany({ select: TASK_SEL, take: 5 }),
     prisma.user.findMany({ select: USER_SEL, take: 5, where: { isArchived: false } }),
   ]);
-  return { products, clients, deals, tasks, users: users.map((u: any) => ({ ...u, apiKey: undefined })) };
+  const knowledgeDocs: any[] = [];
+  return { products, clients, deals, tasks, users: users.map((u: any) => ({ ...u, apiKey: undefined })), knowledgeBase: knowledgeDocs };
 }
 
 function formatCrmContext(data: any): string {

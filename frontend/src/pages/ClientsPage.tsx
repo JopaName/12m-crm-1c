@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { clientsAPI, dealsAPI, tasksAPI } from "../api";
+import { clientsAPI, dealsAPI, tasksAPI, authAPI } from "../api";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { Plus, Search, LayoutDashboard, List, User, Building2, Phone, Mail, CreditCard, ChevronDown, Edit3, X, ArrowRight, Inbox, Calendar, Briefcase, FileText, MapPin } from "lucide-react";
+import { Plus, Search, LayoutDashboard, List, User, Building2, Phone, Mail, CreditCard, ChevronDown, Edit3, Trash2, X, ArrowRight, Inbox, Calendar, Briefcase, FileText, MapPin, ArrowUpDown, ArrowUp, ArrowDown, Zap } from "lucide-react";
 
 const SOURCE_LABELS: Record<string, string> = { Direct: "Прямой", Referral: "Реферал", Website: "Сайт", Exhibition: "Выставка", Call: "Звонок" };
 const STATUS_LABELS: Record<string, string> = { New: "Новый", Active: "Активный", Inactive: "Неактивный", Blocked: "Заблокирован" };
@@ -20,27 +20,55 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSource, setFilterSource] = useState("");
+  const [filterManager, setFilterManager] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [detailClient, setDetailClient] = useState<any | null>(null);
+  const [editingClient, setEditingClient] = useState<any | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const { data: clients, isLoading } = useQuery({ queryKey: ["clients"], queryFn: () => clientsAPI.getAll().then((r) => r.data) });
   const { data: deals } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then((r) => r.data) });
+  const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => tasksAPI.getAll().then((r) => r.data) });
+  const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => authAPI.getUsers().then((r) => r.data) });
+  const userMap = useMemo(() => { const m: Record<string, string> = {}; (users || []).forEach((u: any) => { m[u.id] = u.firstName + " " + u.lastName; }); return m; }, [users]);
 
   const createMutation = useMutation({
     mutationFn: (d: any) => clientsAPI.create(d),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент создан"); setShowForm(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => clientsAPI.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент обновлён"); setDetailClient(null); setEditMode(false); },
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => clientsAPI.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент удалён"); setDetailClient(null); },
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+  });
 
   const active = useMemo(() => {
-    let items = clients || [];
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter((c: any) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(q) || (c.email || "").toLowerCase().includes(q) || (c.inn || "").includes(q));
-    }
+    let items = (clients || []).map((c: any) => ({ ...c, _dealCount: (deals || []).filter((d: any) => d.clientId === c.id).length, _managerName: userMap[c.createdById] || "" }));
+    if (searchQuery) { const q = searchQuery.toLowerCase(); items = items.filter((c: any) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(q) || (c.email || "").toLowerCase().includes(q) || (c.inn || "").includes(q)); }
     if (filterStatus) items = items.filter((c: any) => c.status === filterStatus);
     if (filterSource) items = items.filter((c: any) => c.source === filterSource);
+    if (filterManager) items = items.filter((c: any) => c.createdById === filterManager);
+    items.sort((a: any, b: any) => {
+      let va: any, vb: any;
+      if (sortBy === "deals") { va = a._dealCount; vb = b._dealCount; }
+      else if (sortBy === "manager") { va = a._managerName.toLowerCase(); vb = b._managerName.toLowerCase(); }
+      else if (sortBy === "createdAt") { va = a.createdAt || ""; vb = b.createdAt || ""; }
+      else if (sortBy === "status") { va = Object.keys(STATUS_LABELS).indexOf(a.status); vb = Object.keys(STATUS_LABELS).indexOf(b.status); }
+      else if (sortBy === "source") { va = Object.keys(SOURCE_LABELS).indexOf(a.source); vb = Object.keys(SOURCE_LABELS).indexOf(b.source); }
+      else { va = (a[sortBy] || "").toString().toLowerCase(); vb = (b[sortBy] || "").toString().toLowerCase(); }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
     return items;
-  }, [clients, searchQuery, filterStatus, filterSource]);
+  }, [clients, deals, users, userMap, searchQuery, filterStatus, filterSource, filterManager, sortBy, sortDir])
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -82,6 +110,44 @@ export default function ClientsPage() {
                   <ArrowRight className="w-4 h-4 text-gray-400" />
                 </div>
               ))}
+            </div>
+          </div>
+          {/* Tasks section */}
+          {(() => {
+            const clientDealIds = new Set(clientDeals.map((d: any) => d.id));
+            const clientTasks = (tasks || []).filter((t: any) => clientDealIds.has(t.dealId) && !t.isArchived);
+            return (
+              <div className="px-5 pb-2">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Задачи ({clientTasks.length})</h4>
+                {clientTasks.length === 0 && <p className="text-xs text-gray-400 py-3 text-center">Нет задач</p>}
+                <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                  {clientTasks.map((t: any) => (
+                    <div key={t.id} className="flex items-center gap-3 py-2 cursor-pointer hover:bg-gray-50" onClick={() => { setDetailClient(null); navigate("/tasks#" + encodeURIComponent(t.title)); }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
+                        <p className="text-xs text-gray-400">{t.status} — {fmtDate(t.createdAt)}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          {/* Edit/Delete bar */}
+          <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50">
+            <button onClick={() => { setEditingClient({ ...detailClient }); setEditMode(true); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors"><Edit3 className="w-3.5 h-3.5" />Редактировать</button>
+            <button onClick={() => { if (confirm("Удалить клиента \"" + detailClient.name + "\"?")) deleteMutation.mutate(detailClient.id); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" />Удалить</button>
+            <div className="flex-1" />
+          </div>
+          {/* Quick actions */}
+          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Быстрые действия</h4>
+            <div className="flex gap-2">
+              <button onClick={() => { setDetailClient(null); navigate("/deals?openCreate=1&clientId=" + detailClient.id + "&clientName=" + encodeURIComponent(detailClient.name)); }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"><Briefcase className="w-3.5 h-3.5" />Создать сделку</button>
+              <button onClick={() => { setDetailClient(null); navigate("/tasks?openCreate=1&clientId=" + detailClient.id + "&clientName=" + encodeURIComponent(detailClient.name)); }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"><FileText className="w-3.5 h-3.5" />Создать задачу</button>
             </div>
           </div>
           <div className="flex items-center justify-end px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
@@ -130,6 +196,22 @@ export default function ClientsPage() {
           <option value="">Все источники</option>
           {Object.entries(SOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
+        <select value={filterManager} onChange={(e) => setFilterManager(e.target.value)}
+          className="appearance-none px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20 cursor-pointer">
+          <option value="">Все менеджеры</option>
+          {(users || []).map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+        </select>
+        <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2 py-1">
+          <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none text-sm bg-transparent outline-none cursor-pointer text-gray-600 pr-1">
+            <option value="name">Название</option><option value="phone">Телефон</option><option value="email">Email</option><option value="inn">ИНН</option><option value="status">Статус</option><option value="source">Источник</option><option value="deals">Кол-во сделок</option><option value="manager">Ответственный</option><option value="createdAt">Дата создания</option>
+          </select>
+          <button onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+            className="p-0.5 rounded hover:bg-gray-100 transition-colors">
+            {sortDir === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-gray-500" /> : <ArrowDown className="w-3.5 h-3.5 text-gray-500" />}
+          </button>
+        </div>
         <div className="flex-1" />
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all font-medium shadow-sm"><Plus className="w-3.5 h-3.5" />Клиент</button>
@@ -154,11 +236,12 @@ export default function ClientsPage() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", c.status === "Active" ? "bg-green-100 text-green-700" : c.status === "Blocked" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600")}>{STATUS_LABELS[c.status]}</span>
-                    {clientDeals.length > 0 && <span className="text-[10px] text-primary-600 font-medium">{clientDeals.length} сделок</span>}
+                    {c._dealCount > 0 && <span className="text-[10px] text-primary-600 font-medium">{c._dealCount} сделок</span>}
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                   <span className="text-[10px] text-gray-400">{SOURCE_LABELS[c.source] || c.source} — {fmtDate(c.createdAt)}</span>
+                {c._managerName && <span className="text-[10px] text-gray-400 ml-2">{c._managerName}</span>}
                   <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
                 </div>
               </div>
@@ -168,17 +251,18 @@ export default function ClientsPage() {
       )}
 
       {showForm && <ClientFormModal onClose={() => setShowForm(false)} onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
+      {editMode && editingClient && <ClientFormModal onClose={() => { setEditMode(false); setEditingClient(null); }} onSubmit={(d) => updateMutation.mutate({ id: editingClient.id, data: d })} isPending={updateMutation.isPending} editing={editingClient} />}
     </div>
   );
 }
 
-function ClientFormModal({ onClose, onSubmit, isPending }: { onClose: () => void; onSubmit: (d: any) => void; isPending: boolean }) {
-  const [f, setF] = useState({ name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" });
+function ClientFormModal({ onClose, onSubmit, isPending, editing }: { onClose: () => void; onSubmit: (d: any) => void; isPending: boolean; editing?: any }) {
+  const [f, setF] = useState(editing ? { name: editing.name || "", phone: editing.phone || "", email: editing.email || "", inn: editing.inn || "", source: editing.source || "Direct", status: editing.status || "New", address: editing.address || "", notes: editing.notes || "" } : { name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" });
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-500" />Новый клиент</h3>
+          {editing ? <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Edit3 className="w-4 h-4 text-primary-500" />Редактировать клиента</h3> : <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-500" />Новый клиент</h3>}
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
         </div>
         <div className="px-5 py-4 space-y-3">
@@ -208,7 +292,7 @@ function ClientFormModal({ onClose, onSubmit, isPending }: { onClose: () => void
         <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
           <div className="flex-1" /><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
           <button onClick={() => { if (!f.name.trim()) { toast.error("Введите название"); return; } onSubmit(f); }} disabled={isPending}
-            className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm">{isPending ? "Создание..." : "Создать"}</button>
+            className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm">{isPending ? (editing ? "Сохранение..." : "Создание...") : (editing ? "Сохранить" : "Создать")}</button>
         </div>
       </div>
     </div>

@@ -38,7 +38,7 @@ export class UserService extends BaseService {
         id: user.id, email: user.email,
         firstName: user.firstName, lastName: user.lastName,
         role: { name: user.role.name, permissions: user.role.permissions || [] },
-        permissions: (user.role.permissions || []).map((p) => p.permission),
+        permissions: (user.role.permissions || []).map((p: any) => p.permission),
       },
     };
   }

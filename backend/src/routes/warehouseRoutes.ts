@@ -34,14 +34,18 @@ router.get("/categories", async (_req: AuthRequest, res: Response) => {
 
 router.post("/categories", async (req: AuthRequest, res: Response) => {
   try {
-    const cat = await prisma.warehouseCategory.create({ data: req.body });
+    const data: any = { ...req.body };
+    if (!data.parentId) delete data.parentId;
+    const cat = await prisma.warehouseCategory.create({ data });
     res.status(201).json(cat);
   } catch (e: any) { res.status(500).json({ error: "Failed to create category" }); }
 });
 
 router.put("/categories/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const cat = await prisma.warehouseCategory.update({ where: { id: req.params.id }, data: req.body });
+    const data: any = { ...req.body };
+    if (data.parentId === "" || data.parentId === null || data.parentId === undefined) delete data.parentId;
+    const cat = await prisma.warehouseCategory.update({ where: { id: req.params.id }, data });
     res.json(cat);
   } catch (e: any) { res.status(500).json({ error: "Failed to update category" }); }
 });
@@ -62,14 +66,25 @@ router.get("/categories/:categoryId/items", async (req: AuthRequest, res: Respon
 
 router.post("/categories/:categoryId/items", async (req: AuthRequest, res: Response) => {
   try {
-    const item = await prisma.warehouseStockItem.create({ data: { ...req.body, categoryId: req.params.categoryId } });
+    const data: any = { ...req.body, categoryId: req.params.categoryId };
+    if (data.quantity !== undefined) data.quantity = Number(data.quantity);
+    if (data.purchasePrice) data.purchasePrice = Number(data.purchasePrice);
+    if (data.salePrice) data.salePrice = Number(data.salePrice);
+    const item = await prisma.warehouseStockItem.create({ data });
     res.status(201).json(item);
   } catch (e: any) { res.status(500).json({ error: "Failed to create item" }); }
 });
 
 router.put("/items/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const item = await prisma.warehouseStockItem.update({ where: { id: req.params.id }, data: req.body });
+    const data: any = { ...req.body };
+    // Coerce numeric fields from string to number
+    if (data.quantity !== undefined) data.quantity = Number(data.quantity);
+    if (data.purchasePrice !== undefined && data.purchasePrice !== "") data.purchasePrice = Number(data.purchasePrice);
+    if (data.salePrice !== undefined && data.salePrice !== "") data.salePrice = Number(data.salePrice);
+    // Remove categoryId — relation field shouldn't be updated directly
+    delete data.categoryId;
+    const item = await prisma.warehouseStockItem.update({ where: { id: req.params.id }, data });
     res.json(item);
   } catch (e: any) { res.status(500).json({ error: "Failed to update item" }); }
 });

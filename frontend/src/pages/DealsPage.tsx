@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dealsAPI, clientsAPI, authAPI } from "../api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
@@ -46,8 +46,17 @@ export default function DealsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
   const [filterClient, setFilterClient] = useState("");
+  const [searchParams] = useSearchParams();
+  const [newDealClientId, setNewDealClientId] = useState("");
   const [editDealData, setEditDealData] = useState<any | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("openCreate") === "1") {
+      const cid = searchParams.get("clientId");
+      if (cid) { setNewDealClientId(cid); setShowForm(true); }
+    }
+  }, []);
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["deals"],
@@ -355,7 +364,7 @@ export default function DealsPage() {
           confirmDelete={confirmDelete}
           onClose={() => { setDetailDeal(null); setEditDealData(null); setConfirmDelete(false); }}
           onEdit={() => setEditDealData({ ...detailDeal, clientInn: clientMap[detailDeal.clientId]?.inn || "" })}
-          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data })}
+          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data: { dealNumber: data.dealNumber, dealType: data.dealType, clientId: data.clientId || undefined, clientInn: data.clientInn, expectedAmount: data.expectedAmount, responsibleAgentId: data.responsibleAgentId || undefined, description: data.description } })}
           onDelete={() => { if (confirmDelete) deleteMutation.mutate(detailDeal.id); else setConfirmDelete(true); }}
           onCancelEdit={() => setEditDealData(null)}
           onCancelDelete={() => setConfirmDelete(false)}
@@ -368,17 +377,17 @@ export default function DealsPage() {
         />
       )}
 
-      {showForm && <DealFormModal onClose={() => setShowForm(false)} clients={clients} users={users}
+      {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} clients={clients} users={users} initialClientId={newDealClientId}
         onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
 
     </div>
   );
 }
 
-function DealFormModal({ onClose, clients, users, onSubmit, isPending }: {
+function DealFormModal({ onClose, clients, users, onSubmit, isPending, initialClientId }: {
   onClose: () => void; clients?: any[]; users?: any[]; onSubmit: (d: any) => void; isPending: boolean;
 }) {
-  const [f, setF] = useState({ clientId: "", clientInn: "", dealType: "Sale", expectedAmount: 0, description: "", responsibleAgentId: "" });
+  const [f, setF] = useState({ clientId: initialClientId || "", clientInn: initialClientId ? (clients?.find((c: any) => c.id === initialClientId)?.inn || "") : "", dealType: "Sale", expectedAmount: 0, description: "", responsibleAgentId: "" });
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -546,7 +555,7 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
               <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Описание</label>
                 <textarea value={edit.description || ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 resize-none" rows={2} /></div>
               <div className="flex gap-2 pt-1">
-                <button onClick={() => onSaveEdit(edit)} disabled={isPending}
+                <button onClick={() => onSaveEdit({ ...edit, clientId: edit.clientId || undefined })} disabled={isPending}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"><Save className="w-3.5 h-3.5" />{isPending ? "Сохранение..." : "Сохранить"}</button>
                 <button onClick={onCancelEdit} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
               </div>
@@ -670,10 +679,12 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50 shrink-0">
-          {canDelete && !edit && (
-            confirmDelete ? (
+        {/* Edit/Delete bar — same style as client modal */}
+        {!edit && (
+          <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50 shrink-0">
+            <button onClick={onEdit} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors">
+              <Edit3 className="w-3.5 h-3.5" />Редактировать</button>
+            {confirmDelete ? (
               <>
                 <span className="text-xs text-red-600 font-medium">Удалить сделку?</span>
                 <button onClick={onDelete} disabled={isPending}
@@ -681,17 +692,16 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
                 <button onClick={onCancelDelete} className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-300 transition-colors">Нет</button>
               </>
             ) : (
-              <button onClick={onDelete}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                <Trash2 className="w-3 h-3" />Удалить</button>
-            )
-          )}
+              <button onClick={onDelete} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />Удалить</button>
+            )}
+            <div className="flex-1" />
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50 shrink-0">
           <div className="flex-1" />
-          {canEdit && !edit && (
-            <button onClick={onEdit}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all">
-              <Edit3 className="w-3.5 h-3.5" />Редактировать</button>
-          )}
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Закрыть</button>
         </div>
       </div>
