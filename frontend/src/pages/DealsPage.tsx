@@ -478,6 +478,7 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
   users?: any[]; clients?: any[];
 }) {
   const [edit, setEdit] = useState(editDealData || null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Fetch full deal details for cross-linked data
@@ -540,8 +541,10 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
               <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер сделки</label>
                 <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
               <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Клиент</label>
-                <select value={edit.clientId || ""} onChange={(e) => { const c = clients?.find((x: any) => x.id === e.target.value); setEdit({ ...edit, clientId: e.target.value, clientInn: c?.inn || "" }); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20">
-                  <option value="">Выберите клиента</option>{clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                <select value={edit.clientId || ""} onChange={(e) => { const c = clients?.find((x: any) => x.id === e.target.value); setEdit({ ...edit, clientId: e.target.value, clientInn: c?.inn || "" }); setValidationError(null); }} className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${validationError === "clientId" ? "border-red-400 ring-2 ring-red-200" : "border-gray-300 focus:ring-primary-500/20"}`}>
+                  <option value="">Выберите клиента</option>{clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              {validationError === "clientId" && <p className="text-red-500 text-xs mt-1">Клиент обязателен для сделки</p>}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Тип</label>
                   <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="Sale">Продажа</option><option value="ProjectSale">Проект</option><option value="Rent">Аренда</option></select></div>
