@@ -124,7 +124,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data: conversationsData } = useQuery({
+  const { data: conversationsData, isLoading: convLoading, isError: convError, error: convErrObj } = useQuery({
     queryKey: ["chat-conversations"],
     queryFn: () => chatAPI.getConversations().then((r) => r.data as Conversation[]),
     refetchInterval: 5000,
@@ -255,8 +255,20 @@ export default function ChatPage() {
 
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 text-sm">No conversations</div>
+          {convError ? (
+            <div className="p-8 text-center">
+              <svg className="w-10 h-10 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+              <p className="text-sm font-medium text-gray-600 mb-1">Ошибка загрузки</p>
+              <p className="text-xs text-gray-400 mb-3">{(convErrObj as any)?.message || "Не удалось загрузить чаты"}</p>
+              <button onClick={() => queryClient.invalidateQueries({ queryKey: ["chat-conversations"] })}
+                className="px-4 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700">Повторить</button>
+            </div>
+          ) : convLoading ? (
+            <div className="p-4 space-y-3">
+              {[1,2,3].map(i => <div key={i} className="flex items-center gap-3 animate-pulse"><div className="w-10 h-10 bg-gray-200 rounded-full" /><div className="flex-1 space-y-1.5"><div className="h-3 bg-gray-200 rounded w-3/4" /><div className="h-2 bg-gray-100 rounded w-1/2" /></div></div>)}
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm">{search ? "Ничего не найдено" : "Нет чатов"}</div>
           ) : (
             filteredConversations.map((conv) => {
               const isActive = selectedUserId === conv.user.id;
