@@ -69,7 +69,7 @@ export default function WarehousePage() {
               <button onClick={() => setShowCatForm(true)} className="p-1 hover:bg-primary-50 rounded text-primary-500"><Plus className="w-4 h-4" /></button>
             </div>
             <div className="p-2 max-h-[60vh] overflow-y-auto">
-              {rootCategories.map((cat: any) => <CatNode key={cat.id} c={cat} all={categories || []} sel={selectedCategory} onSel={setSelectedCategory} onDel={(id) => { if (confirm("Удалить?")) deleteCat.mutate(id); }} onEdit={(c: any) => { setEditingCat(c); setCategoryForm({ name: c.name, parentId: c.parentId || "" }); setShowCatForm(true); }} />)}
+              {rootCategories.map((cat: any) => <CatNode key={cat.id} c={cat} all={categories || []} sel={selectedCategory} onSel={setSelectedCategory} onDel={(id, name, childCount) => { if (confirm(`Удалить каталог «${name}»` + (childCount > 0 ? ` и ${childCount} вложенных` : "") + "?")) deleteCat.mutate(id); }} onEdit={(c: any) => { setEditingCat(c); setCategoryForm({ name: c.name, parentId: c.parentId || "" }); setShowCatForm(true); }} />)}
               {(!categories || categories.length === 0) && <p className="text-xs text-gray-400 text-center py-4">Нет каталогов</p>}
             </div>
           </div>
@@ -234,7 +234,7 @@ function CatNode({ c, all, sel, onSel, onDel, onEdit, depth = 0 }: any) {
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={e => { e.stopPropagation(); onEdit(c); }} className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" title="Редактировать"><Edit3 className="w-3.5 h-3.5" /></button>
-            <button onClick={e => { e.stopPropagation(); onDel(c.id); }} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={e => { e.stopPropagation(); onDel(c.id, c.name, kids.length); }} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
       </div>
       {open && kids.map((k: any) => <CatNode key={k.id} c={k} all={all} sel={sel} onSel={onSel} onDel={onDel} onEdit={onEdit} depth={depth + 1} />)}
