@@ -19,8 +19,6 @@ const ALL_MENU_ITEMS = [
   { path: "/tasks", label: "Задачи", icon: "\u2705", permission: "tasks:view" },
   { path: "/users", label: "Пользователи", icon: "\u{1F464}", permission: "users:view" },
   { path: "/roles", label: "Роли", icon: "\u{1F510}", permission: "roles:view" },
-  { path: "/audit", label: "Журнал", icon: "\u{1F4DD}", permission: "audit:view" },
-  { path: "/logs", label: "\u041B\u043E\u0433\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435", icon: "\u{1F4DC}", permission: "" },
 ];
 
 function getStorageKey(userId: string) {

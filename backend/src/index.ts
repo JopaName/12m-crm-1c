@@ -14,6 +14,8 @@ import { Server as SocketIOServer } from "socket.io";
 import { authMiddleware } from "./middleware/auth";
 import { initializeScheduledTasks } from "./services/scheduler";
 import { setupTelemetrySocket } from "./services/telemetrySocket";
+import { setupChatSocket } from "./chat/chatSocket";
+import { setChatIO } from "./services/ChatService";
 import clientRoutes from "./routes/clientRoutes";
 import clientActionRoutes from "./routes/clientActionRoutes";
 import dealRoutes from "./routes/dealRoutes";
@@ -148,6 +150,8 @@ async function main() {
     await ensureAdminUser();
     initializeScheduledTasks();
     setupTelemetrySocket(io);
+    setupChatSocket(io);
+    setChatIO(io);
     httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`12M CRM Server running on port ${PORT}`);
     });

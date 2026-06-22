@@ -35,4 +35,23 @@ router.get("/billing", async (_req: AuthRequest, res: Response) => {
   }
 });
 
+router.put("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const data = req.body;
+    const result = await service.update(req.params.id, data, req.user!.id);
+    res.json(result);
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to update" });
+  }
+});
+
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    await service.archive(req.params.id, req.user!.id);
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(e.statusCode || 500).json({ error: e.message || "Failed to delete" });
+  }
+});
+
 export default router;

@@ -132,13 +132,15 @@ export class BaseService {
     });
 
     if (this.audit.create) {
-      await createAuditLog({
-        entityType: this.entityName,
-        entityId: record.id,
-        action: "CREATE",
-        userId,
-        newValue: record,
-      }).catch(() => {});
+      try {
+        await createAuditLog({
+          entityType: this.entityName,
+          entityId: record.id,
+          action: "CREATE",
+          userId,
+          newValue: record,
+        });
+      } catch {}
     }
 
     return record;
@@ -153,14 +155,16 @@ export class BaseService {
     });
 
     if (this.audit.update) {
-      await createAuditLog({
-        entityType: this.entityName,
-        entityId: id,
-        action: "UPDATE",
-        userId,
-        oldValue: old,
-        newValue: record,
-      }).catch(() => {});
+      try {
+        await createAuditLog({
+          entityType: this.entityName,
+          entityId: id,
+          action: "UPDATE",
+          userId,
+          oldValue: old,
+          newValue: record,
+        });
+      } catch {}
     }
 
     return record;

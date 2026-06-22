@@ -1,47 +1,61 @@
 import { Router, Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import { ChatService } from "../services/ChatService";
-import { sendMessageSchema } from "../validators";
 
 const router = Router();
 const service = new ChatService();
 
 router.get("/conversations", async (req: AuthRequest, res: Response) => {
-  try {
-    const conversations = await service.getConversations(req.user!.id);
-    res.json(conversations);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch conversations" });
-  }
+  try { res.json(await service.getConversations(req.user!.id)); } catch { res.status(500).json({ error: "Failed" }); }
 });
-
 router.get("/messages/:userId", async (req: AuthRequest, res: Response) => {
-  try {
-    const messages = await service.getMessages(req.user!.id, req.params.userId);
-    res.json(messages);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch messages" });
-  }
+  try { res.json(await service.getMessages(req.user!.id, req.params.userId)); } catch { res.status(500).json({ error: "Failed" }); }
 });
-
+router.get("/room/:roomId/messages", async (req: AuthRequest, res: Response) => {
+  try { res.json(await service.getRoomMessages(req.params.roomId)); } catch { res.status(500).json({ error: "Failed" }); }
+});
 router.post("/send", async (req: AuthRequest, res: Response) => {
   try {
-    const { receiverId, content } = sendMessageSchema.parse(req.body);
-    const message = await service.sendMessage(req.user!.id, receiverId, content);
-    res.status(201).json(message);
-  } catch (e: any) {
-    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
-    res.status(500).json({ error: e?.message || "Failed to send message" });
-  }
+    const { receiverId, content, replyToId, entityType, entityId, entityTitle } = req.body;
+    if (!receiverId || !content?.trim()) return res.status(400).json({ error: "required" });
+    res.status(201).json(await service.sendMessage(req.user!.id, receiverId, content.trim(), replyToId, entityType, entityId, entityTitle));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
-
-router.put("/read/:userId", async (req: AuthRequest, res: Response) => {
+router.post("/room/send", async (req: AuthRequest, res: Response) => {
   try {
-    const result = await service.markAsRead(req.params.userId, req.user!.id);
-    res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to mark as read" });
-  }
+    const { roomId, content, replyToId } = req.body;
+    if (!roomId || !content?.trim()) return res.status(400).json({ error: "required" });
+    res.status(201).json(await service.sendGroupMessage(req.user!.id, roomId, content.trim(), replyToId));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.put("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const { content } = req.body;
+    res.json(await service.editMessage(req.params.id, req.user!.id, content));
+  } catch (e: any) { res.status(403).json({ error: e.message }); }
+});
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    res.json(await service.deleteMessage(req.params.id, req.user!.id));
+  } catch (e: any) { res.status(403).json({ error: e.message }); }
+});
+router.post("/forward", async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId, toUserId } = req.body;
+    res.status(201).json(await service.forwardMessage(messageId, req.user!.id, toUserId));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.post("/react", async (req: AuthRequest, res: Response) => {
+  try { res.json(await service.addReaction(req.body.messageId, req.user!.id, req.body.emoji)); } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.post("/rooms", async (req: AuthRequest, res: Response) => {
+  try { res.status(201).json(await service.createRoom(req.body.name || null, req.body.memberIds || [], req.user!.id)); } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.put("/read/:userId", async (req: AuthRequest, res: Response) => {
+  try { res.json(await service.markAsRead(req.params.userId, req.user!.id)); } catch { res.status(500).json({ error: "Failed" }); }
+});
+router.post("/read-message", async (req: AuthRequest, res: Response) => {
+  try { await service.markMessageRead(req.body.messageId); res.json({ ok: true }); } catch { res.status(500).json({ error: "Failed" }); }
 });
 
 export default router;

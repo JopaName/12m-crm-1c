@@ -382,7 +382,7 @@ export class FileService implements IFileService {
     ]);
 
     return {
-      files: files.map(f => ({
+      files: files.map((f: any) => ({
         id: f.id,
         originalName: f.originalName,
         storageName: f.storageName,
@@ -487,7 +487,7 @@ export class FileService implements IFileService {
           if (entry.name === 'temp') continue;
           walkDir(fullPath);
         } else if (entry.isFile()) {
-          const exists = records.some(r => r.storageName === entry.name || this.storage.getFullPath(r.storageName) === fullPath);
+          const exists = records.some((r: any) => r.storageName === entry.name || this.storage.getFullPath(r.storageName) === fullPath);
           if (!exists) {
             fs.unlinkSync(fullPath);
             deletedFiles++;

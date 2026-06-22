@@ -23,9 +23,19 @@ export const createClientSchema = z.object({
   actualAddress: z.string().max(1000).optional(),
   contactPerson: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
+  source: z.string().max(50).optional(),
+  status: z.string().max(50).optional(),
+  address: z.string().max(1000).optional(),
+  createdById: z.string().optional(),
 });
 
-export const updateClientSchema = createClientSchema.partial();
+export const updateClientSchema = createClientSchema.partial().extend({
+  isArchived: z.boolean().optional(),
+  source: z.string().max(50).optional(),
+  status: z.string().max(50).optional(),
+  address: z.string().max(1000).optional(),
+  createdById: z.string().optional(),
+});
 
 // --- Lead ---
 export const createLeadSchema = z.object({
@@ -104,6 +114,7 @@ export const createProductSchema = z.object({
 // --- Task ---
 export const createTaskSchema = z.object({
   title: z.string().min(1).max(500),
+  type: z.string().max(100).optional(),
   description: z.string().max(5000).optional(),
   assigneeId: z.string().min(1).optional(),
   dealId: z.string().optional(),
@@ -118,6 +129,7 @@ export const updateTaskSchema = z.object({
   priority: z.enum(["Low", "Medium", "High", "Critical"]).optional(),
   status: z.string().max(100).optional(),
   dueDate: dateField.optional(),
+  isArchived: z.boolean().optional(),
 });
 
 // --- Invoice ---
