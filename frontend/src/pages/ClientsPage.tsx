@@ -212,13 +212,25 @@ export default function ClientsPage() {
             {sortDir === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-gray-500" /> : <ArrowDown className="w-3.5 h-3.5 text-gray-500" />}
           </button>
         </div>
+        {(filterStatus || filterSource || filterManager || searchQuery) && (
+          <button onClick={() => { setSearchQuery(""); setFilterStatus(""); setFilterSource(""); setFilterManager(""); }}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
+            <X className="w-3 h-3" />Сбросить фильтры</button>
+        )}
         <div className="flex-1" />
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all font-medium shadow-sm"><Plus className="w-3.5 h-3.5" />Клиент</button>
       </div>
 
       {active.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-16 text-center text-gray-400"><Search className="w-12 h-12 mx-auto mb-3" /><p>{searchQuery ? "Ничего не найдено" : "Нет клиентов"}</p></div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-16 text-center text-gray-400">
+          <Search className="w-12 h-12 mx-auto mb-3" />
+          <p>{searchQuery || filterStatus || filterSource || filterManager ? "Ничего не найдено" : "Нет клиентов"}</p>
+          {(filterStatus || filterSource || filterManager || searchQuery) && (
+            <button onClick={() => { setSearchQuery(""); setFilterStatus(""); setFilterSource(""); setFilterManager(""); }}
+              className="mt-4 px-4 py-1.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700">Сбросить фильтры</button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {active.map((c: any) => {
