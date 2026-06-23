@@ -38,6 +38,7 @@ import taskRoutes from "./routes/taskRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import integrationRoutes from "./routes/integrationRoutes";
 import auditRoutes from "./routes/auditRoutes";
+import referralRoutes from "./routes/referralRoutes";
 import roleRoutes from "./routes/roleRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
@@ -118,6 +119,7 @@ app.use("/api/telemetry", authMiddleware, telemetryRoutes);
 app.use("/api/tasks", authMiddleware, taskRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 app.use("/api/integrations", authMiddleware, integrationRoutes);
+app.use("/api/referrals", referralRoutes); // /register is public, rest use authMiddleware internally
 app.use("/api/audit", authMiddleware, auditRoutes);
 app.use("/api/roles", authMiddleware, roleRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
