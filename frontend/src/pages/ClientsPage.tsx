@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clientsAPI, dealsAPI, tasksAPI, authAPI } from "../api";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, LayoutDashboard, List, User, Building2, Phone, Mail, CreditCard, ChevronDown, Edit3, Trash2, X, ArrowRight, Inbox, Calendar, Briefcase, FileText, MapPin, ArrowUpDown, ArrowUp, ArrowDown, Zap } from "lucide-react";
@@ -17,11 +17,10 @@ export default function ClientsPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("list");
   const [showForm, setShowForm] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "");
-  const [filterSource, setFilterSource] = useState(searchParams.get("source") || "");
-  const [filterManager, setFilterManager] = useState(searchParams.get("manager") || "");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterManager, setFilterManager] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [detailClient, setDetailClient] = useState<any | null>(null);
@@ -32,16 +31,6 @@ export default function ClientsPage() {
   const { data: deals } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then((r) => r.data) });
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => tasksAPI.getAll().then((r) => r.data) });
   const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => authAPI.getUsers().then((r) => r.data) });
-  // Sync filters to URL
-  useEffect(() => {
-    const p: Record<string, string> = {};
-    if (filterStatus) p.status = filterStatus;
-    if (filterSource) p.source = filterSource;
-    if (filterManager) p.manager = filterManager;
-    if (searchQuery) p.q = searchQuery;
-    setSearchParams(p, { replace: true });
-  }, [filterStatus, filterSource, filterManager, searchQuery]);
-
   const userMap = useMemo(() => { const m: Record<string, string> = {}; (users || []).forEach((u: any) => { m[u.id] = u.firstName + " " + u.lastName; }); return m; }, [users]);
 
   const createMutation = useMutation({
@@ -280,14 +269,9 @@ export default function ClientsPage() {
 }
 
 function ClientFormModal({ onClose, onSubmit, isPending, editing }: { onClose: () => void; onSubmit: (d: any) => void; isPending: boolean; editing?: any }) {
-  const [closeConfirm, setCloseConfirm] = useState(false);
-  const initialVals = useMemo(() => editing ? { name: editing.name || "", phone: editing.phone || "", email: editing.email || "", inn: editing.inn || "", source: editing.source || "Direct", status: editing.status || "New", address: editing.address || "", notes: editing.notes || "" } : { name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" }, []);
-  const DRAFT_KEY = editing ? `draft_client_edit_${editing.id}` : "draft_client_create";
-  const [f, setF] = useState(() => {
-    if (!editing) { const s = sessionStorage.getItem(DRAFT_KEY); if (s) try { return JSON.parse(s); } catch {} }
-    return editing ? { name: editing.name || "", phone: editing.phone || "", email: editing.email || "", inn: editing.inn || "", source: editing.source || "Direct", status: editing.status || "New", address: editing.address || "", notes: editing.notes || "" } : { name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" });
+  const [f, setF] = useState(editing ? { name: editing.name || "", phone: editing.phone || "", email: editing.email || "", inn: editing.inn || "", source: editing.source || "Direct", status: editing.status || "New", address: editing.address || "", notes: editing.notes || "" } : { name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" });
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (JSON.stringify(f) !== JSON.stringify(initialVals)) { setCloseConfirm(true); } else { onClose(); } }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
           {editing ? <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Edit3 className="w-4 h-4 text-primary-500" />Редактировать клиента</h3> : <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-500" />Новый клиент</h3>}
@@ -323,17 +307,6 @@ function ClientFormModal({ onClose, onSubmit, isPending, editing }: { onClose: (
             className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm">{isPending ? (editing ? "Сохранение..." : "Создание...") : (editing ? "Сохранить" : "Создать")}</button>
         </div>
       </div>
-    {closeConfirm && (
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-xl">
-        <div className="bg-white rounded-xl shadow-xl p-5 mx-8 border border-gray-200">
-          <p className="text-sm font-medium text-gray-800 mb-3">У вас есть несохранённые изменения. Закрыть форму?</p>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setCloseConfirm(false)} className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Продолжить</button>
-            <button onClick={onClose} className="px-4 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">Закрыть</button>
-          </div>
-        </div>
-      </div>
-    )}
     </div>
   );
 }
