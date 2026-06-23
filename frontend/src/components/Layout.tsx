@@ -17,6 +17,7 @@ const ALL_MENU_ITEMS = [
   { path: "/legal", label: "Договоры", icon: "\u{1F4C4}", permission: "legal:view" },
   { path: "/service", label: "Сервис", icon: "\u{1F6E0}\uFE0F", permission: "service:view" },
   { path: "/tasks", label: "Задачи", icon: "\u2705", permission: "tasks:view" },
+  { path: "/referrals", label: "Рефералы", icon: "\u{1F91D}", permission: "referrals:view" },
   { path: "/users", label: "Пользователи", icon: "\u{1F464}", permission: "users:view" },
   { path: "/roles", label: "Роли", icon: "\u{1F510}", permission: "roles:view" },
 ];

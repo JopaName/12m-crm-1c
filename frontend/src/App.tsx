@@ -19,6 +19,7 @@ import TasksPage from "./pages/TasksPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
 import ChatPage from "./pages/ChatPage";
+import ReferralPage from "./pages/ReferralPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import Layout from "./components/Layout";
 
