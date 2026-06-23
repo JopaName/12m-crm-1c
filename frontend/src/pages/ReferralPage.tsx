@@ -19,8 +19,10 @@ export default function ReferralPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const tab: Tab = (location.pathname.split("/").pop() || "tree") as Tab;
-  if (!SUB_NAV.find(s => s.k === tab)) { const t: Tab = "tree"; }
+  const pathSegments = location.pathname.split("/");
+  const lastSeg = pathSegments[pathSegments.length - 1] || "tree";
+  const tab: Tab = (lastSeg === "referrals" ? "tree" : lastSeg) as Tab;
+  
   const currentTab: Tab = SUB_NAV.find(s => s.k === tab) ? tab : "tree";
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
