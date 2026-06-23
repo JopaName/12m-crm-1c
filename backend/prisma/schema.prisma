@@ -62,7 +62,11 @@ model User {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   apiKey          String?
-
+  referrerId      String?
+  referrer        User?              @relation("Referral", fields: [referrerId], references: [id])
+  referrals       User[]             @relation("Referral")
+  referralCode    String?            @unique
+  referralEarnings ReferralEarning[]
   commissions           AgentCommissionRecord[]
   integrationLogs       IntegrationLog[]
   createdClients        Client[]                   @relation("ClientCreator")
@@ -171,6 +175,7 @@ model Deal {
   project           Project?
   rentContract      RentContract?
   legalDocuments    LegalDocument[]
+  referralEarnings  ReferralEarning[]
   invoices          Invoice[]
   payments          Payment[]
   productionOrders  ProductionOrder[]
@@ -820,6 +825,32 @@ model TelemetryReading {
   @@index([verificationStatus])
   @@index([deviceId])
   @@index([isArchived, deviceId, createdAt])
+}
+
+model ReferralCommissionConfig {
+  id          String   @id @default(cuid())
+  level       Int      @unique
+  percentage  Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ReferralEarning {
+  id          String   @id @default(cuid())
+  earnerId    String
+  earner      User     @relation(fields: [earnerId], references: [id])
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id])
+  sellerId    String
+  level       Int
+  amount      Float
+  percentage  Float
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  @@index([earnerId])
+  @@index([dealId])
 }
 
 model AgentCommissionRecord {
