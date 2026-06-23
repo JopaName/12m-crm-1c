@@ -1,24 +1,36 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
 import { referralAPI } from "../api";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { Users, DollarSign, Link, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid } from "lucide-react";
 
 type Tab = "tree" | "sales" | "earnings" | "invite" | "config";
 
+const SUB_NAV = [
+  { k: "tree", l: "Моя команда", i: Users, path: "/referrals" },
+  { k: "sales", l: "Мои продажи", i: TrendingUp, path: "/referrals/sales" },
+  { k: "earnings", l: "Реф. доход", i: DollarSign, path: "/referrals/earnings" },
+  { k: "invite", l: "Пригласить", i: UserPlus, path: "/referrals/invite" },
+] as { k: Tab; l: string; i: any; path: string }[];
+
 export default function ReferralPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("tree");
+  const tab: Tab = (location.pathname.split("/").pop() || "tree") as Tab;
+  if (!SUB_NAV.find(s => s.k === tab)) { const t: Tab = "tree"; }
+  const currentTab: Tab = SUB_NAV.find(s => s.k === tab) ? tab : "tree";
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
-  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => referralAPI.getMySales(), enabled: tab === "sales" });
-  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings(), enabled: tab === "earnings" });
-  const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: tab === "invite" });
-  const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: tab === "config" });
+  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => referralAPI.getMySales(), enabled: currentTab === "sales" });
+  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings(), enabled: currentTab === "earnings" });
+  const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: currentTab === "invite" });
+  const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: currentTab === "config" });
   const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
   const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
 
@@ -91,23 +103,20 @@ export default function ReferralPage() {
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* Sub-navigation */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-4 w-fit">
-        {([
-          { k: "tree", l: "Моя команда", i: <Users className="w-3.5 h-3.5" /> },
-          { k: "sales", l: "Мои продажи", i: <TrendingUp className="w-3.5 h-3.5" /> },
-          { k: "earnings", l: "Реферальный доход", i: <DollarSign className="w-3.5 h-3.5" /> },
-          { k: "invite", l: "Пригласить", i: <UserPlus className="w-3.5 h-3.5" /> },
-          ...(isAdmin ? [{ k: "config", l: "Комиссии", i: <Settings className="w-3.5 h-3.5" /> }] : []),
-        ] as { k: Tab; l: string; i: any }[]).map(t => (
-          <button key={t.k} onClick={() => setTab(t.k)} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (tab === t.k ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>{t.i}{t.l}</button>
+        {SUB_NAV.map(t => (
+          <button key={t.k} onClick={() => navigate(t.path)} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (currentTab === t.k ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}><t.i className="w-3.5 h-3.5" />{t.l}</button>
         ))}
+        {isAdmin && (
+          <button onClick={() => navigate("/referrals/config")} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (currentTab === "config" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}><Settings className="w-3.5 h-3.5" />Комиссии</button>
+        )}
       </div>
 
       {/* Tab content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         {/* TREE TAB */}
-        {tab === "tree" && (
+        {currentTab === "tree" && (
           <div>
             {treeLoading ? (
               <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />)}</div>
@@ -126,7 +135,7 @@ export default function ReferralPage() {
         )}
 
         {/* SALES TAB */}
-        {tab === "sales" && (
+        {currentTab === "sales" && (
           <div>
             {sales?.deals?.length === 0 ? (
               <div className="text-center py-12 text-gray-400"><Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Нет продаж</p></div>
@@ -149,7 +158,7 @@ export default function ReferralPage() {
         )}
 
         {/* EARNINGS TAB */}
-        {tab === "earnings" && (
+        {currentTab === "earnings" && (
           <div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-blue-50 rounded-xl p-3 text-center">
@@ -182,7 +191,7 @@ export default function ReferralPage() {
         )}
 
         {/* ADMIN CONFIG TAB */}
-        {tab === "config" && (
+        {currentTab === "config" && (
           <div className="max-w-md">
             <h3 className="text-sm font-semibold mb-3">Настройка комиссий</h3>
             <div className="space-y-3">
@@ -213,7 +222,7 @@ export default function ReferralPage() {
         )}
 
         {/* INVITE TAB */}
-        {tab === "invite" && (
+        {currentTab === "invite" && (
           <div className="max-w-md">
             <h3 className="text-sm font-semibold mb-2">Ваша реферальная ссылка</h3>
             <div className="flex items-center gap-2 mb-3">
