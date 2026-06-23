@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { referralAPI } from "../api";
 import toast from "react-hot-toast";
-import { Users, DollarSign, Link, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { Users, DollarSign, Link, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings } from "lucide-react";
 
-type Tab = "tree" | "sales" | "earnings" | "invite";
+type Tab = "tree" | "sales" | "earnings" | "invite" | "config";
 
 export default function ReferralPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("tree");
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -16,6 +18,9 @@ export default function ReferralPage() {
   const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => referralAPI.getMySales(), enabled: tab === "sales" });
   const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings(), enabled: tab === "earnings" });
   const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: tab === "invite" });
+  const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: tab === "config" });
+  const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
+  const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
 
   const copyLink = () => {
     if (invite?.link) {
@@ -93,6 +98,7 @@ export default function ReferralPage() {
           { k: "sales", l: "Мои продажи", i: <TrendingUp className="w-3.5 h-3.5" /> },
           { k: "earnings", l: "Реферальный доход", i: <DollarSign className="w-3.5 h-3.5" /> },
           { k: "invite", l: "Пригласить", i: <UserPlus className="w-3.5 h-3.5" /> },
+          ...(isAdmin ? [{ k: "config", l: "Комиссии", i: <Settings className="w-3.5 h-3.5" /> }] : []),
         ] as { k: Tab; l: string; i: any }[]).map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (tab === t.k ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}>{t.i}{t.l}</button>
         ))}
@@ -172,6 +178,37 @@ export default function ReferralPage() {
                 </tbody>
               </table>
             )}
+          </div>
+        )}
+
+        {/* ADMIN CONFIG TAB */}
+        {tab === "config" && (
+          <div className="max-w-md">
+            <h3 className="text-sm font-semibold mb-3">Настройка комиссий</h3>
+            <div className="space-y-3">
+              {[1, 2].map(level => {
+                const cfg = (configs || []).find((c: any) => c.level === level);
+                const [pct, setPct] = useState(cfg?.percentage || (level === 1 ? 5 : 2));
+                const [active, setActive] = useState(cfg?.isActive !== false);
+                return (
+                  <div key={level} className="bg-gray-50 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Уровень {level}</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={active} onChange={e => { setActive(e.target.checked); configMutation.mutate({ level, percentage: pct, isActive: e.target.checked }); }} className="rounded" />
+                        <span className="text-[11px] text-gray-500">{active ? "Активен" : "Отключён"}</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min="0" max="100" step="0.5" value={pct} onChange={e => setPct(Number(e.target.value))} className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" />
+                      <span className="text-sm text-gray-500">%</span>
+                      <button onClick={() => configMutation.mutate({ level, percentage: pct, isActive: active })} className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700">Сохранить</button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">{level === 1 ? "Прямой реферал" : "Реферал 2-го уровня"}: {pct}% от продаж</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
