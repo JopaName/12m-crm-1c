@@ -25,11 +25,6 @@ import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import Layout from "./components/Layout";
 
 <Route path="/register" element={<RegisterPage />} />
-          <Route path="/referrals" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/sales" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/earnings" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/invite" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/config" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -73,6 +68,11 @@ export default function App() {
         <Route path="chat" element={<ChatPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
               </Route>
-    </Routes>
+    <Route path="/referrals" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+          <Route path="/referrals/sales" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+          <Route path="/referrals/earnings" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+          <Route path="/referrals/invite" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+          <Route path="/referrals/config" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
+        </Routes>
   );
 }
