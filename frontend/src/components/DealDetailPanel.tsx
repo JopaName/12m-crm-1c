@@ -77,23 +77,28 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
             )}
           </div>
 
-          {/* Quick actions row */}
-          <div className="flex gap-2 flex-wrap">
+          {/* Document generation dropdown */}
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-[10px] text-gray-400 uppercase font-medium">Документы:</span>
             <a href={"/api/deals/" + linked.id + "/generate/kp"} target="_blank" rel="noreferrer"
               className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-              <FileText className="w-3.5 h-3.5" />КП
+              <FileText className="w-3.5 h-3.5" />Коммерческое предложение
             </a>
             <a href={"/api/deals/" + linked.id + "/generate/dogovor"} target="_blank" rel="noreferrer"
               className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
-              <FileText className="w-3.5 h-3.5" />Договор
+              <FileText className="w-3.5 h-3.5" />Договор поставки
             </a>
             <a href={"/api/deals/" + linked.id + "/generate/schet"} target="_blank" rel="noreferrer"
               className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
-              <FileText className="w-3.5 h-3.5" />Счёт
+              <FileText className="w-3.5 h-3.5" />Счёт на оплату
+            </a>
+            <a href={"/api/deals/" + linked.id + "/generate/commercial_offer"} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors">
+              <FileText className="w-3.5 h-3.5" />КП (полное)
             </a>
             <button onClick={() => { onClose(); navigate("/legal"); }}
               className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors ml-auto">
-              <Shield className="w-3.5 h-3.5" />Договоры
+              <Shield className="w-3.5 h-3.5" />Все договоры
             </button>
           </div>
 
