@@ -217,7 +217,7 @@ export default function DealsPage() {
           {kanbanColumns.filter((col) => !filterStatus || col.status === filterStatus).map((col) => {
             const Icon = col.meta.icon;
             return (
-              <div key={col.status} className="rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+              <div key={col.status} className="rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col" onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragDealId) { statusMutation.mutate({ id: dragDealId, status: col.status }); setDragDealId(null); } }}>
                 <div className={cn("flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 rounded-t-xl", col.meta.lightBg)}>
                   <Icon className={cn("w-4 h-4", col.meta.color)} />
                   <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex-1 truncate">{col.meta.label}</h3>
@@ -235,7 +235,7 @@ export default function DealsPage() {
                     const nextStatuses = getNextStatuses(d.status);
                     const prevStatus = getPrevStatus(d.status);
                     return (
-                      <div key={d.id} className="bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer" onClick={() => setDetailDeal(d)}>
+                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md cursor-grab active:cursor-grabbing" onClick={() => setDetailDeal(d)}>
                         <div className="p-2.5">
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-semibold text-gray-900 text-[13px] leading-snug line-clamp-2 flex-1">{d.dealNumber}</p>
