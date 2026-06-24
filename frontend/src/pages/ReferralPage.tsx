@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid, GitBranch } from "lucide-react";
 import ReferralWorkflow from "../components/ReferralWorkflow";
+import { cn } from "../components/cn";
 
 type Tab = "tree" | "workflow" | "sales" | "earnings" | "invite" | "config";
 
@@ -147,10 +148,38 @@ export default function ReferralPage() {
         ))}
       </div>
 
+      {/* Hero Stats Banner */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+        {[
+          { icon: <Users className="w-4 h-4 text-white" />, label: "Команда", value: tree?.totalReferrals || 0, sub: "человек", color: "from-blue-600 to-blue-500", link: "/referrals" },
+          { icon: <DollarSign className="w-4 h-4 text-white" />, label: "Доход", value: (earnings?.total || 0).toLocaleString() + " \u20bd", sub: earnings?.trend !== undefined && earnings.trend !== 0 ? (earnings.trend > 0 ? "+" : "") + earnings.trend.toLocaleString() + " \u20bd" : undefined, color: "from-emerald-600 to-emerald-500", link: "/referrals/earnings" },
+          { icon: <TrendingUp className="w-4 h-4 text-white" />, label: "Продажи", value: (sales?.stats?.total || 0).toLocaleString() + " \u20bd", sub: (sales?.stats?.count || 0) + " сделок", color: "from-violet-600 to-violet-500", link: "/referrals/sales" },
+          { icon: <Crown className="w-4 h-4 text-white" />, label: "Уровень", value: tree?.referrer ? "2" : "1", sub: tree?.referrer ? "Приглашён" : "Корневой", color: "from-amber-600 to-amber-500" },
+          { icon: <Gift className="w-4 h-4 text-white" />, label: "Приглашено", value: tree?.totalReferrals || 0, sub: "человек", color: "from-rose-600 to-rose-500", link: "/referrals/invite" },
+        ].map((s, i) => (
+          <div key={i} onClick={() => s.link && navigate(s.link)}
+            className={cn(
+              "relative overflow-hidden rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer group",
+              "bg-gradient-to-br " + s.color
+            )}>
+            <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10 group-hover:scale-150 transition-transform duration-500" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">{s.icon}</div>
+                <span className="text-[11px] font-medium text-white/70 uppercase tracking-wider">{s.label}</span>
+              </div>
+              <p className="text-2xl font-bold text-white">{s.value}</p>
+              {s.sub && <p className="text-[11px] text-white/60 mt-0.5">{s.sub}</p>}
+            </div>
+            {s.link && <div className="absolute bottom-3 right-3 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight className="w-3.5 h-3.5 text-white" /></div>}
+          </div>
+        ))}
+      </div>
+
       {/* Sub-navigation */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-4 w-fit">
         {SUB_NAV.map(t => (
-          <button key={t.k} onClick={() => navigate(t.path)} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (currentTab === t.k ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}><t.i className="w-3.5 h-3.5" />{t.l}</button>
+          <button key={t.k} onClick={() => navigate(t.path)} className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200", currentTab === t.k ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700 hover:bg-white/50")}><t.i className="w-3.5 h-3.5" />{t.l}</button>
         ))}
         {isAdmin && (
           <button onClick={() => navigate("/referrals/config")} className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all " + (currentTab === "config" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}><Settings className="w-3.5 h-3.5" />Комиссии</button>
@@ -291,13 +320,18 @@ export default function ReferralPage() {
 
         {/* INVITE TAB */}
         {currentTab === "invite" && (
-          <div className="max-w-md">
-            <h3 className="text-sm font-semibold mb-2">Ваша реферальная ссылка</h3>
-            <div className="flex items-center gap-2 mb-3">
-              <input readOnly value={invite?.link || "Загрузка..."} className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 outline-none" />
+          <div className="max-w-lg">
+            <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-2xl p-6 border border-primary-100 mb-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-200"><Share2 className="w-6 h-6 text-white" /></div>
+                <div><h3 className="font-semibold text-gray-800">Реферальная ссылка</h3><p className="text-xs text-gray-500">Отправьте коллеге — после регистрации он появится в команде</p></div>
+              </div>
+            <div className="flex items-center gap-2">
+                <input readOnly value={invite?.link || "Загрузка..."} className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 outline-none" />
               <button onClick={copyLink} className={"px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors " + (copied ? "bg-green-600 text-white" : "bg-primary-600 text-white hover:bg-primary-700")}>{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}{copied ? "Скопировано" : "Копировать"}</button>
             </div>
-            <p className="text-xs text-gray-400">Отправьте эту ссылку коллеге. После регистрации он появится в вашей команде.</p>
+            </div>
+              <p className="text-xs text-gray-400 mt-2">Отправьте ссылку коллеге. После регистрации он появится в вашей команде.</p>
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-xs text-amber-700 font-medium">Как это работает:</p>
               <ul className="text-xs text-amber-600 mt-1 space-y-1 list-disc list-inside">
