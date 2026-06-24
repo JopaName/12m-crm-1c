@@ -1,4 +1,6 @@
-function formatTime(dateStr: string) {
+import React from "react";
+
+function formatTime(dateStr) {
   const d = new Date(dateStr);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
@@ -8,17 +10,17 @@ function formatTime(dateStr: string) {
   return d.toLocaleDateString("ru", { day: "numeric", month: "short" });
 }
 
-function formatFullTime(dateStr: string) {
+function formatFullTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatFileSize(bytes: number) {
+function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-function getInitials(u: { firstName: string; lastName: string }) {
+function getInitials(u) {
   return (u.firstName?.[0] || "") + (u.lastName?.[0] || "");
 }
 
@@ -27,7 +29,7 @@ const COLORS = [
   "bg-indigo-500", "bg-teal-500", "bg-orange-500", "bg-cyan-500",
 ];
 
-function Avatar({ user, size = "md" }: { user: { firstName: string; lastName: string }; size?: "sm" | "md" | "lg" }) {
+function Avatar({ user, size = "md" }: { user: { firstName; lastName }; size?: "sm" | "md" | "lg" }) {
   const sizes = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-lg" };
   const colorIdx = (user.firstName?.length || 0) % COLORS.length;
   return (
@@ -37,7 +39,7 @@ function Avatar({ user, size = "md" }: { user: { firstName: string; lastName: st
   );
 }
 
-function formatMessageDateSeparator(dateStr: string) {
+function formatMessageDateSeparator(dateStr) {
   const d = new Date(dateStr);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
