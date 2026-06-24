@@ -24,6 +24,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 }) {
   const [edit, setEdit] = useState(editDealData || null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [docPreview, setDocPreview] = useState<{template: string; label: string} | null>(null);
   const navigate = useNavigate();
 
   // Fetch full deal details for cross-linked data
