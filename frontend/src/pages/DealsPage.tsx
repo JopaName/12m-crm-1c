@@ -536,6 +536,34 @@ function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData
             )}
           </div>
 
+          {/* Quick actions row */}
+          <div className="flex gap-2 flex-wrap">
+            <a href={"/api/deals/" + linked.id + "/generate/kp"} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+              <FileText className="w-3.5 h-3.5" />КП
+            </a>
+            <a href={"/api/deals/" + linked.id + "/generate/dogovor"} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
+              <FileText className="w-3.5 h-3.5" />Договор
+            </a>
+            <a href={"/api/deals/" + linked.id + "/generate/schet"} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
+              <FileText className="w-3.5 h-3.5" />Счёт
+            </a>
+            <button onClick={() => { onClose(); navigate("/legal"); }}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors ml-auto">
+              <Shield className="w-3.5 h-3.5" />Договоры
+            </button>
+          </div>
+
+          {/* Deal info cards */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Сумма</span><p className="font-semibold text-gray-800">{(linked.expectedAmount || 0).toLocaleString()} ₽</p></div>
+            <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Клиент</span><p className="font-semibold text-gray-800 truncate">{client?.name || "—"}</p></div>
+            <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Тип</span><p className="font-semibold text-gray-800">{linked.dealType}</p></div>
+            <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Менеджер</span><p className="font-semibold text-gray-800 truncate">{agent || "—"}</p></div>
+          </div>
+
           {edit ? (
             <div className="space-y-3">
               <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер сделки</label>
