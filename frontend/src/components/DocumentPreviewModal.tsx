@@ -33,7 +33,8 @@ export default function DocumentPreviewModal({
       const params = useFormData
         ? `?clientName=${encodeURIComponent(form.clientName)}&clientInn=${encodeURIComponent(form.clientInn)}&clientPhone=${encodeURIComponent(form.clientPhone)}&clientEmail=${encodeURIComponent(form.clientEmail)}`
         : "";
-      const resp = await fetch(`/api/deals/${dealId}/generate/${template}${params}`);
+      const token = localStorage.getItem("token");
+      const resp = await fetch(`/api/deals/${dealId}/generate/${template}${params}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const text = await resp.text();
       setHtml(text);
     } catch { setHtml("<p>Error loading document</p>"); }
