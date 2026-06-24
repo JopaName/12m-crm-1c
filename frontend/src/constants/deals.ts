@@ -1,4 +1,4 @@
-import { Briefcase, FileText, Clock, CheckCircle, Truck, Package, DollarSign, Shield } from "lucide-react";
+import { Briefcase, FileText, Clock, CheckCircle, Truck, Package, DollarSign, Shield, Plus, ArrowRight, Building2, X } from "lucide-react";
 
 const STATUSES = [
   "Lead_Created",
