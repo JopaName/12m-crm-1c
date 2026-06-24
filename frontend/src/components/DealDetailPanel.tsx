@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
+import { STATUS_META } from "../constants/deals";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
 

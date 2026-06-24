@@ -3,35 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dealsAPI, clientsAPI, authAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { STATUSES, STATUS_META } from "../constants/deals";
 import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText } from "lucide-react";
-
-const STATUSES = [
-  "Lead_Created",
-  "Invoice_Generation",
-  "Legal_Review",
-  "Doc_Sending",
-  "Waiting_Payment",
-  "Paid_And_Reserved",
-  "Issuing_Goods",
-  "Deal_Closed",
-];
-
-const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; icon: any; label: string }> = {
-  Lead_Created: { color: "text-primary-600", bg: "bg-primary-500", lightBg: "bg-primary-50", icon: Plus, label: "Лид" },
-  Invoice_Generation: { color: "text-yellow-600", bg: "bg-yellow-500", lightBg: "bg-yellow-50", icon: DollarSign, label: "Счёт" },
-  Legal_Review: { color: "text-purple-600", bg: "bg-purple-500", lightBg: "bg-purple-50", icon: Briefcase, label: "Юристы" },
-  Doc_Sending: { color: "text-indigo-600", bg: "bg-indigo-500", lightBg: "bg-indigo-50", icon: ArrowRight, label: "Доки" },
-  Waiting_Payment: { color: "text-orange-600", bg: "bg-orange-500", lightBg: "bg-orange-50", icon: DollarSign, label: "Оплата" },
-  Paid_And_Reserved: { color: "text-teal-600", bg: "bg-teal-500", lightBg: "bg-teal-50", icon: Building2, label: "Резерв" },
-  Issuing_Goods: { color: "text-cyan-600", bg: "bg-cyan-500", lightBg: "bg-cyan-50", icon: ArrowRight, label: "Отгрузка" },
-  Deal_Closed: { color: "text-emerald-600", bg: "bg-emerald-500", lightBg: "bg-emerald-50", icon: X, label: "Закрыто" },
-};
-
-type ViewMode = "kanban" | "list";
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 
