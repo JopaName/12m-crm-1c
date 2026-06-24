@@ -4,6 +4,7 @@ import { clientsAPI, dealsAPI, tasksAPI, authAPI } from "../api";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
+import ClientFormModal from "../components/ClientFormModal";
 import { Plus, Search, LayoutDashboard, List, User, Building2, Phone, Mail, CreditCard, ChevronDown, Edit3, Trash2, X, ArrowRight, Inbox, Calendar, Briefcase, FileText, MapPin, ArrowUpDown, ArrowUp, ArrowDown, Zap } from "lucide-react";
 
 const SOURCE_LABELS: Record<string, string> = { Direct: "Прямой", Referral: "Реферал", Website: "Сайт", Exhibition: "Выставка", Call: "Звонок" };
