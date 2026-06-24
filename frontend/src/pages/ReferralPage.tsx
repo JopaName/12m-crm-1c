@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { referralAPI } from "../api";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid, GitBranch } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid, GitBranch, Gift, ArrowUp, ArrowDown, Crown, Star, Sparkles, Eye, BadgeCheck, Clock, Target, Layers, Share2 } from "lucide-react";
 import ReferralWorkflow from "../components/ReferralWorkflow";
 import { cn } from "../components/cn";
 
