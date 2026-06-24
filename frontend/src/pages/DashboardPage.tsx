@@ -168,8 +168,6 @@ export default function DashboardPage() {
 
   const { data: myDealsData } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data || r) });
   const { data: myEarnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings() });
-  const { user } = useAuth();
-
   const myDeals = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
   const myActive = myDeals.filter((d) => d.status !== "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
   const myClosed = myDeals.filter((d) => d.status === "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
