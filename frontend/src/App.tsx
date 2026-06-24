@@ -67,12 +67,12 @@ export default function App() {
         <Route path="roles" element={<RolesPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
+        <Route path="referrals" element={<ReferralPage />} />
+        <Route path="referrals/sales" element={<ReferralPage />} />
+        <Route path="referrals/earnings" element={<ReferralPage />} />
+        <Route path="referrals/invite" element={<ReferralPage />} />
+        <Route path="referrals/config" element={<ReferralPage />} />
               </Route>
-    <Route path="/referrals" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/sales" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/earnings" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/invite" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
-          <Route path="/referrals/config" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
         </Routes>
   );
 }
