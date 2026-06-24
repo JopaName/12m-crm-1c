@@ -90,6 +90,8 @@ model User {
   clientActions  ClientAction[]
   actionMessages ActionMessage[]
   actionFiles    ActionFile[]
+  chatRooms      ChatRoom[]
+  chatRoomMemberships ChatRoomMember[]
   @@index([isArchived, isActive])
 }
 
@@ -928,6 +930,7 @@ model ChatRoom {
   name      String?
   isGroup   Boolean  @default(false)
   createdBy String
+  creator   User?    @relation(fields: [createdBy], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
