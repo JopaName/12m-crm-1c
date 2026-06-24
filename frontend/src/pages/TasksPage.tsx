@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI, dealsAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { AlertCircle, ArrowLeft, ArrowRight, ArrowUp, Briefcase, Building2, Calendar, Check, CheckSquare, ChevronLeft, ChevronRight, Clock, Edit3, FileText, Icon, Inbox, LayoutDashboard, List, Plus, Save, Search, Square, TaskFormModal, Trash2, User, X } from "lucide-react";;
+import {  AlertCircle, ArrowLeft, ArrowRight, ArrowUp, Briefcase, Building2, Calendar, Check, CheckSquare, ChevronLeft, ChevronRight, Clock, Edit3, FileText, Icon, InboxDashboard, List, Plus, Save, Search, Square, TaskFormModal, Trash2, User, X  } from "lucide-react";;;
 
 const STATUSES = ["New", "InProgress", "Completed", "Cancelled"];
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];

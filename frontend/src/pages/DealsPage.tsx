@@ -8,7 +8,7 @@ import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, Calendar, ChevronDown, CreditCard, DealDetailPanel, DealFormModal, DollarSign, Edit3, Eye, FileText, Icon, Inbox, LayoutDashboard, List, Mail, Phone, Plus, Save, Search, Shield, Trash2, User, X } from "lucide-react";;
+import {    AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, Calendar, ChevronDown, CreditCard, DollarSign, Edit3, Eye, FileText, Icon, InboxDashboard, List, Mail, Phone, Plus, Save, Search, Shield, Trash2, User, X    } from "lucide-react";;;;;
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 
