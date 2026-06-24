@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import ClientFormModal from "../components/ClientFormModal";
-import { ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Briefcase, Building2, Calendar, ChevronDown, ClientFormModal, CreditCard, Edit3, FileText, Inbox, LayoutDashboard, List, Mail, MapPin, Phone, Plus, Search, Trash2, User, X, Zap } from "lucide-react";;
+import {  ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Briefcase, Building2, Calendar, ChevronDown, CreditCard, Edit3, FileText, InboxDashboard, List, Mail, MapPin, Phone, Plus, Search, Trash2, User, X, Zap  } from "lucide-react";;;
 
 const SOURCE_LABELS: Record<string, string> = { Direct: "Прямой", Referral: "Реферал", Website: "Сайт", Exhibition: "Выставка", Call: "Звонок" };
 const STATUS_LABELS: Record<string, string> = { New: "Новый", Active: "Активный", Inactive: "Неактивный", Blocked: "Заблокирован" };

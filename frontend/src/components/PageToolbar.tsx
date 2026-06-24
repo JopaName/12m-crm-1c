@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "./cn";
 import type { StatusDef } from "./KanbanView";
-import { X, Search, ChevronDown, Plus, LayoutDashboard, List, Archive } from "lucide-react";
+import {  X, Search, ChevronDown, PlusDashboard, List, Archive  } from "lucide-react";;
 
 type PageToolbarProps = {
   searchValue: string;
