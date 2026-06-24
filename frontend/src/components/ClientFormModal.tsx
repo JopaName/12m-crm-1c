@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus, Edit3 } from "lucide-react";
+import toast from "react-hot-toast";
+
+const SOURCE_LABELS: Record<string, string> = { Direct: "Прямой", Referral: "Реферал", Website: "Сайт", Call: "Звонок", Other: "Другое" };
+const STATUS_LABELS: Record<string, string> = { New: "Новый", Active: "Активный", Inactive: "Неактивный" };
 
 function ClientFormModal({ onClose, onSubmit, isPending, editing }: { onClose: () => void; onSubmit: (d: any) => void; isPending: boolean; editing?: any }) {
   const [f, setF] = useState(editing ? { name: editing.name || "", phone: editing.phone || "", email: editing.email || "", inn: editing.inn || "", source: editing.source || "Direct", status: editing.status || "New", address: editing.address || "", notes: editing.notes || "" } : { name: "", phone: "", email: "", inn: "", source: "Direct", status: "New", address: "", notes: "" });
