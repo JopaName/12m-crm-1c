@@ -58,4 +58,12 @@ router.post("/read-message", async (req: AuthRequest, res: Response) => {
   try { await service.markMessageRead(req.body.messageId); res.json({ ok: true }); } catch { res.status(500).json({ error: "Failed" }); }
 });
 
+router.post("/create-task", async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId, assigneeId, title, dueDate } = req.body;
+    const task = await service.createTaskFromMessage(messageId, req.user!.id, assigneeId, title, dueDate);
+    res.status(201).json(task);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

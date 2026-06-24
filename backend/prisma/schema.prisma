@@ -923,22 +923,57 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model ChatRoom {
+  id        String   @id @default(cuid())
+  name      String?
+  isGroup   Boolean  @default(false)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   ChatRoomMember[]
+  messages  ChatMessage[]
+
+  @@index([createdBy])
+}
+
+model ChatRoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  room     ChatRoom @relation(fields: [roomId], references: [id])
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  joinedAt DateTime @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
 model ChatMessage {
   id          String   @id @default(cuid())
+  roomId      String?
+  room        ChatRoom? @relation(fields: [roomId], references: [id])
   senderId    String
   sender      User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiverId  String
-  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId  String?
+  receiver    User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  replyToId   String?
   content     String
   fileUrl     String?
   fileName    String?
   fileSize    Int?
   mimeType    String?
   readAt      DateTime?
+  editedAt    DateTime?
+  isDeleted   Boolean  @default(false)
+  entityType  String?
+  entityId    String?
+  entityTitle String?
 
   createdAt DateTime @default(now())
 
   @@index([senderId])
+  @@index([roomId])
   @@index([receiverId])
   @@index([senderId, receiverId])
   @@index([createdAt])
