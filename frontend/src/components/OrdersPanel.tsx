@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Package, Truck, Calendar } from "lucide-react";
+import { Calendar, Package, Search, Truck } from "lucide-react";;
 
 function OrdersPanel({ data }: { data: any }) {
   const [searchQuery, setSearchQuery] = useState("");

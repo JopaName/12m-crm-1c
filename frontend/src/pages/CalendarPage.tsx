@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useEffect, useMemo, useNavigate, useState } from "react";;
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { tasksAPI } from "../api";
 import { cn } from "../components/cn";
 import toast from "react-hot-toast";
-import { Calendar, ChevronLeft, ChevronRight, Clock, CheckCircle2, ArrowRight, X, Plus, Trash2, Save } from "lucide-react";
+import { ArrowRight, Calendar, CalendarEvent, CheckCircle2, ChevronLeft, ChevronRight, Clock, Icon, Plus, QuickCreateModal, Save, Trash2, X } from "lucide-react";;
 
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];

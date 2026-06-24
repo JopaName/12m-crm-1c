@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useNavigate, useState } from "react";;
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { X, ChevronRight, Briefcase, Building2, Package, ShoppingCart, Wrench, FileText, CreditCard, Factory, Users, Shield, User, MessageCircle, BarChart3 } from "lucide-react";

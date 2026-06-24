@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useCallback, useEffect, useNavigate, useRef, useState } from "react";;
 import { useNavigate } from "react-router-dom";
-import { Search, X, Briefcase, Building2, User, FileText, Package, Wrench, ShoppingCart, CreditCard, Factory, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Briefcase, Building2, CreditCard, Factory, FileText, Icon, Loader2, Package, Search, ShoppingCart, User, Wrench, X } from "lucide-react";;
 import { dealsAPI, clientsAPI, tasksAPI, productsAPI, procurementAPI, warehouseAPI } from "../api";
 
 interface SearchResult {
