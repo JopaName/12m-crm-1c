@@ -29,14 +29,26 @@ export default function ReferralPage() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [period, setPeriod] = useState<"month" | "quarter" | "year" | "all">("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
-  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => referralAPI.getMySales(), enabled: currentTab === "sales" });
-  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings(), enabled: currentTab === "earnings" });
+  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); }, enabled: currentTab === "sales" || currentTab === "workflow" });
+  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getEarnings(pd.start, pd.end); }, enabled: currentTab === "earnings" });
   const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: currentTab === "invite" });
   const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: currentTab === "config" });
   const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
   const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
+
+  const getPeriodDates = () => {
+    const now = new Date();
+    if (period === "month") { const s = new Date(now.getFullYear(), now.getMonth(), 1); return { start: s.toISOString().slice(0,10), end: now.toISOString().slice(0,10) }; }
+    if (period === "quarter") { const q = Math.floor(now.getMonth() / 3); const s = new Date(now.getFullYear(), q * 3, 1); return { start: s.toISOString().slice(0,10), end: now.toISOString().slice(0,10) }; }
+    if (period === "year") { const s = new Date(now.getFullYear(), 0, 1); return { start: s.toISOString().slice(0,10), end: now.toISOString().slice(0,10) }; }
+    if (period === "custom" && customStart && customEnd) return { start: customStart, end: customEnd };
+    return {};
+  };
 
   const copyLink = () => {
     if (invite?.link) {
@@ -117,6 +129,27 @@ export default function ReferralPage() {
         )}
       </div>
 
+      {/* Period filter */}
+      {(currentTab === "sales" || currentTab === "earnings") && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-gray-400">Период:</span>
+          {[
+            { k: "month", l: "Месяц" },
+            { k: "quarter", l: "Квартал" },
+            { k: "year", l: "Год" },
+            { k: "all", l: "Всё время" },
+          ].map(p => (
+            <button key={p.k} onClick={() => setPeriod(p.k as any)}
+              className={"px-2.5 py-1 rounded-md text-xs font-medium transition-colors " + (period === p.k ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>{p.l}</button>
+          ))}
+          <input type="date" value={customStart} onChange={e => { setCustomStart(e.target.value); setPeriod("custom"); }}
+            className="px-2 py-1 text-xs border border-gray-200 rounded-md outline-none focus:ring-1 focus:ring-primary-500/20" />
+          <span className="text-xs text-gray-300">—</span>
+          <input type="date" value={customEnd} onChange={e => { setCustomEnd(e.target.value); setPeriod("custom"); }}
+            className="px-2 py-1 text-xs border border-gray-200 rounded-md outline-none focus:ring-1 focus:ring-primary-500/20" />
+        </div>
+      )}
+
       {/* Tab content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         {/* WORKFLOW TAB */}
@@ -145,7 +178,7 @@ export default function ReferralPage() {
         {currentTab === "sales" && (
           <div>
             {sales?.deals?.length === 0 ? (
-              <div className="text-center py-12 text-gray-400"><Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Нет продаж</p></div>
+              <div className="text-center py-12 text-gray-400"><Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Нет продаж за период</p></div>
             ) : (
               <table className="w-full">
                 <thead className="bg-gray-50"><tr className="text-left text-[11px] font-semibold text-gray-500 uppercase"><th className="px-3 py-2.5">Сделка</th><th className="px-3 py-2.5">Клиент</th><th className="px-3 py-2.5">Сумма</th><th className="px-3 py-2.5">Статус</th></tr></thead>
@@ -170,7 +203,7 @@ export default function ReferralPage() {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-blue-50 rounded-xl p-3 text-center">
                 <p className="text-xs text-blue-600 font-medium">Прямые (уровень 1)</p>
-                <p className="text-xl font-bold text-blue-700">{(earnings?.byLevel?.[1] || 0).toLocaleString()} ₽</p>
+                <p className="text-xl font-bold text-blue-700">{(earnings?.byLevel?.[1] || 0).toLocaleString()} ₽{earnings?.trendPct !== undefined && earnings.trendPct !== 0 ? <span className={"text-[10px] ml-1 " + (earnings.trendPct > 0 ? "text-green-500" : "text-red-500")}>{earnings.trendPct > 0 ? "+" : ""}{earnings.trendPct}%</span> : null}</p>
               </div>
               <div className="bg-green-50 rounded-xl p-3 text-center">
                 <p className="text-xs text-green-600 font-medium">Уровень 2</p>

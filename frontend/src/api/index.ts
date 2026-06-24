@@ -209,8 +209,8 @@ export const filesAPI = {
 export const referralAPI = {
   register: (data: any) => api.post("/referrals/register", data),
   getTree: () => api.get("/referrals/tree").then(r => r.data),
-  getMySales: () => api.get("/referrals/my-sales").then(r => r.data),
-  getEarnings: () => api.get("/referrals/earnings").then(r => r.data),
+  getMySales: (startDate?: string, endDate?: string) => api.get("/referrals/my-sales", { params: { startDate, endDate } }).then(r => r.data),
+  getEarnings: (startDate?: string, endDate?: string) => api.get("/referrals/earnings", { params: { startDate, endDate } }).then(r => r.data),
   getInviteLink: () => api.get("/referrals/invite-link").then(r => r.data),
   getConfig: () => api.get("/referrals/config").then(r => r.data),
   updateConfig: (data: any) => api.put("/referrals/config", data).then(r => r.data),
