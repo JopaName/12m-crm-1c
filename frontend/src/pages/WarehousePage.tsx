@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { warehouseAPI } from "../api";
 import { cn } from "../components/cn";
-import { Plus, Search, Package, Boxes, ArrowRightLeft, Truck, ShoppingCart, Clipboard, Edit3, Trash2, X, Save, Building2, Calendar, DollarSign, Hash, Ruler, ChevronDown, ChevronRight, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, Boxes, Building2, Calendar, CatNode, ChevronDown, ChevronRight, Clipboard, DollarSign, Edit3, Hash, Package, Plus, Ruler, Save, Search, ShoppingCart, Trash2, TrendingDown, TrendingUp, Truck, X } from "lucide-react";;
 import toast from "react-hot-toast";
 
 type TabType = "items" | "receipts" | "transfers";

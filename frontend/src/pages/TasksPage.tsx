@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useNavigate, useSearchParams, useState } from "react";;
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI, dealsAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, Edit3, Trash2, X, Check, ArrowUp, ArrowLeft, ArrowRight, Inbox, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, Save, CheckSquare, Square } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, ArrowUp, Briefcase, Building2, Calendar, Check, CheckSquare, ChevronLeft, ChevronRight, Clock, Edit3, FileText, Icon, Inbox, LayoutDashboard, List, Plus, Save, Search, Square, TaskFormModal, Trash2, User, X } from "lucide-react";;
 
 const STATUSES = ["New", "InProgress", "Completed", "Cancelled"];
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];

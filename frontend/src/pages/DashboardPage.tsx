@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useNavigate, useState } from "react";;
 import { useQuery } from "@tanstack/react-query";
 import { dashboardAPI, dealsAPI, referralAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
