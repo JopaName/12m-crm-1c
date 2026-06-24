@@ -10,6 +10,7 @@ const WIDGETS = [
   { key: "pulse", label: "Пульс", icon: "\u2764\uFE0F" },
   { key: "actions", label: "Быстрые действия", icon: "\u26A1" },
   { key: "sales", label: "Мои метрики", icon: "\u{1F4C8}" },
+  { key: "pipeline", label: "Воронка сделок", icon: "\u{1F3AF}" },
 ];
 
 function getStorageKey(userId: string) {
@@ -155,6 +156,42 @@ function SalesMetricsWidget({ deals, earnings, user }: { deals: any[]; earnings:
   );
 }
 
+function PipelineWidget({ data, totalPipeline, maxCount, user }: { data: any[]; totalPipeline: number; maxCount: number; user: any }) {
+  const navigate = useNavigate();
+  const myId = user?.id || "";
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+        <span>Воронка: <strong className="text-gray-700">{totalPipeline.toLocaleString()} ₽</strong></span>
+        <span>{data.reduce((s, d) => s + d.count, 0)} сделок</span>
+      </div>
+      {data.map((stage) => {
+        const pct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
+        const isActive = stage.status !== "Deal_Closed";
+        return (
+          <div key={stage.status} className="group cursor-pointer" onClick={() => navigate("/deals")}>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="font-medium text-gray-700">{stage.label}</span>
+              <span className="text-gray-400">{stage.count} сделок · {stage.total.toLocaleString()} ₽</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div className={stage.color + " h-3 rounded-full transition-all duration-700"} style={{ width: Math.max(stage.count > 0 ? 3 : 0, pct) + "%" }} />
+            </div>
+            {stage.stuck > 0 && (
+              <div className="flex items-center gap-1 mt-1 text-[10px] text-red-500">
+                <AlertCircle className="w-3 h-3" />{stage.stuck} застряли (7+ дней)
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <button onClick={() => navigate("/deals")} className="w-full mt-2 text-xs text-primary-600 hover:text-primary-700 font-medium text-center">
+        Открыть канбан →
+      </button>
+    </div>
+  );
+}
+
 function ActionsWidget() {
   const navigate = useNavigate();
   const actions = [
@@ -181,6 +218,21 @@ function ActionsWidget() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+
+  // Pipeline metrics
+  const dealsList = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
+  const STATUSES = ["Lead_Created", "Invoice_Generation", "Legal_Review", "Doc_Sending", "Waiting_Payment", "Paid_And_Reserved", "Issuing_Goods", "Deal_Closed"];
+  const STATUS_LABELS = { Lead_Created: "Лид", Invoice_Generation: "Счёт", Legal_Review: "Юристы", Doc_Sending: "Документы", Waiting_Payment: "Оплата", Paid_And_Reserved: "Резерв", Issuing_Goods: "Отгрузка", Deal_Closed: "Закрыто" };
+  const STATUS_COLORS = { Lead_Created: "bg-blue-500", Invoice_Generation: "bg-yellow-500", Legal_Review: "bg-purple-500", Doc_Sending: "bg-indigo-500", Waiting_Payment: "bg-orange-500", Paid_And_Reserved: "bg-teal-500", Issuing_Goods: "bg-cyan-500", Deal_Closed: "bg-green-500" };
+  
+  const pipelineData = STATUSES.map(s => {
+    const deals = dealsList.filter((d) => d.status === s);
+    const total = deals.reduce((sum, d) => sum + (d.expectedAmount || 0), 0);
+    const stuck = deals.filter(d => new Date(d.createdAt).getTime() < Date.now() - 7 * 86400000).length;
+    return { status: s, label: STATUS_LABELS[s], color: STATUS_COLORS[s], count: deals.length, total, stuck };
+  });
+  const totalPipeline = dealsList.filter(d => d.status !== "Deal_Closed").reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const maxCount = Math.max(...pipelineData.map(p => p.count), 1);
   const userId = user?.id || "anon";
   const [activeWidgets, setActiveWidgets] = useState<string[]>(() => loadWidgets(userId));
   const [editing, setEditing] = useState(false);
@@ -251,6 +303,7 @@ export default function DashboardPage() {
     finances: <FinanceWidget data={finances} />,
     pulse: <PulseWidget data={pulse} />,
     actions: <ActionsWidget />,
+    pipeline: <PipelineWidget data={pipelineData} totalPipeline={totalPipeline} maxCount={maxCount} user={user} />,
     sales: <SalesMetricsWidget deals={myDealsData} earnings={myEarnings} user={user} />,
   };
 
