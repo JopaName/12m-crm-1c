@@ -130,6 +130,31 @@ function PulseWidget({ data }: { data?: PulseData }) {
   );
 }
 
+function SalesMetricsWidget({ deals, earnings, user }: { deals: any[]; earnings: any; user: any }) {
+  const myDeals = (deals || []).filter((d) => d.responsibleAgentId === (user?.id || ""));
+  const myActive = myDeals.filter((d) => d.status !== "Deal_Closed");
+  const myClosed = myDeals.filter((d) => d.status === "Deal_Closed");
+  const myAmount = myActive.reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const myClosedAmount = myClosed.reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const myCommission = (earnings?.total || 0);
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {[
+        { label: "Мои сделки", value: myDeals.length, sub: myActive.length + " активных", color: "text-blue-600" },
+        { label: "В работе", value: myAmount.toLocaleString() + " \u20bd", sub: myActive.length + " сделок", color: "text-amber-600" },
+        { label: "Закрыто", value: myClosed.length, sub: myClosedAmount.toLocaleString() + " \u20bd", color: "text-green-600" },
+        { label: "Комиссия", value: myCommission.toLocaleString() + " \u20bd", sub: "Реф. доход", color: "text-purple-600" },
+      ].map((m, i) => (
+        <div key={i} className="bg-gray-50 rounded-xl p-3 text-center">
+          <p className={"text-lg font-bold " + m.color}>{m.value}</p>
+          <p className="text-[10px] text-gray-500">{m.label}</p>
+          <p className="text-[9px] text-gray-400">{m.sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ActionsWidget() {
   const navigate = useNavigate();
   const actions = [
@@ -226,6 +251,7 @@ export default function DashboardPage() {
     finances: <FinanceWidget data={finances} />,
     pulse: <PulseWidget data={pulse} />,
     actions: <ActionsWidget />,
+    sales: <SalesMetricsWidget deals={myDealsData} earnings={myEarnings} user={user} />,
   };
 
   const widgetBg: Record<string, string> = {
