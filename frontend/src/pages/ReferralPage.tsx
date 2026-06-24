@@ -32,14 +32,36 @@ export default function ReferralPage() {
   const [period, setPeriod] = useState<"month" | "quarter" | "year" | "all">("month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [sortKey, setSortKey] = useState("createdAt");
+  const [sortDir, setSortDir] = useState("desc");
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
+  const sortedSales = sales && sales.deals ? sales.deals.slice().sort(function(a, b) {
+    var av = a[sortKey]; var bv = b[sortKey];
+    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return 0;
+  }) : [];
+
   const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); }, enabled: currentTab === "sales" || currentTab === "workflow" });
+  const sortedEarnings = earnings && earnings.earnings ? earnings.earnings.slice().sort(function(a, b) {
+    var av = a[sortKey]; var bv = b[sortKey];
+    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return 0;
+  }) : [];
+
   const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getEarnings(pd.start, pd.end); }, enabled: currentTab === "earnings" });
   const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: currentTab === "invite" });
   const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: currentTab === "config" });
   const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
   const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
+
+  const toggleSort = function(key) {
+    if (sortKey === key) { setSortDir(function(d) { return d === 'asc' ? 'desc' : 'asc'; }); }
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+  const sortIcon = function(key) { return sortKey === key ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : ''; };
 
   const getPeriodDates = () => {
     const now = new Date();
@@ -181,9 +203,9 @@ export default function ReferralPage() {
               <div className="text-center py-12 text-gray-400"><Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Нет продаж за период</p></div>
             ) : (
               <table className="w-full">
-                <thead className="bg-gray-50"><tr className="text-left text-[11px] font-semibold text-gray-500 uppercase"><th className="px-3 py-2.5">Сделка</th><th className="px-3 py-2.5">Клиент</th><th className="px-3 py-2.5">Сумма</th><th className="px-3 py-2.5">Статус</th></tr></thead>
+                <thead className="bg-gray-50"><tr className="text-left text-[11px] font-semibold text-gray-500 uppercase"><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("dealNumber")}>Сделка{sortIcon("dealNumber")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("client")}>Клиент{sortIcon("client")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("expectedAmount")}>Сумма{sortIcon("expectedAmount")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("status")}>Статус{sortIcon("status")}</th></tr></thead>
                 <tbody className="divide-y divide-gray-50">
-                  {sales?.deals?.map((d: any) => (
+                  {sortedSales.map((d: any) => (
                     <tr key={d.id} className="text-sm hover:bg-gray-50">
                       <td className="px-3 py-2 font-medium">{d.dealNumber}</td>
                       <td className="px-3 py-2 text-gray-500">{d.client?.name || "-"}</td>
@@ -214,9 +236,9 @@ export default function ReferralPage() {
               <div className="text-center py-8 text-gray-400 text-sm">Нет начислений</div>
             ) : (
               <table className="w-full">
-                <thead className="bg-gray-50"><tr className="text-left text-[11px] font-semibold text-gray-500 uppercase"><th className="px-3 py-2.5">Уровень</th><th className="px-3 py-2.5">Сумма</th><th className="px-3 py-2.5">Ставка</th><th className="px-3 py-2.5">Статус</th></tr></thead>
+                <thead className="bg-gray-50"><tr className="text-left text-[11px] font-semibold text-gray-500 uppercase"><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("level")}>Уровень{sortIcon("level")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("amount")}>Сумма{sortIcon("amount")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("percentage")}>Ставка{sortIcon("percentage")}</th><th className="px-3 py-2.5 cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("status")}>Статус{sortIcon("status")}</th></tr></thead>
                 <tbody className="divide-y divide-gray-50">
-                  {earnings?.earnings?.map((e: any) => (
+                  {sortedEarnings.map((e: any) => (
                     <tr key={e.id} className="text-sm">
                       <td className="px-3 py-2">{e.level}</td>
                       <td className="px-3 py-2 font-medium">{e.amount.toLocaleString()} ₽</td>
