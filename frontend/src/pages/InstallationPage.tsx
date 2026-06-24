@@ -1,10 +1,10 @@
-import React, { useMemo, useNavigate, useState } from "react";;
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { installationAPI, dealsAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import {  AlertCircle, ArrowRight, Briefcase, Calendar, Check, Icon, Inbox, InstallFormModalDashboard, List, Plus, Search, User, Wrench, X  } from "lucide-react";;;
+import { Plus, Search, LayoutDashboard, List, User, Calendar, Wrench, ArrowRight, Inbox, Briefcase, X, Check, AlertCircle } from "lucide-react";
 
 const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; icon: any; label: string }> = {
   Pending: { color: "text-primary-600", bg: "bg-primary-500", lightBg: "bg-primary-50", icon: AlertCircle, label: "Ожидает" },

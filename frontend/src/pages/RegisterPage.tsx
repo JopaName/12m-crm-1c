@@ -1,4 +1,4 @@
-import React, { useNavigate, useSearchParams, useState } from "react";;
+import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { referralAPI } from "../api";

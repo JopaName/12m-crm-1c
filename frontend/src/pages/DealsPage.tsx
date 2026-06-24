@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useSearchParams, useState } from "react";;
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dealsAPI, clientsAPI, authAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -8,7 +8,7 @@ import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import {    AlertCircle, ArrowLeft, ArrowRight, Briefcase, Building2, Calendar, ChevronDown, CreditCard, DollarSign, Edit3, Eye, FileText, Icon, InboxDashboard, List, Mail, Phone, Plus, Save, Search, Shield, Trash2, User, X    } from "lucide-react";;;;;
+import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText } from "lucide-react";
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 
