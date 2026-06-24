@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
+import DocumentPreviewModal from "./DocumentPreviewModal";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
@@ -97,12 +98,12 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 { key: "2_-_акт_осмотра_кровли", label: "Акт осмотра кровли", color: "amber" },
                 { key: "2_схема_установки", label: "Схема установки", color: "indigo" },
               ].map(t => {
-                const colors = { blue: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100", purple: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100", green: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100", orange: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100", teal: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100", cyan: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100", amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100", indigo: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" };
+                const colorMap: Record<string, string> = { blue: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100", purple: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100", green: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100", orange: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100", teal: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100", cyan: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100", amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100", indigo: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" };
                 return (
-                  <a key={t.key} href={"/api/deals/" + linked.id + "/generate/" + t.key} target="_blank" rel="noreferrer"
-                    className={"flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors " + (colors[t.color] || colors.blue)}>
+                  <button key={t.key} onClick={() => setDocPreview({template: t.key, label: t.label})}
+                    className={"flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors " + (colorMap[t.color] || colorMap.blue)}>
                     <FileText className="w-3.5 h-3.5" />{t.label}
-                  </a>
+                  </button>
                 );
               })}
               <button onClick={() => { onClose(); navigate("/legal"); }}
@@ -292,6 +293,20 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Закрыть</button>
         </div>
       </div>
+      {docPreview && (
+        <DocumentPreviewModal
+          dealId={linked.id}
+          template={docPreview.template}
+          label={docPreview.label}
+          clientName={linked.client?.name || client || ""}
+          clientInn={linked.client?.inn || linked.clientInn || ""}
+          clientPhone={linked.client?.phone || ""}
+          clientEmail={linked.client?.email || ""}
+          dealNumber={linked.dealNumber}
+          amount={linked.expectedAmount || 0}
+          onClose={() => setDocPreview(null)}
+        />
+      )}
     </div>
   );
 }
