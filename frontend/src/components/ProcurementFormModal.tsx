@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, Save, Trash2 } from "lucide-react";
+import { X, Save, Trash2, Plus, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function FormModal({ data: initial, onClose, users, suppliers, isEdit, onSubmit, onUpdate, onDelete, isPending }: {
