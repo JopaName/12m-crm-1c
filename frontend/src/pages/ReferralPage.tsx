@@ -36,24 +36,30 @@ export default function ReferralPage() {
   const [sortDir, setSortDir] = useState("desc");
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
-  const sortedSales = sales && sales.deals ? sales.deals.slice().sort(function(a, b) {
-    var av = a[sortKey]; var bv = b[sortKey];
-    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
-    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-    return 0;
-  }) : [];
-
   const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); }, enabled: currentTab === "sales" || currentTab === "workflow" });
-  const sortedEarnings = earnings && earnings.earnings ? earnings.earnings.slice().sort(function(a, b) {
-    var av = a[sortKey]; var bv = b[sortKey];
-    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
-    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-    return 0;
-  }) : [];
-
   const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getEarnings(pd.start, pd.end); }, enabled: currentTab === "earnings" });
   const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: currentTab === "invite" });
   const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: currentTab === "config" });
+
+  const sortedEarnings = useMemo(() => {
+    if (!earnings?.earnings) return [];
+    return [...earnings.earnings].sort((a, b) => {
+      const av = a[sortKey]; const bv = b[sortKey];
+      if (typeof av === "number") return sortDir === "asc" ? av - bv : bv - av;
+      if (typeof av === "string") return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      return 0;
+    });
+  }, [earnings, sortKey, sortDir]);
+
+  const sortedSales = useMemo(() => {
+    if (!sales?.deals) return [];
+    return [...sales.deals].sort((a, b) => {
+      const av = a[sortKey]; const bv = b[sortKey];
+      if (typeof av === "number") return sortDir === "asc" ? av - bv : bv - av;
+      if (typeof av === "string") return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      return 0;
+    });
+  }, [sales, sortKey, sortDir]);
   const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
   const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
 
