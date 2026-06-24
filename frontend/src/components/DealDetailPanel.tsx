@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
-import DocumentPreviewModal from "./DocumentPreviewModal";
+import DocumentFormModal from "./DocumentFormModal";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
@@ -295,7 +295,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
         </div>
       </div>
       {docPreview && (
-        <DocumentPreviewModal
+        <DocumentFormModal
           dealId={linked.id}
           template={docPreview.template}
           label={docPreview.label}
