@@ -5,6 +5,8 @@ import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
+
+const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
 
