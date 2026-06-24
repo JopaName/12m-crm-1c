@@ -3,7 +3,7 @@ import { prisma } from "../db";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-const JWT_SECRET = process.env.JWT_SECRET || "default-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET || "secret";
 import { v4 as uuid } from "uuid";
 
 const router = Router();
@@ -50,7 +50,7 @@ router.post("/register", async (req, res: Response) => {
       select: { id: true, email: true, firstName: true, lastName: true, referralCode: true, referrerId: true, roleId: true },
     });
 
-    const token = jwt.sign({ id: user.id, email: user.email, roleId: user.roleId }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id, email: user.email, roleId: user.roleId }, JWT_SECRET, { expiresIn: "7d" });
 
     res.status(201).json({ token, user });
   } catch (e: any) {
