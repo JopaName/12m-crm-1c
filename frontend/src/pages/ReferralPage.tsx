@@ -4,11 +4,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { referralAPI } from "../api";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid, GitBranch } from "lucide-react";
+import ReferralWorkflow from "../components/ReferralWorkflow";
 
-type Tab = "tree" | "sales" | "earnings" | "invite" | "config";
+type Tab = "tree" | "workflow" | "sales" | "earnings" | "invite" | "config";
 
 const SUB_NAV = [
+  { k: "workflow", l: "Воркфлоу", i: GitBranch, path: "/referrals/workflow" },
   { k: "tree", l: "Моя команда", i: Users, path: "/referrals" },
   { k: "sales", l: "Мои продажи", i: TrendingUp, path: "/referrals/sales" },
   { k: "earnings", l: "Реф. доход", i: DollarSign, path: "/referrals/earnings" },
@@ -117,6 +119,9 @@ export default function ReferralPage() {
 
       {/* Tab content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        {/* WORKFLOW TAB */}
+        {currentTab === "workflow" && <ReferralWorkflow />}
+
         {/* TREE TAB */}
         {currentTab === "tree" && (
           <div>
