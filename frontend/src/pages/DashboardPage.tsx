@@ -219,20 +219,7 @@ function ActionsWidget() {
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  // Pipeline metrics
-  const dealsList = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
-  const STATUSES = ["Lead_Created", "Invoice_Generation", "Legal_Review", "Doc_Sending", "Waiting_Payment", "Paid_And_Reserved", "Issuing_Goods", "Deal_Closed"];
-  const STATUS_LABELS = { Lead_Created: "Лид", Invoice_Generation: "Счёт", Legal_Review: "Юристы", Doc_Sending: "Документы", Waiting_Payment: "Оплата", Paid_And_Reserved: "Резерв", Issuing_Goods: "Отгрузка", Deal_Closed: "Закрыто" };
-  const STATUS_COLORS = { Lead_Created: "bg-blue-500", Invoice_Generation: "bg-yellow-500", Legal_Review: "bg-purple-500", Doc_Sending: "bg-indigo-500", Waiting_Payment: "bg-orange-500", Paid_And_Reserved: "bg-teal-500", Issuing_Goods: "bg-cyan-500", Deal_Closed: "bg-green-500" };
-  
-  const pipelineData = STATUSES.map(s => {
-    const deals = dealsList.filter((d) => d.status === s);
-    const total = deals.reduce((sum, d) => sum + (d.expectedAmount || 0), 0);
-    const stuck = deals.filter(d => new Date(d.createdAt).getTime() < Date.now() - 7 * 86400000).length;
-    return { status: s, label: STATUS_LABELS[s], color: STATUS_COLORS[s], count: deals.length, total, stuck };
-  });
-  const totalPipeline = dealsList.filter(d => d.status !== "Deal_Closed").reduce((s, d) => s + (d.expectedAmount || 0), 0);
-  const maxCount = Math.max(...pipelineData.map(p => p.count), 1);
+
   const userId = user?.id || "anon";
   const [activeWidgets, setActiveWidgets] = useState<string[]>(() => loadWidgets(userId));
   const [editing, setEditing] = useState(false);
@@ -244,6 +231,20 @@ export default function DashboardPage() {
   }, [activeWidgets, userId]);
 
   const { data: myDealsData } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data || r) });
+
+  // Pipeline metrics (must be AFTER myDealsData declaration)
+  const dealsList = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
+  const PST = ["Lead_Created", "Invoice_Generation", "Legal_Review", "Doc_Sending", "Waiting_Payment", "Paid_And_Reserved", "Issuing_Goods", "Deal_Closed"];
+  const PSL = { Lead_Created: "Лид", Invoice_Generation: "Счёт", Legal_Review: "Юристы", Doc_Sending: "Документы", Waiting_Payment: "Оплата", Paid_And_Reserved: "Резерв", Issuing_Goods: "Отгрузка", Deal_Closed: "Закрыто" };
+  const PSC = { Lead_Created: "bg-blue-500", Invoice_Generation: "bg-yellow-500", Legal_Review: "bg-purple-500", Doc_Sending: "bg-indigo-500", Waiting_Payment: "bg-orange-500", Paid_And_Reserved: "bg-teal-500", Issuing_Goods: "bg-cyan-500", Deal_Closed: "bg-green-500" };
+  const pipelineData = PST.map(s => {
+    const stageDeals = dealsList.filter(d => d.status === s);
+    const total = stageDeals.reduce((sum, d) => sum + (d.expectedAmount || 0), 0);
+    const stuck = stageDeals.filter(d => new Date(d.createdAt).getTime() < Date.now() - 7 * 86400000).length;
+    return { status: s, label: PSL[s], color: PSC[s], count: stageDeals.length, total, stuck };
+  });
+  const totalPipeline = dealsList.filter(d => d.status !== "Deal_Closed").reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const maxCount = Math.max(...pipelineData.map(p => p.count), 1);
   const { data: myEarnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings() });
   const myDeals = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
   const myActive = myDeals.filter((d) => d.status !== "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
