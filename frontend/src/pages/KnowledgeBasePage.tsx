@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Calendar, DocPreview, Download, Editor, ExternalLink, Eye, FileText, Search, User, X } from "lucide-react";;
+import { Search, BookOpen, Calendar, User, ExternalLink, X, Download, FileText, Eye } from "lucide-react";
 import { cn } from "../components/cn";
 import axios from "axios";
 import Editor from "@monaco-editor/react";

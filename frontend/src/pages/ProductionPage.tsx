@@ -1,10 +1,10 @@
-import React, { useMemo, useNavigate, useState } from "react";;
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productionAPI, dealsAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import {  AlertCircle, ArrowRight, Briefcase, Calendar, ChevronDown, Factory, Icon, InboxDashboard, List, Package, Plus, ProductionFormModal, Search, X  } from "lucide-react";;;
+import { Plus, Search, LayoutDashboard, List, Briefcase, Calendar, AlertCircle, ChevronDown, X, Inbox, Package, ArrowRight, Factory } from "lucide-react";
 
 const STATUSES = ["New", "MaterialsWrittenOff", "InProgress", "QualityCheck", "Completed"];
 const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; icon: any; label: string }> = {

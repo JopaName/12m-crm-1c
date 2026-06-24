@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { serviceAPI, clientsAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { AlertCircle, ArrowRight, Building2, Calendar, Inbox, Plus, Search, ServiceFormModal, User, Wrench, X } from "lucide-react";;
+import { Plus, Search, X, User, Building2, Wrench, Calendar, AlertCircle, Inbox, ArrowRight } from "lucide-react";
 
 const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; label: string }> = {
   Open: { color: "text-primary-600", bg: "bg-primary-500", lightBg: "bg-primary-50", label: "Открыто" },

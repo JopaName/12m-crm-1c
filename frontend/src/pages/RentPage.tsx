@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { rentAPI, clientsAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import {  ArrowRight, Building2, Calendar, CreditCard, DollarSign, InboxDashboard, List, Plus, RentFormModal, Search, User, X  } from "lucide-react";;;
+import { Plus, Search, LayoutDashboard, List, Building2, User, Calendar, DollarSign, X, Inbox, CreditCard, ArrowRight } from "lucide-react";
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 const isActive = (start: string, end?: string | null) => {
