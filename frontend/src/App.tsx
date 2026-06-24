@@ -68,6 +68,7 @@ export default function App() {
         <Route path="chat" element={<ChatPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
         <Route path="referrals" element={<ReferralPage />} />
+        <Route path="referrals/workflow" element={<ReferralPage />} />
         <Route path="referrals/sales" element={<ReferralPage />} />
         <Route path="referrals/earnings" element={<ReferralPage />} />
         <Route path="referrals/invite" element={<ReferralPage />} />
