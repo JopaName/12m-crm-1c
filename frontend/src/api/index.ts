@@ -216,6 +216,13 @@ export const referralAPI = {
   updateConfig: (data: any) => api.put("/referrals/config", data).then(r => r.data),
 };
 
+export const notificationAPI = {
+  getAll: (page = 1) => api.get("/notifications", { params: { page, limit: 50 } }).then(r => r.data),
+  getUnreadCount: () => api.get("/notifications/unread-count").then(r => r.data.count),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch("/notifications/read-all"),
+};
+
 export const chatAPI = {
   getConversations: () => api.get("/chat/conversations"),
   getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),

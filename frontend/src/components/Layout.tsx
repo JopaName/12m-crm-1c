@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AiFloatPanel from "./AiFloatPanel";
+import NotificationBell from "./NotificationBell";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -285,6 +286,7 @@ export default function Layout() {
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="p-6">
+          <div className="flex justify-end mb-2"><NotificationBell /></div>
           <Outlet />
         </div>
       </main>
