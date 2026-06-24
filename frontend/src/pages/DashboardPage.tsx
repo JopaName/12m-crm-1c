@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { dashboardAPI } from "../api";
+import { dashboardAPI, dealsAPI, referralAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -9,6 +9,7 @@ const WIDGETS = [
   { key: "finances", label: "Финансы", icon: "\u{1F4B0}" },
   { key: "pulse", label: "Пульс", icon: "\u2764\uFE0F" },
   { key: "actions", label: "Быстрые действия", icon: "\u26A1" },
+  { key: "sales", label: "Мои метрики", icon: "\u{1F4C8}" },
 ];
 
 function getStorageKey(userId: string) {
@@ -164,6 +165,17 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem(getStorageKey(userId), JSON.stringify(activeWidgets));
   }, [activeWidgets, userId]);
+
+  const { data: myDealsData } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data || r) });
+  const { data: myEarnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings() });
+  const { user } = useAuth();
+
+  const myDeals = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
+  const myActive = myDeals.filter((d) => d.status !== "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
+  const myClosed = myDeals.filter((d) => d.status === "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
+  const myAmount = myActive.reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const myClosedAmount = myClosed.reduce((s, d) => s + (d.expectedAmount || 0), 0);
+  const myCommission = (myEarnings?.total || 0);
 
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary"],
