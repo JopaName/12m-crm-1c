@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { referralAPI } from "../api";
@@ -61,6 +61,8 @@ export default function ReferralPage() {
       return 0;
     });
   }, [sales, sortKey, sortDir]);
+  const [configEditor, setConfigEditor] = useState<Record<number, { pct: number; active: boolean }>>({});
+
   const configMutation = useMutation({ mutationFn: (data: any) => referralAPI.updateConfig(data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referral-config"] }); toast.success("Настройки сохранены"); } });
   const isAdmin = user?.role?.name === "Admin" || user?.role?.name === "Director";
 
@@ -87,6 +89,17 @@ export default function ReferralPage() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  useEffect(() => {
+    if (configs && configs.length > 0) {
+      const ed: Record<number, { pct: number; active: boolean }> = {};
+      [1, 2].forEach(level => {
+        const cfg = configs.find((c: any) => c.level === level);
+        ed[level] = { pct: cfg?.percentage || (level === 1 ? 5 : 2), active: cfg?.isActive !== false };
+      });
+      setConfigEditor(prev => (Object.keys(prev).length === 0 ? ed : prev));
+    }
+  }, [configs]);
 
   const toggleExpand = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
@@ -293,24 +306,22 @@ export default function ReferralPage() {
             <h3 className="text-sm font-semibold mb-3">Настройка комиссий</h3>
             <div className="space-y-3">
               {[1, 2].map(level => {
-                const cfg = (configs || []).find((c: any) => c.level === level);
-                const [pct, setPct] = useState(cfg?.percentage || (level === 1 ? 5 : 2));
-                const [active, setActive] = useState(cfg?.isActive !== false);
+                const ed = configEditor[level] || { pct: level === 1 ? 5 : 2, active: true };
                 return (
                   <div key={level} className="bg-gray-50 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Уровень {level}</span>
                       <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={active} onChange={e => { setActive(e.target.checked); configMutation.mutate({ level, percentage: pct, isActive: e.target.checked }); }} className="rounded" />
-                        <span className="text-[11px] text-gray-500">{active ? "Активен" : "Отключён"}</span>
+                        <input type="checkbox" checked={ed.active} onChange={e => { configMutation.mutate({ level, percentage: ed.pct, isActive: e.target.checked }); setConfigEditor(prev => ({ ...prev, [level]: { ...ed, active: e.target.checked } })); }} className="rounded" />
+                        <span className="text-[11px] text-gray-500">{ed.active ? "Активен" : "Отключён"}</span>
                       </label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="number" min="0" max="100" step="0.5" value={pct} onChange={e => setPct(Number(e.target.value))} className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" />
+                      <input type="number" min="0" max="100" step="0.5" value={ed.pct} onChange={e => setConfigEditor(prev => ({ ...prev, [level]: { ...(prev[level] || ed), pct: Number(e.target.value) } }))} className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" />
                       <span className="text-sm text-gray-500">%</span>
-                      <button onClick={() => configMutation.mutate({ level, percentage: pct, isActive: active })} className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700">Сохранить</button>
+                      <button onClick={() => configMutation.mutate({ level, percentage: ed.pct, isActive: ed.active })} className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700">Сохранить</button>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1">{level === 1 ? "Прямой реферал" : "Реферал 2-го уровня"}: {pct}% от продаж</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{level === 1 ? "Прямой реферал" : "Реферал 2-го уровня"}: {ed.pct}% от продаж</p>
                   </div>
                 );
               })}

@@ -409,7 +409,6 @@ export default function ProcurementPage() {
         isPending={updateReq.isPending} />}
 \n      {previewFile && (
         <FilePreviewModal
-          token={localStorage.getItem("token")}
           file={{ fileUrl: previewFile.url, fileName: previewFile.name, downloadUrl: previewFile.url }}
           onClose={() => setPreviewFile(null)}
           token={typeof window !== 'undefined' ? localStorage.getItem('token') : undefined}
