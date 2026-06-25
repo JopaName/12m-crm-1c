@@ -130,6 +130,8 @@ model Client {
   @@index([name])
   @@index([inn])
   @@index([isArchived, createdById, createdAt])
+  @@index([createdAt])
+  @@index([name])
 }
 
 model Lead {
