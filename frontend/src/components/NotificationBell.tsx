@@ -1,4 +1,5 @@
-import React, { useEffect, useNavigate, useRef, useState } from "react";;
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { notificationAPI } from "../api";
@@ -42,6 +43,7 @@ export default function NotificationBell() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
 
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["notif-unread"],
@@ -87,7 +89,7 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (!open && ref.current) { const r = ref.current.getBoundingClientRect(); setPanelStyle({ right: window.innerWidth - r.right + 16, top: r.bottom + 8 }); } setOpen(!open); }}
         className={cn(
           "relative p-2 rounded-xl transition-all duration-200",
           open ? "bg-primary-50 text-primary-600" : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
@@ -100,8 +102,8 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-xl border border-gray-200 z-50 overflow-hidden animate-in">
+      {open && createPortal(
+        <div style={panelStyle} className="fixed w-96 bg-white rounded-2xl shadow-xl border border-gray-200 z-50 overflow-hidden ">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-sm text-gray-800">Уведомления</h3>
@@ -155,7 +157,8 @@ export default function NotificationBell() {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
