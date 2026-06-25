@@ -223,26 +223,24 @@ export default function ReferralPage() {
       {/* Tab content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         {/* WORKFLOW TAB */}
-        {currentTab === "workflow" && <ReferralWorkflow tree={tree} isLoading={treeLoading} invite={invite} />}
+        <div className={currentTab === "workflow" ? "" : "hidden"}><ReferralWorkflow tree={tree} isLoading={treeLoading} invite={invite} /></div>
 
         {/* TREE TAB */}
-        {currentTab === "tree" && (
-          <div>
-            {treeLoading ? (
-              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />)}</div>
-            ) : tree?.tree?.length === 0 ? (
-              <div className="text-center py-12 text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">У вас пока нет рефералов</p><p className="text-xs mt-1">Пригласите коллег через вкладку «Пригласить»</p></div>
-            ) : (
-              <div className="space-y-1">
-                <div className="text-xs text-gray-400 mb-2">
-                  {tree?.referrer ? "Вы приглашены: " + tree.referrer : "Вы корневой менеджер"}
-                  {" · "}{tree?.totalReferrals || 0} чел. в команде
-                </div>
-                {tree?.tree?.map((n: any) => renderTreeNode(n, 0))}
+        <div className={currentTab === "tree" ? "" : "hidden"}>
+          {treeLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />)}</div>
+          ) : tree?.tree?.length === 0 ? (
+            <div className="text-center py-12 text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">У вас пока нет рефералов</p><p className="text-xs mt-1">Пригласите коллег через вкладку «Пригласить»</p></div>
+          ) : (
+            <div className="space-y-1">
+              <div className="text-xs text-gray-400 mb-2">
+                {tree?.referrer ? "Вы приглашены: " + tree.referrer : "Вы корневой менеджер"}
+                {" · "}{tree?.totalReferrals || 0} чел. в команде
               </div>
-            )}
-          </div>
-        )}
+              {tree?.tree?.map((n: any) => renderTreeNode(n, 0))}
+            </div>
+          )}
+        </div>
 
         {/* SALES TAB */}
         {currentTab === "sales" && (
