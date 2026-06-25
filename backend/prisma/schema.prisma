@@ -87,9 +87,6 @@ model User {
   receivedMessages      ChatMessage[]              @relation("ReceivedMessages")
   legalDocumentComments LegalDocumentComment[]
   notifications Notification[]
-  clientActions  ClientAction[]
-  actionMessages ActionMessage[]
-  actionFiles    ActionFile[]
   chatRooms      ChatRoom[]
   chatRoomMemberships ChatRoomMember[]
   @@index([isArchived, isActive])
@@ -122,7 +119,6 @@ model Client {
   payments       Payment[]
   serviceCases  ServiceCase[]
   telemetryReadings TelemetryReading[]
-  clientActions    ClientAction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,7 +127,6 @@ model Client {
   @@index([inn])
   @@index([isArchived, createdById, createdAt])
   @@index([createdAt])
-  @@index([name])
 }
 
 model Lead {
@@ -1005,6 +1000,16 @@ model IntegrationLog {
   @@index([createdAt])
   @@index([entityType, entityId])
 }
+model NotificationPreference {
+  id       String  @id @default(cuid())
+  userId   String
+  type     String  // notification type key
+  enabled  Boolean @default(true)
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
 
 
 model Notification {
@@ -1023,157 +1028,4 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, createdAt])
   @@index([entityType, entityId])
-}
-
-model ClientAction {
-  id          String   @id @default(cuid())
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id])
-  type        String
-  title       String
-  description String?
-  status      String
-  orderIndex  Int
-  completedAt DateTime?
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-
-  messages ActionMessage[]
-  files    ActionFile[]
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([clientId])
-  @@index([clientId, orderIndex])
-}
-
-model ActionMessage {
-  id        String   @id @default(cuid())
-  actionId  String
-  action    ClientAction @relation(fields: [actionId], references: [id])
-  senderId  String
-  sender    User     @relation(fields: [senderId], references: [id])
-  content   String
-
-  createdAt DateTime @default(now())
-
-  @@index([actionId])
-  @@index([actionId, createdAt])
-}
-
-model ActionFile {
-  id           String   @id @default(cuid())
-  actionId     String
-  action       ClientAction @relation(fields: [actionId], references: [id])
-  fileName     String
-  fileUrl      String
-  uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([actionId])
-}
-
-
-model AiChatSession {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String   @default("New chat")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  messages AiChatMessage[]
-  files    AiChatFile[]
-
-  @@index([userId])
-}
-
-model AiChatMessage {
-  id        String   @id @default(cuid())
-  sessionId String
-  session   AiChatSession @relation(fields: [sessionId], references: [id])
-  role      String
-  content   String
-  createdAt DateTime @default(now())
-
-  @@index([sessionId])
-}
-
-model AiChatFile {
-  id            String   @id @default(cuid())
-  sessionId     String
-  session       AiChatSession @relation(fields: [sessionId], references: [id])
-  userId        String
-  originalName  String
-  storedName    String
-  mimeType      String
-  size          Int
-  extractedText String?
-  createdAt     DateTime @default(now())
-
-  @@index([sessionId])
-}
-
-model Log {
-  id        String   @id @default(cuid())
-  level     String   @default("error")
-  message   String
-  source    String   @default("app")
-  stack     String?
-  metadata  String?
-  url       String?
-  userId    String?
-  createdAt DateTime @default(now())
-
-  @@index([level, createdAt])
-  @@index([source, createdAt])
-}
-
-model FileRecord {
-  id           String    @id @default(cuid())
-  entityType   String
-  entityId     String
-  fieldName    String
-  version      Int       @default(1)
-  fileName     String
-  fileUrl      String
-  fileSize     Int
-  mimeType     String
-  uploadedById String
-  createdAt    DateTime  @default(now())
-  deleted      Boolean   @default(false)
-  deletedAt    DateTime?
-  deletedById  String?
-  previewEnabled Boolean @default(true)
-
-  @@index([entityType, entityId])
-  @@index([entityType, entityId, fieldName])
-  @@index([deleted])
-  @@index([deleted, deletedAt])
-}
-
-
-model File {
-  id            String    @id @default(uuid())
-  originalName  String
-  storageName   String    @unique
-  mimeType      String
-  sizeBytes     Int
-  checksum      String
-  entityType    String
-  entityId      String
-  fieldName     String
-  version       Int       @default(1)
-  uploadedById  String
-  createdAt     DateTime  @default(now())
-  deletedAt     DateTime?
-  deletedById   String?
-  previewEnabled Boolean @default(true)
-
-  @@index([entityType, entityId])
-  @@index([entityType, entityId, fieldName])
-  @@index([deletedAt])
-  @@index([checksum])
 }

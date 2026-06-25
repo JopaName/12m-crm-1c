@@ -221,6 +221,8 @@ export const notificationAPI = {
   getUnreadCount: () => api.get("/notifications/unread-count").then(r => r.data.count),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.patch("/notifications/read-all"),
+  getPreferences: () => api.get("/notifications/preferences").then(r => r.data),
+  updatePreference: (type: string, enabled: boolean) => api.put("/notifications/preferences", { type, enabled }),
 };
 
 export const chatAPI = {
