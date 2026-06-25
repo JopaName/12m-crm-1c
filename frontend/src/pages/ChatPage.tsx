@@ -109,21 +109,6 @@ export default function ChatPage() {
     }
   };
 
-  const [showCreateRoom, setShowCreateRoom] = useState(false);
-  const [newRoomName, setNewRoomName] = useState("");
-  const [newRoomMembers, setNewRoomMembers] = useState<string[]>([]);
-
-  const handleCreateRoom = async () => {
-    if (!newRoomName.trim() || newRoomMembers.length === 0) return;
-    try {
-      await chatAPI.createRoom(newRoomName, newRoomMembers);
-      setShowCreateRoom(false);
-      setNewRoomName("");
-      setNewRoomMembers([]);
-      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
-    } catch (e) { console.error("Failed to create room:", e); }
-  };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedUserId) return;
@@ -168,10 +153,6 @@ export default function ChatPage() {
       <div className={`w-80 lg:w-96 border-r border-gray-200 bg-white flex flex-col ${selectedUserId ? "hidden sm:flex" : "flex"}`}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
-            <button onClick={handleCreateRoom} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-lg hover:bg-primary-200">+ Group</button>
-          </div>>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
             <span className="text-xs text-gray-400">{conversations.length} chats</span>
