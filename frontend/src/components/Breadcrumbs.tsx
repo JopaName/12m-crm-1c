@@ -18,6 +18,7 @@ export default function Breadcrumbs() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   if (pathname === "/" || pathname === "/login") return null;
+  if (pathname === "/deals" || pathname === "/clients" || pathname === "/tasks" || pathname === "/products" || pathname === "/warehouse" || pathname === "/production" || pathname === "/procurement" || pathname === "/rent" || pathname === "/installation" || pathname === "/legal" || pathname === "/service" || pathname === "/users" || pathname === "/roles" || pathname === "/chat" || pathname === "/referrals") return null;
 
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return null;
