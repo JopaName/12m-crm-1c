@@ -35,6 +35,9 @@ export default function ChatPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -57,10 +60,17 @@ export default function ChatPage() {
     refetchInterval: 3000,
   });
 
+  const { data: roomMessages, refetch: refetchRoomMessages } = useQuery({
+    queryKey: ["chat-room-messages", selectedRoomId],
+    queryFn: () => (selectedRoomId ? chatAPI.getRoomMessages(selectedRoomId).then((r) => r.data as ChatMessage[]) : Promise.resolve([])),
+    enabled: !!selectedRoomId,
+    refetchInterval: 3000,
+  });
+
   const prevMessagesLength = usePrevious(messages?.length || 0);
 
   const sendMutation = useMutation({
-    mutationFn: (data: { receiverId: string; content: string }) => chatAPI.send(data),
+    mutationFn: (data: any) => data.isRoom ? chatAPI.sendRoomMessage(data.roomId, data.content) : chatAPI.send(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
       refetchMessages();
@@ -97,8 +107,12 @@ export default function ChatPage() {
   }, []);
 
   const handleSend = () => {
-    if (!newMessage.trim() || !selectedUserId) return;
-    sendMutation.mutate({ receiverId: selectedUserId, content: newMessage.trim() });
+    if (!newMessage.trim() || (!selectedUserId && !selectedRoomId)) return;
+    if (selectedRoomId) {
+      sendMutation.mutate({ roomId: selectedRoomId, content: newMessage.trim(), isRoom: true });
+    } else {
+      sendMutation.mutate({ receiverId: selectedUserId, content: newMessage.trim() });
+    }
     setNewMessage("");
   };
 
@@ -125,18 +139,22 @@ export default function ChatPage() {
     }
   };
 
-  const selectedUser = conversations.find((c) => c.user.id === selectedUserId)?.user || null;
+  const selectedUser = selectedRoomId
+    ? (conversations.find((c) => c.isRoom && c.user.id === selectedRoomId)?.user || null)
+    : (conversations.find((c) => c.user.id === selectedUserId)?.user || null);
+  const effectiveId = selectedRoomId || selectedUserId;
+  const displayMessages = selectedRoomId ? (roomMessages || []) : (messages || []);
 
   const filteredConversations = conversations.filter((c) => {
-    const name = `${c.user.firstName} ${c.user.lastName}`.toLowerCase();
+    const name = (c.isRoom ? (c.user.name || "") : `${c.user.firstName} ${c.user.lastName}`).toLowerCase();
     return name.includes(search.toLowerCase());
   });
 
   // Group messages by date
   const groupedMessages: { date: string; messages: ChatMessage[] }[] = [];
-  if (messages) {
+  if (displayMessages.length > 0) {
     let currentDate = "";
-    for (const msg of messages) {
+    for (const msg of displayMessages) {
       const dateLabel = formatMessageDateSeparator(msg.createdAt);
       if (dateLabel !== currentDate) {
         currentDate = dateLabel;
@@ -154,7 +172,7 @@ export default function ChatPage() {
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
+            <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-800">Messages</h2><button onClick={() => setShowCreateRoom(true)} className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded hover:bg-primary-200">+</button></div>
             <span className="text-xs text-gray-400">{conversations.length} chats</span>
           </div>
           <div className="relative">
@@ -189,20 +207,24 @@ export default function ChatPage() {
             <div className="p-8 text-center text-gray-400 text-sm">{search ? "Ничего не найдено" : "Нет чатов"}</div>
           ) : (
             filteredConversations.map((conv) => {
-              const isActive = selectedUserId === conv.user.id;
+              const isActive = conv.isRoom ? selectedRoomId === conv.user.id : selectedUserId === conv.user.id;
               return (
                 <button
-                  key={conv.user.id}
-                  onClick={() => setSelectedUserId(conv.user.id)}
+                  key={conv.isRoom ? "room_" + conv.user.id : conv.user.id}
+                  onClick={() => { if (conv.isRoom) { setSelectedRoomId(conv.user.id); setSelectedUserId(null); } else { setSelectedUserId(conv.user.id); setSelectedRoomId(null); } }}
                   className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 ${
                     isActive ? "bg-blue-50 hover:bg-blue-50" : ""
                   }`}
                 >
-                  <Avatar user={conv.user} size="md" />
+                  {conv.isRoom ? (
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{"\u2660"}</div>
+                  ) : (
+                    <Avatar user={conv.user} size="md" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm text-gray-900 truncate">
-                        {conv.user.firstName} {conv.user.lastName}
+                        {conv.isRoom ? (conv.user.name || "Group") : `${conv.user.firstName} ${conv.user.lastName}`}
                       </span>
                       <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
                         {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ""}
@@ -228,7 +250,7 @@ export default function ChatPage() {
       </div>
 
       {/* Right panel - Chat area */}
-      {selectedUserId && selectedUser ? (
+      {(selectedUserId || selectedRoomId) && selectedUser ? (
         <div className="flex-1 flex flex-col bg-gray-50">
           {/* Chat header */}
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
@@ -243,9 +265,9 @@ export default function ChatPage() {
             <Avatar user={selectedUser} size="md" />
             <div>
               <div className="font-semibold text-sm text-gray-900">
-                {selectedUser.firstName} {selectedUser.lastName}
+                {selectedUser.isGroup ? (selectedUser.name || "Group") : `${selectedUser.firstName} ${selectedUser.lastName}`}
               </div>
-              <div className="text-xs text-gray-400">{selectedUser.role?.name || "User"}</div>
+              <div className="text-xs text-gray-400">{selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "User")}</div>
             </div>
           </div>
 
@@ -363,6 +385,32 @@ export default function ChatPage() {
             </div>
             <h3 className="text-lg font-medium text-gray-600 mb-1">Your messages</h3>
             <p className="text-sm text-gray-400">Select a conversation to start chatting</p>
+          </div>
+        </div>
+      )}
+
+      {/* Create Room Modal */}
+      {showCreateRoom && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setShowCreateRoom(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-800 mb-3">Create Group</h3>
+            <input placeholder="Room name" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-primary-500/20" />
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!newRoomName.trim()) return;
+                  try {
+                    await chatAPI.createRoom(newRoomName, []);
+                    setShowCreateRoom(false);
+                    setNewRoomName("");
+                    queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+                  } catch (err) { console.error("Failed to create room:", err); }
+                }}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
+              >Create</button>
+              <button onClick={() => setShowCreateRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            </div>
           </div>
         </div>
       )}
