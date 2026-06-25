@@ -37,10 +37,10 @@ export default function ReferralPage() {
   const [sortDir, setSortDir] = useState("desc");
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
-  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); }, enabled: currentTab === "sales" || currentTab === "workflow" });
-  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getEarnings(pd.start, pd.end); }, enabled: currentTab === "earnings" });
-  const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink(), enabled: currentTab === "invite" });
-  const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig(), enabled: currentTab === "config" });
+  const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); } });
+  const { data: earnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getEarnings(pd.start, pd.end); } });
+  const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink() });
+  const { data: configs } = useQuery({ queryKey: ["referral-config"], queryFn: () => referralAPI.getConfig() });
 
   const sortedEarnings = useMemo(() => {
     if (!earnings?.earnings) return [];
@@ -223,7 +223,7 @@ export default function ReferralPage() {
       {/* Tab content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         {/* WORKFLOW TAB */}
-        {currentTab === "workflow" && <ReferralWorkflow />}
+        {currentTab === "workflow" && <ReferralWorkflow tree={tree} isLoading={treeLoading} invite={invite} />}
 
         {/* TREE TAB */}
         {currentTab === "tree" && (

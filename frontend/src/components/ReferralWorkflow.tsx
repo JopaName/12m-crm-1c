@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { referralAPI } from "../api";
 import { cn } from "./cn";
 import { Check, ChevronDown, ChevronRight, Circle, Copy, GitBranch, Mail, Plus, TreeNode, TrendingUp, User, UserPlus, Users, X } from "lucide-react";;
 import toast from "react-hot-toast";
@@ -10,13 +8,13 @@ interface TreeNode {
   sales: { count: number; total: number }; children: TreeNode[]; level: number; parentName?: string;
 }
 
-export default function ReferralWorkflow() {
+export default function ReferralWorkflow({ tree, isLoading, invite }: { tree?: any; isLoading?: boolean; invite?: any }) {
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showInvite, setShowInvite] = useState<string | null>(null);
 
-  const { data: tree, isLoading, refetch } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
-  const { data: invite } = useQuery({ queryKey: ["referral-invite"], queryFn: () => referralAPI.getInviteLink() });
+  // tree, isLoading from props
+  // invite from props
 
   // Convert API tree to flat list with parent refs
   const flatTree = useMemo(() => {
