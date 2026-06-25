@@ -237,4 +237,7 @@ export const chatAPI = {
     });
   },
   markRead: (userId: string) => api.put(`/chat/read/${userId}`),
+  createRoom: (name: string, memberIds: string[]) => api.post("/chat/rooms", { name, memberIds }),
+  getRoomMessages: (roomId: string) => api.get(`/chat/room/${roomId}/messages`),
+  sendRoomMessage: (roomId: string, content: string) => api.post("/chat/room/send", { roomId, content }),
 };
