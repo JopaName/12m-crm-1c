@@ -1,6 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, Save, Trash2, Plus, Edit3, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
+import { procurementAPI } from "../api";
+
+const cleanData = (d: Record<string, any>) => {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(d)) {
+    if (v === "" || v === undefined || v === null || k === "dueDateIndefinite") continue;
+    out[k] = v;
+  }
+  return out;
+};
+
+const STATUSES = ["Не прочитано","Прочитано","Найдено но не оплачено","Оплачено и ждем доставки","Куплено/забрали"];
 
 function FormModal({ data: initial, onClose, users, suppliers, isEdit, onSubmit, onUpdate, onDelete, isPending }: {
   data?: any; onClose: () => void; users?: any[]; suppliers?: any[]; isEdit?: boolean;
