@@ -286,7 +286,7 @@ export default function Layout() {
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-2"><Breadcrumbs /><NotificationBell /></div>
+          <div className="flex items-center justify-between mb-2"><div><Breadcrumbs /></div><NotificationBell /></div>
           <Outlet />
         </div>
       </main>
