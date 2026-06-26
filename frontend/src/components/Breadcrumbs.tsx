@@ -18,10 +18,15 @@ export default function Breadcrumbs() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   if (pathname === "/" || pathname === "/login") return null;
-  if (pathname === "/deals" || pathname === "/clients" || pathname === "/tasks" || pathname === "/products" || pathname === "/warehouse" || pathname === "/production" || pathname === "/procurement" || pathname === "/rent" || pathname === "/installation" || pathname === "/legal" || pathname === "/service" || pathname === "/users" || pathname === "/roles" || pathname === "/chat" || pathname === "/referrals") return null;
+  if (pathname === "/deals" || pathname === "/clients" || pathname === "/tasks" || pathname === "/products" || pathname === "/warehouse" || pathname === "/production" || pathname === "/procurement" || pathname === "/rent" || pathname === "/installation" || pathname === "/legal" || pathname === "/service" || pathname === "/users" || pathname === "/roles" || pathname === "/chat") return null;
 
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return null;
+
+  // Skip breadcrumbs for pages where the second segment is not an ID (e.g. /referrals/workflow, /referrals/sales)
+  // These are sub-routes handled by the same page component, not detail pages with entity IDs
+  const MAIN_SUBROUTES = ["workflow", "sales", "earnings", "invite", "config"];
+  if (segments.length === 2 && MAIN_SUBROUTES.includes(segments[1])) return null;
 
   // Resolve entity names for ID segments
   const clientId = segments[0] === "clients" && segments[1] ? segments[1] : null;
