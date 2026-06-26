@@ -17,22 +17,17 @@ const ROUTE_LABELS: Record<string, string> = {
 export default function Breadcrumbs() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  if (pathname === "/" || pathname === "/login") return null;
-  if (pathname === "/deals" || pathname === "/clients" || pathname === "/tasks" || pathname === "/products" || pathname === "/warehouse" || pathname === "/production" || pathname === "/procurement" || pathname === "/rent" || pathname === "/installation" || pathname === "/legal" || pathname === "/service" || pathname === "/users" || pathname === "/roles" || pathname === "/chat") return null;
 
+  // ALL hooks MUST be called unconditionally — before any early returns.
+  // Compute segment info from pathname (always available, no hooks).
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return null;
 
-  // Skip breadcrumbs for pages where the second segment is not an ID (e.g. /referrals/workflow, /referrals/sales)
-  // These are sub-routes handled by the same page component, not detail pages with entity IDs
-  const MAIN_SUBROUTES = ["workflow", "sales", "earnings", "invite", "config"];
-  if (segments.length === 2 && MAIN_SUBROUTES.includes(segments[1])) return null;
+  // Resolve entity ID if the second segment looks like an ID (not a known sub-route label)
+  const clientId = segments[0] === "clients" && segments[1] && !ROUTE_LABELS[segments[1]] ? segments[1] : null;
+  const dealId = segments[0] === "deals" && segments[1] && !ROUTE_LABELS[segments[1]] ? segments[1] : null;
+  const taskId = segments[0] === "tasks" && segments[1] && !ROUTE_LABELS[segments[1]] ? segments[1] : null;
 
-  // Resolve entity names for ID segments
-  const clientId = segments[0] === "clients" && segments[1] ? segments[1] : null;
-  const dealId = segments[0] === "deals" && segments[1] ? segments[1] : null;
-  const taskId = segments[0] === "tasks" && segments[1] ? segments[1] : null;
-
+  // ALWAYS call these hooks — stable count on every render
   const { data: client } = useQuery({
     queryKey: ["client-name", clientId],
     queryFn: () => clientsAPI.getById(clientId!).then(r => r.data),
@@ -47,16 +42,19 @@ export default function Breadcrumbs() {
 
   const { data: task } = useQuery({
     queryKey: ["task-name", taskId],
-    queryFn: () => tasksAPI.getAll().then(r => { const list = r.data || r; return Array.isArray(list) ? list.find(t => t.id === taskId) : null; }),
+    queryFn: () => tasksAPI.getAll().then(r => { const list = r.data || r; return Array.isArray(list) ? list.find((t: any) => t.id === taskId) : null; }),
     enabled: !!taskId,
   });
 
-  // Build items
+  // Now decide whether to show breadcrumbs (JSX-level, no hooks below)
+  if (pathname === "/" || pathname === "/login") return null;
+  if (segments.length === 0) return null;
+
+  // Build breadcrumb items from segments — uses ROUTE_LABELS and resolved entity names
   const items = segments.map((seg, i) => {
     const target = "/" + segments.slice(0, i + 1).join("/");
     const isLast = i === segments.length - 1;
 
-    // Resolve name for ID segment
     let label = ROUTE_LABELS[seg] || seg;
     if (i > 0 && !ROUTE_LABELS[seg]) {
       const prev = segments[i - 1];
