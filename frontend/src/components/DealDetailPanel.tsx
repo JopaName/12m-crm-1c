@@ -10,6 +10,7 @@ import { STATUS_META } from "../constants/deals";
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
+import DealChatPanel from "./DealChatPanel";
 
 export default function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData, confirmDelete, onClose, onEdit, onSaveEdit, onDelete, onCancelEdit, onCancelDelete, isPending, nextStatuses, prevStatus, onStatusChange, users, clients }: {
   deal: any; client: any; agent: string; canEdit: boolean; canDelete: boolean;
@@ -268,7 +269,10 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
           )}
         </div>
 
-        {/* Edit/Delete bar — same style as client modal */}
+        {/* Chat discussion */}
+          <DealChatPanel dealId={deal.id} dealNumber={linked.dealNumber} />
+
+          {/* Edit/Delete bar — same style as client modal */}
         {!edit && (
           <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50 shrink-0">
             <button onClick={onEdit} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors">
