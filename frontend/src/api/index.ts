@@ -243,5 +243,5 @@ export const chatAPI = {
   getRoomMessages: (roomId: string) => api.get(`/chat/room/${roomId}/messages`),
   sendRoomMessage: (roomId: string, content: string) => api.post("/chat/room/send", { roomId, content }),
   getEntityMessages: (entityType: string, entityId: string) => api.get(`/chat/entity/${entityType}/${entityId}`).then(r => r.data),
-  sendEntityMessage: (data: { entityType: string; entityId: string; content: string; entityTitle?: string }) => api.post("/chat/send", { receiverId: null, ...data }),
+  sendEntityMessage: (data: { entityType: string; entityId: string; content: string; entityTitle?: string; mentionedUserIds?: string[] }) => api.post("/chat/send", { receiverId: null, mentionedUserIds: data.mentionedUserIds || [], ...data }),
 };

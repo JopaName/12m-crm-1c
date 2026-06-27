@@ -17,6 +17,20 @@ function highlightMentions(text: string) {
   });
 }
 
+function extractMentionedUserIds(text: string, users: any[]): string[] {
+  const mentions = text.match(/@(\S+)/g) || [];
+  const ids: string[] = [];
+  const userMap = new Map<string, string>();
+  users.forEach((u: any) => userMap.set(`${u.firstName} ${u.lastName}`, u.id));
+  mentions.forEach(m => {
+    const name = m.slice(1);
+    // Try exact match first, then partial
+    const id = userMap.get(name);
+    if (id) ids.push(id);
+  });
+  return ids;
+}
+
 function extractMentionQuery(input: string, cursorPos: number): { query: string; start: number } | null {
   let lastAt = -1;
   for (let i = cursorPos - 1; i >= 0; i--) {
@@ -74,12 +88,16 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
   }, [mentionUsers, mentionQuery]);
 
   const sendMutation = useMutation({
-    mutationFn: (content: string) => chatAPI.sendEntityMessage({
-      entityType: "Deal",
-      entityId: dealId,
-      content,
-      entityTitle: dealNumber || dealId,
-    }),
+    mutationFn: (content: string) => {
+      const mentionedIds = extractMentionedUserIds(content, users || []);
+      return chatAPI.sendEntityMessage({
+        entityType: "Deal",
+        entityId: dealId,
+        content,
+        entityTitle: dealNumber || dealId,
+        mentionedUserIds: mentionedIds,
+      });
+    },
     onSuccess: () => {
       setText("");
       queryClient.invalidateQueries({ queryKey: ["deal-chat", dealId] });
