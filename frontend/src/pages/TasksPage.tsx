@@ -37,6 +37,7 @@ export default function TasksPage() {
   const [view, setView] = useState<ViewMode>("kanban");
   const [showForm, setShowForm] = useState(false);
   const [detailTask, setDetailTask] = useState<any | null>(null);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [editingTask, setEditingTask] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
