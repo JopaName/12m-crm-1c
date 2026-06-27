@@ -27,6 +27,7 @@ api.interceptors.response.use(
 export default api;
 
 export const authAPI = {
+  getUserById: (id: string) => api.get(`/auth/users/${id}`).then(r => r.data),
   login: (data: { email: string; password: string }) =>
     api.post("/auth/login", data),
   me: () => api.get("/auth/me"),

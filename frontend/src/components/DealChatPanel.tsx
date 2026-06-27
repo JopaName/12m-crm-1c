@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatAPI, authAPI } from "../api";
+import ProfileModal from "./ProfileModal";
 import { Send, MessageCircle, AtSign, Paperclip } from "lucide-react";
 
 function formatTime(d: string) {
@@ -47,6 +48,7 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [showMentions, setShowMentions] = useState(false);
+  const [viewProfileId, setViewProfileId] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -184,17 +186,19 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
           messages.map((m: any) => (
             <div key={m.id} className="flex gap-2 group">
               <div className="shrink-0 mt-0.5">
+                <button onClick={() => setViewProfileId(m.sender?.id || null)} title="Профиль">
                 {m.sender?.avatar ? (
-                  <img src={m.sender.avatar} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                  <img src={m.sender.avatar} className="w-6 h-6 rounded-full object-cover border border-gray-200 hover:border-primary-400 transition-colors" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-primary-100 border border-gray-200 flex items-center justify-center text-[9px] font-bold text-primary-600">
+                  <div className="w-6 h-6 rounded-full bg-primary-100 border border-gray-200 flex items-center justify-center text-[9px] font-bold text-primary-600 hover:border-primary-400 transition-colors">
                     {m.sender?.firstName?.[0]}{m.sender?.lastName?.[0]}
                   </div>
                 )}
+                </button>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-semibold text-gray-600">{m.sender?.firstName} {m.sender?.lastName}</span>
+                  <button onClick={() => setViewProfileId(m.sender?.id || null)} className="text-[10px] font-semibold text-gray-600 hover:text-primary-600 hover:underline transition-colors">{m.sender?.firstName} {m.sender?.lastName}</button>
                   <span className="text-[9px] text-gray-400">{formatTime(m.createdAt)}</span>
                 </div>
                 <p className="text-sm text-gray-800 bg-white rounded-lg px-2.5 py-1.5 border border-gray-100 shadow-sm">
@@ -246,6 +250,8 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
           </button>
         </div>
       </div>
+    
+      {viewProfileId && <ProfileModal user={null} profileUserId={viewProfileId} onClose={() => setViewProfileId(null)} />}
     </div>
   );
 }
