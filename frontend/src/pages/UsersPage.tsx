@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
+import ProfileModal from "../components/ProfileModal";
 import { Plus, Search, X, User, Mail, Phone, Shield, Edit3, Trash2 } from "lucide-react";
 
 const blankForm = { email: "", password: "", firstName: "", lastName: "", phone: "", roleId: "" };
@@ -14,6 +15,7 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(blankForm);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
 
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: () => authAPI.getUsers().then((r) => r.data) });
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: () => authAPI.getRoles().then((r) => r.data) });
@@ -82,11 +84,17 @@ export default function UsersPage() {
         <div className="divide-y divide-gray-100">
           {filtered.map((u: any) => (
             <div key={u.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group">
-              <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary-600">{(u.firstName?.[0] || "") + (u.lastName?.[0] || "")}</span>
-              </div>
+              <button onClick={() => setViewUserId(u.id)} className="shrink-0" title="Профиль">
+                {u.avatar ? (
+                  <img src={u.avatar} className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 hover:border-primary-400 transition-colors" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0 hover:ring-2 hover:ring-primary-300 transition-all">
+                    <span className="text-xs font-bold text-primary-600">{(u.firstName?.[0] || "") + (u.lastName?.[0] || "")}</span>
+                  </div>
+                )}
+              </button>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 text-sm">{u.firstName} {u.lastName}</p>
+                <button onClick={() => setViewUserId(u.id)} className="font-medium text-gray-900 text-sm hover:text-primary-600 hover:underline transition-colors">{u.firstName} {u.lastName}</button>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                   <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{u.email}</span>
                   {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{u.phone}</span>}
