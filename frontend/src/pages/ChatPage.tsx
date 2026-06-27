@@ -313,7 +313,8 @@ export default function ChatPage() {
                     <div key={msg.id} className={`flex mb-1.5 ${isMine ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] ${isMine ? "order-1" : "order-1"}`}>
                         <div
-                          className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words ${
+                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, msg }); }}
+                          className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words relative group ${
                             isMine
                               ? "bg-blue-500 text-white rounded-br-md"
                               : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100"
@@ -484,6 +485,33 @@ export default function ChatPage() {
               <button onClick={() => setShowCreateRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
             </div>
           </div>
+        </div>
+      )}
+
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1 min-w-[160px]" style={{ left: Math.min(contextMenu.x, window.innerWidth - 180), top: Math.min(contextMenu.y, window.innerHeight - 200) }} onClick={() => setContextMenu(null)}>
+          <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            Копировать
+          </button>
+          <button onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+            Ответить
+          </button>
+          {contextMenu.msg.senderId === user?.id && (
+            <>
+              <button onClick={() => { setEditingMsg(contextMenu.msg); setNewMessage(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                Редактировать
+              </button>
+              <button onClick={() => { if (confirm("Удалить сообщение?")) { deleteMutation.mutate(contextMenu.msg.id); } setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 text-red-500">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                Удалить
+              </button>
+            </>
+          )}
         </div>
       )}
 
