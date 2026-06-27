@@ -981,6 +981,7 @@ model ChatMessage {
   entityType  String?
   entityId    String?
   entityTitle String?
+  reactions    String?
 
   createdAt DateTime @default(now())
 

@@ -333,11 +333,26 @@ export default function ChatPage() {
                           <span className={`text-[10px] ${isMine ? "text-gray-400" : "text-gray-400"}`}>
                             {formatFullTime(msg.createdAt)}
                           </span>
-                          {showRead && (
+{showRead && (
                             <svg className="w-3 h-3 text-blue-400" viewBox="0 0 16 11" fill="currentColor">
                               <path d="M11.071.653a.457.457 0 00-.304-.102.493.493 0 00-.381.178l-6.19 7.636-2.011-2.095a.463.463 0 00-.336-.153.457.457 0 00-.337.14.538.538 0 00-.14.349c0 .133.047.26.14.356l2.405 2.509a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.533.533 0 00.127-.343.506.506 0 00-.142-.321zm-2.26 0a.458.458 0 00-.305-.102.494.494 0 00-.38.178l-6.19 7.636-1.084-1.13a.46.46 0 00-.337-.146.456.456 0 00-.337.14.538.538 0 00-.14.349c0 .134.047.26.14.356l1.478 1.54a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.534.534 0 00.127-.343.506.506 0 00-.142-.32z" />
                             </svg>
                           )}
+                          {/* Reaction bar */}
+                          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                            <div className={`flex items-center gap-0.5 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                              {Object.entries(msg.reactions).map(([emoji, count]: [string, any]) => (
+                                <span key={emoji} className="text-[10px] bg-gray-100 hover:bg-gray-200 rounded-full px-1.5 py-0.5 cursor-pointer transition-colors">{emoji} {(count as number) > 1 ? count : ""}</span>
+                              ))}
+                            </div>
+                          )}
+                          {/* Quick emoji picker on hover */}
+                          <div className={`hidden group-hover:flex items-center gap-0.5 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                            {["👍","❤️","😂","😮","😢","😡","🔥","👏"].map(emoji => (
+                              <button key={emoji} onClick={(e) => { e.stopPropagation(); chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); refetchRoomMessages(); }); }}
+                                className="text-xs hover:scale-125 transition-transform">{emoji}</button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
