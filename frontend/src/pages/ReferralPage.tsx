@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { Users, DollarSign, TrendingUp, Copy, Check, ChevronRight, ChevronDown, UserPlus, Inbox, Settings, LayoutGrid, GitBranch, Gift, ArrowUp, ArrowDown, Crown, Star, Sparkles, Eye, BadgeCheck, Clock, Target, Layers, Share2 } from "lucide-react";
 import ReferralWorkflow from "../components/ReferralWorkflow";
+import ProfileModal from "../components/ProfileModal";
 import { cn } from "../components/cn";
 
 type Tab = "tree" | "workflow" | "sales" | "earnings" | "invite" | "config";
@@ -35,6 +36,7 @@ export default function ReferralPage() {
   const [customEnd, setCustomEnd] = useState("");
   const [sortKey, setSortKey] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
 
   const { data: tree, isLoading: treeLoading } = useQuery({ queryKey: ["referral-tree"], queryFn: () => referralAPI.getTree() });
   const { data: sales } = useQuery({ queryKey: ["referral-sales"], queryFn: () => { const pd = period !== "all" ? getPeriodDates() : {}; return referralAPI.getMySales(pd.start, pd.end); } });
@@ -120,7 +122,7 @@ export default function ReferralPage() {
           {!hasChildren && <div className="w-3.5" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-800 truncate">{node.name}</span>
+              <button onClick={(e) => { e.stopPropagation(); setViewUserId(node.id); }} className="text-sm font-medium text-primary-600 hover:underline truncate text-left">{node.name}</button>
               {!node.active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full ml-2">неактивен</span>}
             </div>
             <div className="flex gap-3 text-[10px] text-gray-400 mt-0.5">
@@ -352,6 +354,7 @@ export default function ReferralPage() {
           </div>
         )}
       </div>
+      {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
     </div>
   );
 }

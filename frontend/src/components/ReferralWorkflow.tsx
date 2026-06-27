@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "./cn";
 import { Check, ChevronDown, ChevronRight, Circle, Copy, GitBranch, Mail, Plus, TreeNode, TrendingUp, User, UserPlus, Users, X } from "lucide-react";;
+import ProfileModal from "./ProfileModal";
 import toast from "react-hot-toast";
 
 interface TreeNode {
@@ -12,6 +13,7 @@ export default function ReferralWorkflow({ tree, isLoading, invite }: { tree?: a
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showInvite, setShowInvite] = useState<string | null>(null);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
 
   // tree, isLoading from props
   // invite from props
@@ -70,7 +72,7 @@ export default function ReferralWorkflow({ tree, isLoading, invite }: { tree?: a
             node.level === 1 ? "bg-blue-100 text-blue-700" : node.level === 2 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
           )}>L{node.level}</span>
           {/* Name */}
-          <p className="font-semibold text-sm text-gray-800 mt-1.5 truncate">{node.name}</p>
+          <button onClick={(e) => { e.stopPropagation(); setViewUserId(node.id); }} className="font-semibold text-sm text-primary-600 hover:underline mt-1.5 truncate text-left">{node.name}</button>
           <p className="text-[10px] text-gray-400 truncate">{node.email}</p>
           {/* Stats */}
           <div className="flex gap-3 mt-2 text-[10px]">

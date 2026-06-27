@@ -11,6 +11,7 @@ const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateSt
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
 import DealChatPanel from "./DealChatPanel";
+import ProfileModal from "./ProfileModal";
 
 export default function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData, confirmDelete, onClose, onEdit, onSaveEdit, onDelete, onCancelEdit, onCancelDelete, isPending, nextStatuses, prevStatus, onStatusChange, users, clients }: {
   deal: any; client: any; agent: string; canEdit: boolean; canDelete: boolean;
@@ -26,6 +27,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   const [edit, setEdit] = useState(editDealData || null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [docPreview, setDocPreview] = useState<{template: string; label: string} | null>(null);
+  const [viewAgentId, setViewAgentId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { data: fullDeal } = useQuery({
@@ -177,7 +179,11 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-gray-400 shrink-0" />
-                  <span className="text-gray-600">{agent || "Агент не назначен"}</span>
+                  {linked.responsibleAgentId ? (
+              <button onClick={() => setViewAgentId(linked.responsibleAgentId)} className="text-gray-600 hover:text-primary-600 hover:underline transition-colors">{agent || "Агент не назначен"}</button>
+            ) : (
+              <span className="text-gray-600">{agent || "Агент не назначен"}</span>
+            )}
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
