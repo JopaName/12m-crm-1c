@@ -42,6 +42,8 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: ChatMessage } | null>(null);
@@ -239,7 +241,8 @@ export default function ChatPage() {
                   {conv.isRoom ? (
                     <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{"\u2660"}</div>
                   ) : (
-                    <Avatar user={conv.user} size="md" />
+                    <div className="relative shrink-0"><Avatar user={conv.user} size="md" />
+                    {conv.user.isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />}</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -252,7 +255,7 @@ export default function ChatPage() {
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-xs text-gray-500 truncate">
-                        {conv.lastMessage?.fileUrl ? "\u{1F4CE} " : ""}
+                        {conv.lastMessage?.fileUrl ? "📎 " : ""}
                         {conv.lastMessage?.content || "No messages"}
                       </span>
                       {conv.unreadCount > 0 && (
@@ -287,7 +290,7 @@ export default function ChatPage() {
               <div className="font-semibold text-sm text-gray-900">
                 {selectedUser.isGroup ? (selectedUser.name || "Group") : `${selectedUser.firstName} ${selectedUser.lastName}`}
               </div>
-              <div className="text-xs text-gray-400">{selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "User")}</div>
+              <div className="text-xs text-gray-400">{typing ? <span className="text-green-500 animate-pulse">печатает...</span> : (selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "User"))}</div>
             </div>
           </div>
 
@@ -317,12 +320,22 @@ export default function ChatPage() {
                           }`}
                         >
                           {msg.fileUrl ? (
-                            <div className={isMine ? "" : ""}>
-                              <FilePreview msg={msg} />
-                              {!msg.mimeType?.startsWith("image/") && (
-                                <div className={`mt-1 text-xs ${isMine ? "text-blue-100" : "text-gray-400"}`}>
-                                  {msg.content}
+                            <div>
+                              {msg.mimeType?.startsWith("image/") ? (
+                                <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                  <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-[240px] max-h-[200px] rounded-lg object-cover hover:opacity-90 transition-opacity" />
+                                </a>
+                              ) : (
+                                <div className={`flex items-center gap-2 px-3 py-2 ${isMine ? "bg-blue-400/30" : "bg-gray-100"} rounded-lg`}>
+                                  <span className="text-xl">📎</span>
+                                  <div>
+                                    <p className="text-xs font-medium truncate max-w-[180px]">{msg.fileName || "Файл"}</p>
+                                    {msg.fileSize && <p className="text-[10px] opacity-60">{formatFileSize(msg.fileSize)}</p>}
+                                  </div>
                                 </div>
+                              )}
+                              {!msg.mimeType?.startsWith("image/") && msg.content && (
+                                <p className={`mt-1 ${isMine ? "text-white/80" : "text-gray-600"}`}>{msg.content}</p>
                               )}
                             </div>
                           ) : (
@@ -409,7 +422,7 @@ export default function ChatPage() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message..."
+                placeholder={editingMsg ? "Редактировать..." : "Сообщение..."}
                 rows={1}
                 className="flex-1 bg-transparent outline-none resize-none text-sm max-h-28 py-1"
                 style={{ scrollbarWidth: "none" }}
