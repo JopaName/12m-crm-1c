@@ -20,6 +20,7 @@ export default function DealsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailDeal, setDetailDeal] = useState<any | null>(null);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
   const { user } = useAuth();
   const canEdit = user?.permissions?.includes("deals.edit") ?? true;
   const canDelete = user?.permissions?.includes("deals.delete") ?? true;
