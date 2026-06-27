@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { STATUSES, STATUS_META } from "../constants/deals";
 import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
+import ProfileModal from "../components/ProfileModal";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText } from "lucide-react";
@@ -249,7 +250,7 @@ export default function DealsPage() {
                           )}
                           {agent && (
                             <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-                              <User className="w-3 h-3 shrink-0" /><span className="truncate">{agent}</span>
+                              <User className="w-3 h-3 shrink-0" /><button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="truncate hover:text-primary-600 hover:underline transition-colors">{agent}</button>
                             </div>
                           )}
                           <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
@@ -304,7 +305,7 @@ export default function DealsPage() {
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                       <span className="font-medium text-gray-500">{d.expectedAmount?.toLocaleString()} ₽</span>
                       {client && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{client.name}</span>}
-                      {agent && <span className="flex items-center gap-1"><User className="w-3 h-3" />{agent}</span>}
+                      {agent && <button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="flex items-center gap-1 hover:text-primary-600 hover:underline"><User className="w-3 h-3" />{agent}</button>}
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(d.createdAt)}</span>
                     </div>
                   </div>
@@ -359,6 +360,7 @@ export default function DealsPage() {
       {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} clients={clients} users={users} initialClientId={newDealClientId}
         onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
 
+          {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
     </div>
   );
 }

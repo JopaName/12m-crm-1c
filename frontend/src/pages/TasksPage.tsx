@@ -237,7 +237,7 @@ export default function TasksPage() {
                             {t.priority && <span className={cn("text-[10px] font-bold px-1 py-0.5 rounded shrink-0", PRIORITY_META[t.priority]?.color)}>{PRIORITY_META[t.priority]?.label}</span>}</div>
                           <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-1"><Calendar className="w-3 h-3" /><span>{fmtDate(t.createdAt)}</span>
                             {t.dueDate && <span className={overdue ? "text-red-600 ml-2" : "text-gray-400"}>— {fmtDate(t.dueDate)}</span>}</div>
-                          {t.assigneeId && <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5"><User className="w-3 h-3" /><span className="cursor-pointer hover:text-primary-600" onClick={e => { e.stopPropagation(); navigate("/users#" + encodeURIComponent(userMap[t.assigneeId] || "")); }}>{userMap[t.assigneeId] || "—"}</span></div>}
+                          {t.assigneeId && <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5"><User className="w-3 h-3" /><button onClick={e => { e.stopPropagation(); setViewUserId(t.assigneeId); }} className="hover:text-primary-600 hover:underline transition-colors">{userMap[t.assigneeId] || "—"}</button></div>}
                           {t.type && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mt-1.5 inline-block">{TYPE_LABELS[t.type] || t.type}</span>}
                           {t.dealId && dealMap[t.dealId] && <span className="text-[10px] text-primary-500 cursor-pointer hover:text-primary-700 ml-1 bg-primary-50 px-1.5 py-0.5 rounded inline-block" onClick={e => { e.stopPropagation(); navigate("/deals#" + encodeURIComponent(dealMap[t.dealId])); }}>{dealMap[t.dealId]}</span>}
                         </div>
@@ -274,7 +274,7 @@ export default function TasksPage() {
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                     {t.type && <span>{TYPE_LABELS[t.type]}</span>}
                     {t.dealId && dealMap[t.dealId] && <span className="text-primary-500 cursor-pointer hover:text-primary-700" onClick={e => { e.stopPropagation(); navigate("/deals#" + encodeURIComponent(dealMap[t.dealId])); }}>{dealMap[t.dealId]}</span>}
-                    {t.assigneeId && <span className="cursor-pointer hover:text-primary-600" onClick={e => { e.stopPropagation(); navigate("/users#" + encodeURIComponent(userMap[t.assigneeId] || "")); }}><User className="w-3 h-3 inline mr-1" />{userMap[t.assigneeId]}</span>}
+                    {t.assigneeId && <button onClick={e => { e.stopPropagation(); setViewUserId(t.assigneeId); }} className="hover:text-primary-600 hover:underline"><User className="w-3 h-3 inline mr-1" />{userMap[t.assigneeId]}</button>}
                     <span><Calendar className="w-3 h-3 inline mr-1" />{fmtDate(t.createdAt)}</span>
                     {t.dueDate && <span className={overdue ? "text-red-600" : ""}>{fmtDate(t.dueDate)}</span>}</div></div>
                 <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", STATUS_META[t.status]?.lightBg, STATUS_META[t.status]?.color)}>{STATUS_META[t.status]?.label}</span>
@@ -362,8 +362,8 @@ export default function TasksPage() {
                   {t.dueDate && <span className={overdue ? "text-red-600" : ""}>Срок: {fmtDate(t.dueDate)}</span>}
                 </div>
                 {t.assigneeId && userMap[t.assigneeId] && (
-                  <div className="flex items-center gap-1.5 text-xs text-primary-500 cursor-pointer hover:text-primary-700" onClick={() => { setDetailTask(null); navigate("/users#" + encodeURIComponent(userMap[t.assigneeId])); }}>
-                    <User className="w-3.5 h-3.5 inline" />{userMap[t.assigneeId]}
+                  <button className="flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-700 cursor-pointer" onClick={() => { setDetailTask(null); setViewUserId(t.assigneeId); }}>
+                    <User className="w-3.5 h-3.5 inline" />{userMap[t.assigneeId]}</button>
                   </div>
                 )}
                 {t.dealId && dealMap[t.dealId] && (
@@ -417,6 +417,7 @@ export default function TasksPage() {
         quickDate={quickDate}
         onSubmit={(d) => editingTask ? updateMutation.mutate({ id: editingTask.id, data: d }) : createMutation.mutate(d)}
         isPending={createMutation.isPending || updateMutation.isPending} />}
+      {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
     </div>
   );
 }

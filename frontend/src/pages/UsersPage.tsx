@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authAPI } from "../api";
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import ProfileModal from "../components/ProfileModal";
@@ -10,6 +11,7 @@ const blankForm = { email: "", password: "", firstName: "", lastName: "", phone:
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 
 export default function UsersPage() {
+  const { user: me } = useAuth();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
