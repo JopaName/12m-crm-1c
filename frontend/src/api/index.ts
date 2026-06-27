@@ -231,7 +231,7 @@ export const notificationAPI = {
 export const chatAPI = {
   getConversations: () => api.get("/chat/conversations"),
   getMessages: (userId: string) => api.get(`/chat/messages/${userId}`),
-  send: (data: { receiverId: string; content: string }) =>
+  send: (data: { receiverId: string; content: string; replyToId?: string }) =>
     api.post("/chat/send", data),
   uploadFile: (file: File) => { const fd = new FormData(); fd.append("file", file); return api.post("/chat/upload", fd, { headers: { "Content-Type": "multipart/form-data" } }); },
   sendFile: (receiverId: string, file: File) => {
@@ -246,6 +246,10 @@ export const chatAPI = {
   createRoom: (name: string, memberIds: string[]) => api.post("/chat/rooms", { name, memberIds }),
   getRoomMessages: (roomId: string) => api.get(`/chat/room/${roomId}/messages`),
   sendRoomMessage: (roomId: string, content: string) => api.post("/chat/room/send", { roomId, content }),
+  sendRoomMessageWithReply: (roomId: string, content: string, replyToId: string) => api.post("/chat/room/send", { roomId, content, replyToId }),
+  editMessage: (messageId: string, content: string) => api.put(`/chat/messages/${messageId}`, { content }),
+  deleteMessage: (messageId: string) => api.delete(`/chat/messages/${messageId}`),
+  forwardMessage: (messageId: string, toUserId: string) => api.post(`/chat/forward/${messageId}`, { toUserId }),
   getEntityMessages: (entityType: string, entityId: string) => api.get(`/chat/entity/${entityType}/${entityId}`).then(r => r.data),
   sendEntityMessage: (data: { entityType: string; entityId: string; content: string; entityTitle?: string; mentionedUserIds?: string[]; fileUrl?: string; fileName?: string }) => api.post("/chat/send", { receiverId: null, mentionedUserIds: data.mentionedUserIds || [], ...data }),
 };
