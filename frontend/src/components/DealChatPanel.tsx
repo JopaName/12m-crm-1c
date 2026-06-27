@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatAPI, authAPI } from "../api";
-import { Send, MessageCircle, AtSign } from "lucide-react";
+import { Send, MessageCircle, AtSign, Paperclip } from "lucide-react";
 
 function formatTime(d: string) {
   return new Date(d).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -50,6 +50,8 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
   const [mentionIdx, setMentionIdx] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["deal-chat", dealId],
@@ -136,6 +138,26 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await chatAPI.uploadFile(file);
+      const data = res.data;
+      const msgText = `\u{1F4CE} ${data.fileName}`;
+      const mentionedIds = extractMentionedUserIds(msgText, users || []);
+      await chatAPI.sendEntityMessage({
+        entityType: "Deal", entityId: dealId, content: msgText,
+        entityTitle: dealNumber || dealId, mentionedUserIds: mentionedIds,
+        fileUrl: data.fileUrl, fileName: data.fileName,
+      });
+      queryClient.invalidateQueries({ queryKey: ["deal-chat", dealId] });
+    } catch { /* ignore */ }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   const handleSend = () => {
     if (!text.trim() || sendMutation.isPending) return;
     sendMutation.mutate(text.trim());
@@ -204,12 +226,15 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
           </div>
         )}
         <div className="flex items-center gap-2">
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors" title="Прикрепить файл">{uploading ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> : <Paperclip className="w-4 h-4" />}</button>
+          <input ref={fileRef} type="file" onChange={handleFileUpload} className="hidden" />
           <input
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Комментарий... (@ для упоминания)"
+            disabled={uploading}
             className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20"
           />
           <button
