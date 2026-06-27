@@ -160,14 +160,25 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
           </div>
         ) : (
           messages.map((m: any) => (
-            <div key={m.id} className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[10px] font-semibold text-gray-600">{m.sender?.firstName} {m.sender?.lastName}</span>
-                <span className="text-[9px] text-gray-400">{formatTime(m.createdAt)}</span>
+            <div key={m.id} className="flex gap-2 group">
+              <div className="shrink-0 mt-0.5">
+                {m.sender?.avatar ? (
+                  <img src={m.sender.avatar} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary-100 border border-gray-200 flex items-center justify-center text-[9px] font-bold text-primary-600">
+                    {m.sender?.firstName?.[0]}{m.sender?.lastName?.[0]}
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-gray-800 bg-white rounded-lg px-2.5 py-1.5 border border-gray-100 shadow-sm">
-                {highlightMentions(m.content)}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] font-semibold text-gray-600">{m.sender?.firstName} {m.sender?.lastName}</span>
+                  <span className="text-[9px] text-gray-400">{formatTime(m.createdAt)}</span>
+                </div>
+                <p className="text-sm text-gray-800 bg-white rounded-lg px-2.5 py-1.5 border border-gray-100 shadow-sm">
+                  {highlightMentions(m.content)}
+                </p>
+              </div>
             </div>
           ))
         )}
