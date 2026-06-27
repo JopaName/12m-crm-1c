@@ -362,8 +362,8 @@ export default function TasksPage() {
                   {t.dueDate && <span className={overdue ? "text-red-600" : ""}>Срок: {fmtDate(t.dueDate)}</span>}
                 </div>
                 {t.assigneeId && userMap[t.assigneeId] && (
-                  <button className="flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-700 cursor-pointer" onClick={() => { setDetailTask(null); setViewUserId(t.assigneeId); }}>
-                    <User className="w-3.5 h-3.5 inline" />{userMap[t.assigneeId]}</button>
+                  <div className="flex items-center gap-1.5 text-xs text-primary-500 cursor-pointer hover:text-primary-700" onClick={() => { setDetailTask(null); setViewUserId(t.assigneeId); }}>
+                    <User className="w-3.5 h-3.5 inline" />{userMap[t.assigneeId]}
                   </div>
                 )}
                 {t.dealId && dealMap[t.dealId] && (
