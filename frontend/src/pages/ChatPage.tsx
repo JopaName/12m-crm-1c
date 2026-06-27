@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatAPI } from "../api";
+import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { formatTime, formatFullTime, formatFileSize, getInitials, COLORS, Avatar, formatMessageDateSeparator, FilePreview, usePrevious } from "../utils/chat";
 
@@ -41,6 +42,9 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: ChatMessage } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -77,6 +81,21 @@ export default function ChatPage() {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: (data: { id: string; content: string }) => chatAPI.editMessage(data.id, data.content),
+    onSuccess: () => { setEditingMsg(null); refetchMessages(); refetchRoomMessages(); },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => chatAPI.deleteMessage(id),
+    onSuccess: () => { refetchMessages(); refetchRoomMessages(); },
+  });
+
+  const forwardMutation = useMutation({
+    mutationFn: (data: { messageId: string; toUserId: string }) => chatAPI.forwardMessage(data.messageId, data.toUserId),
+    onSuccess: () => { toast.success("Переслано"); },
+  });
+
   const markReadMutation = useMutation({
     mutationFn: (userId: string) => chatAPI.markRead(userId),
   });
@@ -109,11 +128,12 @@ export default function ChatPage() {
   const handleSend = () => {
     if (!newMessage.trim() || (!selectedUserId && !selectedRoomId)) return;
     if (selectedRoomId) {
-      sendMutation.mutate({ roomId: selectedRoomId, content: newMessage.trim(), isRoom: true });
+      sendMutation.mutate({ roomId: selectedRoomId, content: newMessage.trim(), isRoom: true, replyToId: replyTo?.id });
     } else {
-      sendMutation.mutate({ receiverId: selectedUserId, content: newMessage.trim() });
+      sendMutation.mutate({ receiverId: selectedUserId, content: newMessage.trim(), replyToId: replyTo?.id });
     }
     setNewMessage("");
+    setReplyTo(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -327,6 +347,30 @@ export default function ChatPage() {
             ))}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Reply preview */}
+          {replyTo && (
+            <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-blue-600">В ответ {replyTo.sender?.firstName || "пользователю"}</p>
+                <p className="text-xs text-gray-600 truncate">{replyTo.content?.substring(0, 100)}</p>
+              </div>
+              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
+
+          {/* Editing preview */}
+          {editingMsg && (
+            <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 flex items-center gap-3">
+              <span className="text-[10px] font-semibold text-amber-700">Редактирование</span>
+              <p className="text-xs text-gray-600 truncate flex-1">{editingMsg.content?.substring(0, 80)}</p>
+              <button onClick={() => setEditingMsg(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
 
           {/* Input area */}
           <div className="px-4 py-3 bg-white border-t border-gray-200">
