@@ -250,6 +250,7 @@ export const chatAPI = {
   editMessage: (messageId: string, content: string) => api.put(`/chat/messages/${messageId}`, { content }),
   deleteMessage: (messageId: string) => api.delete(`/chat/messages/${messageId}`),
   forwardMessage: (messageId: string, toUserId: string) => api.post(`/chat/forward/${messageId}`, { toUserId }),
+  addReaction: (messageId: string, emoji: string) => api.post(`/chat/messages/${messageId}/reaction`, { emoji }),
   getEntityMessages: (entityType: string, entityId: string) => api.get(`/chat/entity/${entityType}/${entityId}`).then(r => r.data),
   sendEntityMessage: (data: { entityType: string; entityId: string; content: string; entityTitle?: string; mentionedUserIds?: string[]; fileUrl?: string; fileName?: string }) => api.post("/chat/send", { receiverId: null, mentionedUserIds: data.mentionedUserIds || [], ...data }),
 };
