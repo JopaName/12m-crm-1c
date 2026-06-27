@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useNavigate, useState } from "react";;
 import AiFloatPanel from "./AiFloatPanel";
+import ProfileModal from "./ProfileModal";
 import NotificationBell from "./NotificationBell";
 import Breadcrumbs from "./Breadcrumbs";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
@@ -41,6 +42,7 @@ function savePrefs(userId: string, pinned: string[], order: string[]) {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [pinned, setPinned] = useState<string[]>([]);
@@ -260,18 +262,27 @@ export default function Layout() {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowProfile(true)} className="shrink-0">
+              {user?.avatar ? (
+                <img src={user.avatar} className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 hover:border-primary-400 transition-colors" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-primary-100 border-2 border-gray-200 flex items-center justify-center text-sm font-bold text-primary-600 hover:border-primary-400 transition-colors">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </div>
+              )}
+            </button>
             {!collapsed && (
-              <div className="text-sm">
-                <p className="font-medium text-gray-700">
+              <button onClick={() => setShowProfile(true)} className="text-left flex-1 min-w-0">
+                <p className="font-medium text-gray-700 text-sm truncate">
                   {user?.firstName} {user?.lastName}
                 </p>
                 <p className="text-gray-400 text-xs">{user?.role?.name}</p>
-              </div>
+              </button>
             )}
             <button
               onClick={handleLogout}
-              className="text-gray-400 hover:text-red-500 text-sm"
+              className="text-gray-400 hover:text-red-500 text-sm shrink-0"
               title="Выйти"
             >
               {"\u23FB"}
@@ -291,6 +302,7 @@ export default function Layout() {
         </div>
       </main>
       <AiFloatPanel />
+      {showProfile && <ProfileModal user={user} onClose={() => setShowProfile(false)} />}
     </div>
   );
 }

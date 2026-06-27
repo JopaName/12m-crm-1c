@@ -34,6 +34,8 @@ export const authAPI = {
   getRoles: () => api.get("/auth/roles"),
   createUser: (data: any) => api.post("/auth/register", data),
   updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
+  updateProfile: (data: any) => api.put("/auth/profile", data),
+  uploadAvatar: (file: File) => { const fd = new FormData(); fd.append("avatar", file); return api.post("/auth/avatar", fd, { headers: { "Content-Type": "multipart/form-data" } }); },
   deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
 };
 
