@@ -299,6 +299,7 @@ export default function ReferralWorkflow({ tree, isLoading, invite }: { tree?: a
           </div>
         </div>
       )}
+      {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
     </div>
   );
 }

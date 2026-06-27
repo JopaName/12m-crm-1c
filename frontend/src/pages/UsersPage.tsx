@@ -145,6 +145,7 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+      {viewUserId && <ProfileModal user={viewUserId === me?.id ? me : null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
     </div>
   );
 }
