@@ -10,9 +10,9 @@ interface FeedCard {
 }
 
 const TABS = [
-  { key: "ideas", label: "💡 Идеи", prompt: "Создай 3 креативные бизнес-идеи на основе данных CRM. Формат JSON: [{\"type\":\"idea\",\"title\":\"...\",\"content\":\"...\",\"link\":\"/путь\"}]" },
+  { key: "ideas", label: "💡 Идеи", prompt: "Создай 3 креативные бизнес-идеи. Каждая с заголовком, развернутым описанием и ссылкой. Формат: [{\"type\":\"idea\",\"title\":\"...\",\"content\":\"...\",\"sub\":\"Выгода: ...\",\"link\":\"/путь\"}]" },
   { key: "facts", label: "📊 Факты", prompt: "На основе данных CRM создай 4 коротких факта/наблюдения. Формат JSON: [{\"type\":\"fact\",\"title\":\"...\",\"content\":\"...\"}]" },
-  { key: "metrics", label: "📈 Метрики", prompt: "Выдели 3 ключевые метрики из данных CRM. Формат JSON: [{\"type\":\"metric\",\"label\":\"...\",\"value\":\"...\",\"sub\":\"...\",\"color\":\"blue|green|purple|amber|red|teal\"}]" },
+  { key: "metrics", label: "📈 Метрики", prompt: "Выдели 3-4 метрики. Крупное значение + название + пояснение + ссылка на раздел CRM. Формат: [{\"type\":\"metric\",\"label\":\"...\",\"value\":\"...\",\"sub\":\"...\",\"color\":\"blue|green|purple|amber|red|teal\",\"link\":\"/путь\"}]" },
   { key: "alerts", label: "⚠️ Риски", prompt: "Найди 3 риска или проблемы в данных CRM. Формат JSON: [{\"type\":\"alert\",\"title\":\"...\",\"content\":\"...\",\"severity\":\"warning|danger\"}]"},
   { key: "quotes", label: "💬 Советы", prompt: "Создай 3 мотивационных совета для команды на основе метрик CRM. Формат JSON: [{\"type\":\"quote\",\"title\":\"...\",\"content\":\"...\"}]" },
 ];
@@ -174,15 +174,24 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                 </div>
 
                 {card.type === "metric" ? (
-                  <div className={`bg-gradient-to-r ${GRADIENT[card.color || "default"]} rounded-xl p-4 text-white`}>
-                    <p className="text-[10px] opacity-80 uppercase font-medium">{card.label}</p>
-                    <p className="text-2xl font-bold mt-1">{card.value}</p>
-                    {card.sub && <p className="text-xs opacity-70 mt-0.5">{card.sub}</p>}
+                  <div className={`bg-gradient-to-br ${GRADIENT[card.color || "default"]} p-6 text-white relative overflow-hidden rounded-xl`}>
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full" />
+                    <div className="relative z-10">
+                      <p className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2">{card.label}</p>
+                      <p className="text-3xl font-bold">{card.value}</p>
+                      {card.sub && <p className="text-sm text-white/70 mt-2 leading-relaxed">{card.sub}</p>}
+                      {card.link ? (
+                        <a href={card.link} className="flex items-center gap-1 mt-3 text-xs text-white/60 hover:text-white transition-colors">
+                          Подробнее <ArrowRight className="w-3 h-3" />
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
                   <>
                     {card.title && <h3 className="text-sm font-semibold text-gray-800 mb-1">{card.title}</h3>}
-                    {card.content && <p className="text-xs text-gray-600 leading-relaxed">{card.content}</p>}
+                    {card.content && <p className="text-xs text-gray-600 leading-relaxed mb-2">{card.content}</p>}
+                    {card.sub && <p className="text-[11px] text-gray-500 bg-gray-50 rounded-lg p-2.5 mb-2 leading-relaxed">{card.sub}</p>}
                   </>
                 )}
                 {card.link && (
