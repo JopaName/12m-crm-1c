@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp, TrendingUp, Target, Lightbulb, Shield, X, DollarSign, Users, Package, History } from "lucide-react";
 
@@ -66,6 +67,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const [dataChanged, setDataChanged] = useState(false);
   const prevDataRef = useRef("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const navigate = useNavigate();
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const preloadDone = useRef<Set<string>>(new Set());
@@ -206,7 +208,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
           const count = t.cards.filter(c => !t.dismissed.has(c.id)).length;
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all relative ${
+              className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all relative cursor-pointer ${
                 activeTab === tab.key ? "bg-violet-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}>
               {tab.label}
@@ -226,7 +228,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
           <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{visibleCards.length}</span>
           {cacheHit && currentTab.cards.length > 0 && <History className="w-3 h-3 text-gray-300" />}
         </div>
-        <button onClick={() => resetTab(activeTab)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] text-violet-600 hover:bg-violet-50 rounded-lg transition-colors">
+        <button onClick={() => resetTab(activeTab)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] text-violet-600 hover:bg-violet-50 rounded-lg transition-colors cursor-pointer">
           <RefreshCw className="w-3 h-3" />Обновить
         </button>
       </div>
@@ -255,19 +257,19 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
             return (
               <div key={card.id} className={`relative bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group ${card.type === "metric" ? "p-0 overflow-hidden" : "p-5"}`}>
                 {card.type !== "metric" && (
-                  <button onClick={() => dismissCard(activeTab, card.id)} className="absolute top-3 right-3 p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-100 transition-all z-10">
+                  <button onClick={() => dismissCard(activeTab, card.id)} className="absolute top-3 right-3 p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-100 transition-all z-10 cursor-pointer">
                     <X className="w-3.5 h-3.5 text-gray-400" />
                   </button>
                 )}
                 {/* Reaction buttons */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                   <button onClick={(e) => { e.preventDefault(); reactCard(card.id, "liked"); }}
-                    className={`p-1.5 rounded-full transition-all ${reactions[card.id] === "liked" ? "bg-green-100 text-green-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-green-50 hover:text-green-500"}`}
+                    className={`p-1.5 rounded-full transition-all cursor-pointer ${reactions[card.id] === "liked" ? "bg-green-100 text-green-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-green-50 hover:text-green-500"}`}
                     title="Нравится">
                     <svg className="w-3.5 h-3.5" fill={reactions[card.id] === "liked" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" /></svg>
                   </button>
                   <button onClick={(e) => { e.preventDefault(); reactCard(card.id, "disliked"); }}
-                    className={`p-1.5 rounded-full transition-all ${reactions[card.id] === "disliked" ? "bg-red-100 text-red-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-red-50 hover:text-red-500"}`}
+                    className={`p-1.5 rounded-full transition-all cursor-pointer ${reactions[card.id] === "disliked" ? "bg-red-100 text-red-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-red-50 hover:text-red-500"}`}
                     title="Не нравится">
                     <svg className="w-3.5 h-3.5" fill={reactions[card.id] === "disliked" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" /></svg>
                   </button>
@@ -281,7 +283,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                       <p className="text-3xl font-bold">{card.value}</p>
                       {card.sub && <p className="text-sm text-white/70 mt-2 leading-relaxed">{card.sub}</p>}
                       {card.link ? (
-                        <a href={card.link} className="flex items-center gap-1 mt-3 text-xs text-white/60 hover:text-white transition-colors">Подробнее <ArrowRight className="w-3 h-3" /></a>
+                        <button onClick={(e) => { e.stopPropagation(); if (card.link) navigate(card.link); }} className="flex items-center gap-1 mt-3 text-xs text-white/60 hover:text-white transition-colors cursor-pointer">Подробнее <ArrowRight className="w-3 h-3" /></button>
                       ) : null}
                     </div>
                   </div>
@@ -300,7 +302,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                     {card.content && <p className="text-xs text-gray-600 leading-relaxed mb-2">{card.content}</p>}
                     {card.sub && <p className="text-[11px] text-gray-500 bg-gray-50 rounded-lg p-2.5 leading-relaxed">{card.sub}</p>}
                     {card.link && (
-                      <a href={card.link} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg text-xs font-medium hover:bg-violet-100 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); if (card.link) navigate(card.link); }} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg text-xs font-medium hover:bg-violet-100 transition-colors cursor-pointer">
                         {card.type === "idea" ? "Открыть" : "Перейти"} <ArrowRight className="w-3 h-3" />
                       </a>
                     )}
