@@ -340,190 +340,43 @@ function ActionsWidget() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-
-
-  const userId = user?.id || "anon";
-  const [activeWidgets, setActiveWidgets] = useState<string[]>(() => loadWidgets(userId));
-  const [editing, setEditing] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [aiMode, setAiMode] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(activeWidgets));
-  }, [activeWidgets, userId]);
-
   const { data: myDealsData } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data || r) });
-
-  // Pipeline metrics (must be AFTER myDealsData declaration)
   const dealsList = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
   const PST = ["Lead_Created", "Invoice_Generation", "Legal_Review", "Doc_Sending", "Waiting_Payment", "Paid_And_Reserved", "Issuing_Goods", "Deal_Closed"];
-  const PSL = { Lead_Created: "Лид", Invoice_Generation: "Счёт", Legal_Review: "Юристы", Doc_Sending: "Документы", Waiting_Payment: "Оплата", Paid_And_Reserved: "Резерв", Issuing_Goods: "Отгрузка", Deal_Closed: "Закрыто" };
-  const PSC = { Lead_Created: "bg-blue-500", Invoice_Generation: "bg-yellow-500", Legal_Review: "bg-purple-500", Doc_Sending: "bg-indigo-500", Waiting_Payment: "bg-orange-500", Paid_And_Reserved: "bg-teal-500", Issuing_Goods: "bg-cyan-500", Deal_Closed: "bg-green-500" };
+  const PSL: Record<string, string> = { Lead_Created: "Лид", Invoice_Generation: "Счёт", Legal_Review: "Юристы", Doc_Sending: "Документы", Waiting_Payment: "Оплата", Paid_And_Reserved: "Резерв", Issuing_Goods: "Отгрузка", Deal_Closed: "Закрыто" };
   const pipelineData = PST.map(s => {
-    const stageDeals = dealsList.filter(d => d.status === s);
-    const total = stageDeals.reduce((sum, d) => sum + (d.expectedAmount || 0), 0);
-    const stuck = stageDeals.filter(d => new Date(d.createdAt).getTime() < Date.now() - 7 * 86400000).length;
-    return { status: s, label: PSL[s], color: PSC[s], count: stageDeals.length, total, stuck };
+    const stageDeals = dealsList.filter((d: any) => d.status === s);
+    const total = stageDeals.reduce((sum: number, d: any) => sum + (d.expectedAmount || 0), 0);
+    return { status: s, label: PSL[s], count: stageDeals.length, total };
   });
-  const totalPipeline = dealsList.filter(d => d.status !== "Deal_Closed").reduce((s, d) => s + (d.expectedAmount || 0), 0);
-  const maxCount = Math.max(...pipelineData.map(p => p.count), 1);
+  const myDeals = dealsList;
+  const myActive = myDeals.filter((d: any) => d.status !== "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
+  const myClosed = myDeals.filter((d: any) => d.status === "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
+  const myAmount = myActive.reduce((s: number, d: any) => s + (d.expectedAmount || 0), 0);
+  const myClosedAmount = myClosed.reduce((s: number, d: any) => s + (d.expectedAmount || 0), 0);
   const { data: myEarnings } = useQuery({ queryKey: ["referral-earnings"], queryFn: () => referralAPI.getEarnings() });
-  const myDeals = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
-  const myActive = myDeals.filter((d) => d.status !== "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
-  const myClosed = myDeals.filter((d) => d.status === "Deal_Closed" && d.responsibleAgentId === (user?.id || ""));
-  const myAmount = myActive.reduce((s, d) => s + (d.expectedAmount || 0), 0);
-  const myClosedAmount = myClosed.reduce((s, d) => s + (d.expectedAmount || 0), 0);
-  const myCommission = (myEarnings?.total || 0);
-
-  const { data: summary } = useQuery({
-    queryKey: ["dashboard-summary"],
-    queryFn: () => dashboardAPI.getSummary().then((r) => r.data as SummaryData),
-    refetchInterval: 30000,
-  });
-
-  const { data: finances } = useQuery({
-    queryKey: ["dashboard-finance"],
-    queryFn: () => dashboardAPI.getFinance().then((r) => r.data as FinanceData),
-    refetchInterval: 30000,
-  });
-
-  const { data: pulse } = useQuery({
-    queryKey: ["dashboard-pulse"],
-    queryFn: () => dashboardAPI.getPulse().then((r) => r.data as PulseData),
-    refetchInterval: 30000,
-  });
+  const { data: summary } = useQuery({ queryKey: ["dashboard-summary"], queryFn: () => dashboardAPI.getSummary().then((r: any) => r.data) });
+  const { data: finances } = useQuery({ queryKey: ["dashboard-finance"], queryFn: () => dashboardAPI.getFinance().then((r: any) => r.data) });
+  const { data: pulse } = useQuery({ queryKey: ["dashboard-pulse"], queryFn: () => dashboardAPI.getPulse().then((r: any) => r.data) });
 
   const crmDataForAI = {
     summary, finances, pulse,
     deals: dealsList?.slice(0, 10)?.map((d: any) => ({ dealNumber: d.dealNumber, status: d.status, expectedAmount: d.expectedAmount, client: d.client?.name })),
-    pipeline: pipelineData, myActive: myActive?.length, myClosed: myClosed?.length, myAmount, myCommission,
-  };
-
-  const orderedWidgets = WIDGETS.filter((w) => activeWidgets.includes(w.key));
-  const hiddenWidgets = WIDGETS.filter((w) => !activeWidgets.includes(w.key));
-
-  const toggleWidget = (key: string) => {
-    setActiveWidgets((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
-  };
-
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    setDragOverIdx(idx);
-  };
-  const handleDrop = (targetIdx: number) => {
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null);
-      setDragOverIdx(null);
-      return;
-    }
-    const newOrder = [...activeWidgets];
-    const [moved] = newOrder.splice(dragIdx, 1);
-    newOrder.splice(targetIdx, 0, moved);
-    setActiveWidgets(newOrder);
-    setDragIdx(null);
-    setDragOverIdx(null);
-  };
-
-  const widgetContent: Record<string, React.ReactNode> = {
-    summary: <SummaryWidget data={summary} />,
-    finances: <FinanceWidget data={finances} />,
-    pulse: <PulseWidget data={pulse} />,
-    actions: <ActionsWidget />,
-    pipeline: <PipelineWidget data={pipelineData} totalPipeline={totalPipeline} maxCount={maxCount} user={user} />,
-    sales: <SalesMetricsWidget deals={myDealsData} earnings={myEarnings} user={user} />,
-    ai_insights: <AiInsightsWidget user={user} />,
-  };
-
-  const widgetBg: Record<string, string> = {
-    summary: "bg-gradient-to-br from-blue-50 to-white border-blue-100",
-    finances: "bg-gradient-to-br from-green-50 to-white border-green-100",
-    pulse: "bg-gradient-to-br from-purple-50 to-white border-purple-100",
-    actions: "bg-gradient-to-br from-yellow-50 to-white border-yellow-100",
-    ai_insights: "bg-gradient-to-br from-violet-50 to-white border-violet-100",
+    pipeline: pipelineData, myActive: myActive?.length, myClosed: myClosed?.length, myAmount, myCommission: myEarnings?.total || 0,
   };
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {"\u{1F44B}"} {user?.firstName}, добро пожаловать!
+          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <span>{"\u{1F9E0}"}</span>
+            {"👋 " + (user?.firstName || "User") + ", добро пожаловать!"}
           </h1>
-          <p className="text-sm text-gray-400 mt-1">Панель управления CRM</p>
+          <p className="text-xs text-gray-400 mt-0.5">AI-дашборд — креативное пространство на основе данных CRM</p>
         </div>
-        <button
-          onClick={() => setEditing(!editing)}
-          className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-            editing
-              ? "bg-primary-600 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {editing ? "\u2713 Готово" : "\u2699 Настроить"}
-        </button>
       </div>
-
-      {/* Widgets */}
-      <div className="space-y-4">
-        {orderedWidgets.map((widget, idx) => (
-          <div
-            key={widget.key}
-            draggable={editing}
-            onDragStart={() => editing && handleDragStart(idx)}
-            onDragOver={(e) => editing && handleDragOver(e, idx)}
-            onDrop={() => editing && handleDrop(idx)}
-            onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
-            className={`relative rounded-xl border p-4 ${widgetBg[widget.key] || "bg-white border-gray-100"} shadow-sm transition-all ${
-              editing ? "cursor-grab active:cursor-grabbing ring-2 ring-blue-200" : ""
-            } ${dragOverIdx === idx && editing ? "ring-2 ring-blue-400 scale-[1.01]" : ""}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                {editing && (
-                  <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
-                  </svg>
-                )}
-                {widget.icon} {widget.label}
-              </h3>
-              {editing && (
-                <button
-                  onClick={() => toggleWidget(widget.key)}
-                  className="text-xs text-red-400 hover:text-red-600 bg-red-50 px-2 py-0.5 rounded"
-                >
-                  Скрыть
-                </button>
-              )}
-            </div>
-            {widgetContent[widget.key]}
-          </div>
-        ))}
-      </div>
-
-      {/* Hidden widgets panel when editing */}
-      {editing && hiddenWidgets.length > 0 && (
-        <div className="mt-6 p-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
-          <h4 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-3">
-            Скрытые виджеты
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {hiddenWidgets.map((w) => (
-              <button
-                key={w.key}
-                onClick={() => toggleWidget(w.key)}
-                className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-colors"
-              >
-                + {w.icon} {w.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <AiDashboardView crmData={crmDataForAI} />
     </div>
   );
 }
