@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import api, { dashboardAPI, dealsAPI, referralAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
 
 const WIDGETS = [
   { key: "summary", label: "Сводка", icon: "\u{1F4CA}" },
