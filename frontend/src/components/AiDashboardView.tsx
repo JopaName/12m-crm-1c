@@ -45,7 +45,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
 
 ВАЖНО: каждый раз НОВАЯ структура блоков, НОВЫЕ заголовки, НОВЫЙ порядок. Будь креативным! 5-8 блоков. Только JSON.`;
 
-      const res = await api.post("/ai/coordinator", { content: prompt });
+      const res = await api.post("/ai/coordinator", { content: prompt, skipTools: true });
       const text = res.data?.response || "";
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
