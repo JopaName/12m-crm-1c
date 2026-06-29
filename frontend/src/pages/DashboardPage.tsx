@@ -19,11 +19,16 @@ function getStorageKey(userId: string) {
 }
 
 function loadWidgets(userId: string): string[] {
+  const defaults = WIDGETS.map((w) => w.key);
   try {
     const raw = localStorage.getItem(getStorageKey(userId));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const missing = defaults.filter((k: string) => !saved.includes(k));
+      return missing.length > 0 ? [...saved, ...missing] : saved;
+    }
   } catch {}
-  return WIDGETS.map((w) => w.key);
+  return defaults;
 }
 
 interface SummaryData {
