@@ -45,9 +45,11 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
 
 ВАЖНО: каждый раз НОВАЯ структура блоков, НОВЫЕ заголовки, НОВЫЙ порядок. Будь креативным! 5-8 блоков. Только JSON.`;
 
-      const res = await api.post("/ai/coordinator", { content: prompt, skipTools: true });
+      const res = await api.post("/ai/coordinator", { content: prompt, skipTools: true, maxTokens: 2000 });
       const text = res.data?.response || "";
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      // Strip markdown code blocks first
+      const cleanText = text.replace(/```json\n?|```/g, "").trim();
+      const jsonMatch = cleanText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         setBlocks(JSON.parse(jsonMatch[0]).slice(0, 8));
       } else {
@@ -61,7 +63,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
 
   useEffect(() => { generateDashboard(); }, []);
 
-  const maxVal = (items?: any[]) => Math.max(...(items || []).map(i => parseInt(i.value?.replace(/[^0-9]/g, "") || "0")), 1);
+  const maxVal = (items?: any[]) => Math.max(...(items || []).map(i => parseInt(String(i.value || "0").replace(/[^0-9]/g, "")) || 0), 1);
 
   return (
     <div>
@@ -178,13 +180,13 @@ function DashboardBlocks({ blocks, maxVal }: { blocks: DashboardBlock[]; maxVal:
               </div>
             );
           case "chart-bar": {
-            const m = maxVal(block.items);
+            const m = Math.max(...(block.items || []).map(i => parseInt(String(i.value || "0").replace(/[^0-9]/g, "")) || 0), 1);
             return (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 {block.title && <h3 className="text-sm font-semibold text-gray-700 mb-3">{block.title}</h3>}
                 <div className="space-y-2.5">
                   {(block.items || []).map((item, j) => {
-                    const val = parseInt(item.value?.replace(/[^0-9]/g, "") || "0") || 0;
+                    const val = parseInt(String(item.value || "0").replace(/[^0-9]/g, "")) || 0;
                     const pct = Math.min((val / m) * 100, 100);
                     return (
                       <div key={j} className="flex items-center gap-3">
