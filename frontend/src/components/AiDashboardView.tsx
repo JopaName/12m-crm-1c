@@ -69,6 +69,10 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const preloadDone = useRef<Set<string>>(new Set());
+  const crmRef = useRef(crmData);
+  crmRef.current = crmData;
+  const loadingRef = useRef<Set<string>>(new Set());
+  const cooldownRef = useRef(0);
 
   const getTab = (key: string) => tabs[key] || defaultTab();
   const currentTab = getTab(activeTab);
@@ -85,15 +89,25 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   }, []);
 
   const generateCards = useCallback(async (tabKey: string, pageNum: number) => {
+    // Guard: prevent concurrent calls for same tab
+    if (loadingRef.current.has(tabKey)) return;
     const tab = getTab(tabKey);
     if (!tab.hasMore && pageNum > 0) return;
+    
+    // Cooldown: max 1 call per 2 seconds
+    const now = Date.now();
+    if (now - cooldownRef.current < 2000 && pageNum > 0) return;
+    cooldownRef.current = now;
+    
+    loadingRef.current = new Set([...loadingRef.current, tabKey]);
     updateTab(tabKey, prev => ({ ...prev, loading: true }));
     
     // Small delay to allow UI to update
     await new Promise(r => setTimeout(r, 300));
     
     try {
-      const context = JSON.stringify({ summary: crmData.summary, finances: crmData.finances, pulse: crmData.pulse, deals: crmData.deals }).substring(0, 4000);
+      const data = crmRef.current;
+      const context = JSON.stringify({ summary: data.summary, finances: data.finances, pulse: data.pulse, deals: data.deals }).substring(0, 4000);
       const tabConfig = TABS.find(t => t.key === tabKey) || TABS[0];
       const prompt = `${tabConfig.prompt}\n\nДанные CRM: ${context}\n\nТолько JSON массив. Числа точные. Суммы в ₽.`;
       const res = await api.post("/ai/coordinator", { content: prompt, skipTools: true, maxTokens: 2000 });
@@ -111,8 +125,10 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
       }
     } catch (e: any) {
       updateTab(tabKey, prev => ({ ...prev, loading: false }));
+    } finally {
+      loadingRef.current = new Set([...loadingRef.current].filter(k => k !== tabKey));
     }
-  }, [crmData]);
+  }, []);
 
   // Initial load — use cache if available
   useEffect(() => {
@@ -122,29 +138,33 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
     }
   }, [activeTab]);
 
-  // Preload next tab silently
+  // Preload next tab silently (using ref to avoid dep on generateCards)
   useEffect(() => {
     const idx = TABS.findIndex(t => t.key === activeTab);
     const nextKey = TABS[(idx + 1) % TABS.length].key;
     if (!preloadDone.current.has(nextKey)) {
-      const tab = getTab(nextKey);
-      if (tab.cards.length === 0 && !tab.loading) {
+      const t = getTab(nextKey);
+      if (t.cards.length === 0 && !t.loading) {
         preloadDone.current.add(nextKey);
-        setTimeout(() => generateCards(nextKey, 0), 2000);
+        setTimeout(() => generateCards(nextKey, 0), 3000);
       }
     }
-  }, [activeTab, generateCards]);
+  }, [activeTab]); // removed generateCards from deps
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && !currentTab.loading && currentTab.hasMore) generateCards(activeTab, currentTab.page); },
-      { threshold: 0.1, rootMargin: "400px" }
+      (entries) => { 
+        if (entries[0].isIntersecting && !currentTab.loading && currentTab.hasMore) {
+          if (Date.now() - cooldownRef.current > 2500) generateCards(activeTab, currentTab.page);
+        }
+      },
+      { threshold: 0.3, rootMargin: "200px" }
     );
     if (loaderRef.current) observerRef.current.observe(loaderRef.current);
     return () => observerRef.current?.disconnect();
-  }, [activeTab, currentTab.loading, currentTab.hasMore, currentTab.page, generateCards]);
+  }, [activeTab, currentTab.loading, currentTab.hasMore, currentTab.page]);
 
   const reactCard = (id: string, reaction: "liked" | "disliked") => {
     setReactions(prev => { const next = { ...prev }; if (next[id] === reaction) { delete next[id]; } else { next[id] = reaction; } localStorage.setItem("ai_dash_reactions", JSON.stringify(next)); return next; });
