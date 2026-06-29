@@ -1042,3 +1042,38 @@ model Notification {
   @@index([userId, createdAt])
   @@index([entityType, entityId])
 }
+
+
+model AiChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("Chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AiChatMessage[]
+  files    AiChatFile[]
+}
+
+model AiChatMessage {
+  id        String        @id @default(cuid())
+  sessionId String
+  session   AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  metadata  String?
+  createdAt DateTime      @default(now())
+}
+
+model AiChatFile {
+  id            String        @id @default(cuid())
+  sessionId     String
+  session       AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId        String
+  originalName  String
+  storedName    String
+  mimeType      String
+  size          Int
+  extractedText String?
+  createdAt     DateTime      @default(now())
+}
