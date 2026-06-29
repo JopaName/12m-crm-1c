@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp, TrendingUp, Target, Lightbulb, Shield, X, DollarSign, Users, Package, History, Copy, Check } from "lucide-react";
+import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp, TrendingUp, Target, Lightbulb, Shield, X, DollarSign, Users, Package, History, Copy, Check, Film } from "lucide-react";
+import CinemaMode from "./CinemaMode";
 
 interface FeedCard {
   type: "fact" | "insight" | "idea" | "metric" | "alert" | "quote" | "action";
@@ -68,6 +69,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const prevDataRef = useRef("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [cinemaMode, setCinemaMode] = useState(false);
   const navigate = useNavigate();
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -346,6 +348,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
           )}
         </div>
       </div>
+          {cinemaMode && <CinemaMode cards={visibleCards} activeTab={activeTab} onClose={() => setCinemaMode(false)} />}
     </div>
   );
 }
