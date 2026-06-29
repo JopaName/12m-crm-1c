@@ -304,7 +304,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                     {card.link && (
                       <button onClick={(e) => { e.stopPropagation(); if (card.link) navigate(card.link); }} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg text-xs font-medium hover:bg-violet-100 transition-colors cursor-pointer">
                         {card.type === "idea" ? "Открыть" : "Перейти"} <ArrowRight className="w-3 h-3" />
-                      </a>
+                      </button>
                     )}
                   </>
                 )}
