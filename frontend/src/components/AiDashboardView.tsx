@@ -62,6 +62,10 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const [activeTab, setActiveTab] = useState("ideas");
   const [tabs, setTabs] = useState<Record<string, TabState>>(() => loadCache() || {});
   const [cacheHit, setCacheHit] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, "liked" | "disliked">>(() => { try { return JSON.parse(localStorage.getItem("ai_dash_reactions") || "{}"); } catch { return {}; } });
+  const [dataChanged, setDataChanged] = useState(false);
+  const prevDataRef = useRef("");
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const preloadDone = useRef<Set<string>>(new Set());
@@ -142,6 +146,10 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
     return () => observerRef.current?.disconnect();
   }, [activeTab, currentTab.loading, currentTab.hasMore, currentTab.page, generateCards]);
 
+  const reactCard = (id: string, reaction: "liked" | "disliked") => {
+    setReactions(prev => { const next = { ...prev }; if (next[id] === reaction) { delete next[id]; } else { next[id] = reaction; } localStorage.setItem("ai_dash_reactions", JSON.stringify(next)); return next; });
+  };
+
   const dismissCard = (tabKey: string, id: string) => updateTab(tabKey, prev => {
     const nd = new Set(prev.dismissed); nd.add(id);
     return { ...prev, dismissed: nd };
@@ -150,6 +158,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const resetTab = (tabKey: string) => {
     setTabs(prev => ({ ...prev, [tabKey]: defaultTab() }));
     saveCache(tabs);
+    localStorage.setItem("ai_dash_reactions", JSON.stringify(reactions));
     generateCards(tabKey, 0);
   };
 
@@ -157,6 +166,19 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
 
   return (
     <div>
+      {/* Data changed banner */}
+      {dataChanged && (
+        <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5 mb-3 text-xs">
+          <div className="flex items-center gap-2 text-violet-700">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Данные CRM обновились</span>
+          </div>
+          <button onClick={() => { setDataChanged(false); resetTab(activeTab); }} className="px-3 py-1 bg-violet-600 text-white rounded-lg text-xs font-medium hover:bg-violet-700 transition-colors">
+            Обновить карточки
+          </button>
+        </div>
+      )}
+
       {/* Tab bar */}
       <div className="flex items-center gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-gray-100 sticky top-0 z-10">
         {TABS.map(tab => {
@@ -217,6 +239,19 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                     <X className="w-3.5 h-3.5 text-gray-400" />
                   </button>
                 )}
+                {/* Reaction buttons */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button onClick={(e) => { e.preventDefault(); reactCard(card.id, "liked"); }}
+                    className={`p-1.5 rounded-full transition-all ${reactions[card.id] === "liked" ? "bg-green-100 text-green-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-green-50 hover:text-green-500"}`}
+                    title="Нравится">
+                    <svg className="w-3.5 h-3.5" fill={reactions[card.id] === "liked" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" /></svg>
+                  </button>
+                  <button onClick={(e) => { e.preventDefault(); reactCard(card.id, "disliked"); }}
+                    className={`p-1.5 rounded-full transition-all ${reactions[card.id] === "disliked" ? "bg-red-100 text-red-600 shadow-sm" : "bg-white/80 text-gray-400 hover:bg-red-50 hover:text-red-500"}`}
+                    title="Не нравится">
+                    <svg className="w-3.5 h-3.5" fill={reactions[card.id] === "disliked" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" /></svg>
+                  </button>
+                </div>
 
                 {card.type === "metric" ? (
                   <div className={`bg-gradient-to-br ${GRADIENT[card.color || "default"]} p-6 text-white relative overflow-hidden`}>
