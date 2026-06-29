@@ -238,9 +238,14 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
           <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{visibleCards.length}</span>
           {cacheHit && currentTab.cards.length > 0 && <History className="w-3 h-3 text-gray-300" />}
         </div>
-        <button onClick={() => resetTab(activeTab)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] text-violet-600 hover:bg-violet-50 rounded-lg transition-colors cursor-pointer">
-          <RefreshCw className="w-3 h-3" />Обновить
-        </button>
+        {visibleCards.length > 0 && (
+            <button onClick={() => setCinemaMode(true)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all shadow-sm">
+              <Film className="w-3 h-3" />Кино
+            </button>
+          )}
+          <button onClick={() => resetTab(activeTab)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] text-violet-600 hover:bg-violet-50 rounded-lg transition-colors cursor-pointer">
+            <RefreshCw className="w-3 h-3" />Обновить
+          </button>
       </div>
 
       {/* Cards feed */}
