@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardAPI, dealsAPI, referralAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -6,6 +6,7 @@ import AiDashboardView from "../components/AiDashboardView";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+
   const { data: myDealsData } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data || r) });
   const dealsList = Array.isArray(myDealsData) ? myDealsData : (myDealsData?.data || []);
   const PST = ["Lead_Created", "Invoice_Generation", "Legal_Review", "Doc_Sending", "Waiting_Payment", "Paid_And_Reserved", "Issuing_Goods", "Deal_Closed"];
@@ -43,6 +44,5 @@ export default function DashboardPage() {
       </div>
       <AiDashboardView crmData={crmDataForAI} />
     </div>
-      {cinemaMode && <CinemaMode cards={cinemaCards} activeTab={cinemaTab} onClose={() => setCinemaMode(false)} />}
   );
 }
