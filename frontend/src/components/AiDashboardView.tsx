@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp, TrendingUp, Target, Lightbulb, Shield, X, DollarSign, Users, Package, History } from "lucide-react";
+import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp, TrendingUp, Target, Lightbulb, Shield, X, DollarSign, Users, Package, History, Copy, Check } from "lucide-react";
 
 interface FeedCard {
   type: "fact" | "insight" | "idea" | "metric" | "alert" | "quote" | "action";
@@ -67,6 +67,7 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
   const [dataChanged, setDataChanged] = useState(false);
   const prevDataRef = useRef("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const loaderRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -172,6 +173,13 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
     setReactions(prev => { const next = { ...prev }; if (next[id] === reaction) { delete next[id]; } else { next[id] = reaction; } localStorage.setItem("ai_dash_reactions", JSON.stringify(next)); return next; });
   };
 
+  const copyCard = async (card: FeedCard) => {
+    const text = [card.title, card.content, card.sub, card.label ? `${card.label}: ${card.value}` : "", card.value].filter(Boolean).join("\n");
+    await navigator.clipboard.writeText(text);
+    setCopiedId(card.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const dismissCard = (tabKey: string, id: string) => updateTab(tabKey, prev => {
     const nd = new Set(prev.dismissed); nd.add(id);
     return { ...prev, dismissed: nd };
@@ -257,9 +265,14 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
             return (
               <div key={card.id} className={`relative bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group ${card.type === "metric" ? "p-0 overflow-hidden" : "p-5"}`}>
                 {card.type !== "metric" && (
-                  <button onClick={() => dismissCard(activeTab, card.id)} className="absolute top-3 right-3 p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-100 transition-all z-10 cursor-pointer">
-                    <X className="w-3.5 h-3.5 text-gray-400" />
-                  </button>
+                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                    <button onClick={() => copyCard(card)} className="p-1 rounded-full hover:bg-gray-100 cursor-pointer" title="Копировать">
+                      {copiedId === card.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                    </button>
+                    <button onClick={() => dismissCard(activeTab, card.id)} className="p-1 rounded-full hover:bg-gray-100 cursor-pointer" title="Скрыть">
+                      <X className="w-3.5 h-3.5 text-gray-400" />
+                    </button>
+                  </div>
                 )}
                 {/* Reaction buttons */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -277,6 +290,9 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
 
                 {card.type === "metric" ? (
                   <div className={`bg-gradient-to-br ${GRADIENT[card.color || "default"]} p-6 text-white relative overflow-hidden`}>
+                    <button onClick={() => copyCard(card)} className="absolute top-3 right-3 p-1.5 rounded-full bg-white/20 hover:bg-white/30 opacity-0 group-hover:opacity-100 transition-all z-10 cursor-pointer" title="Копировать">
+                      {copiedId === card.id ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5 text-white/80" />}
+                    </button>
                     <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full" />
                     <div className="relative z-10">
                       <p className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2">{card.label}</p>
