@@ -102,11 +102,31 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                   { key: "1_спецификация", label: "Спецификация", color: "teal" },
                   { key: "10_журнал", label: "Журнал", color: "cyan" },
                   { key: "2_-_акт_осмотра_кровли", label: "Акт осмотра кровли", color: "amber" },
-                  { key: "2_схема_установки", label: "Схема установки", color: "indigo" },
+                  { key: "2_схема_установки", label: "Схема установки", color: "indigo" },// DOCX templates uploaded from user documents
+                { key: "docx://templates/1_1docx_0.docx", label: "Шаблон 1 — Спецификация", color: "slate" },
+                { key: "docx://templates/1_1docx_1.docx", label: "Шаблон 2 — Договор", color: "slate" },
+                { key: "docx://templates/2___2docx_3.docx", label: "Шаблон 3 — Договор (вар 2)", color: "slate" },
+                { key: "docx://templates/3___3docx_6.docx", label: "Шаблон 4 — Договор-перевозка", color: "slate" },
+                { key: "docx://templates/2_2docx_4.docx", label: "Шаблон 5 — Договор (вар 3)", color: "slate" },
+                { key: "docx://templates/2__22docx_5.docx", label: "Шаблон 6 — Договор (вар 4)", color: "slate" },
+                { key: "docx://templates/3_3docx_7.docx", label: "Шаблон 7 — Договор (вар 5)", color: "slate" },
+                { key: "docx://templates/4_4docx_8.docx", label: "Шаблон 8", color: "slate" },
+                { key: "docx://templates/4_4docx_9.docx", label: "Шаблон 9", color: "slate" },
+                { key: "docx://templates/4__41docx_10.docx", label: "Шаблон 10", color: "slate" },
+                { key: "docx://templates/5_5docx_11.docx", label: "Шаблон 11", color: "slate" },
+                { key: "docx://templates/6_6docx_12.docx", label: "Шаблон 12", color: "slate" },
+                { key: "docx://templates/6__61docx_13.docx", label: "Шаблон 13", color: "slate" },
+                { key: "docx://templates/7_7docx_14.docx", label: "Шаблон 14", color: "slate" },
+                { key: "docx://templates/8_8docx_15.docx", label: "Шаблон 15", color: "slate" },
+                { key: "docx://templates/9_9docx_16.docx", label: "Шаблон 16", color: "slate" },
+                { key: "docx://templates/10_10docx_2.docx", label: "Шаблон 17 — Договор (вар 6)", color: "slate" },
+                { key: "docx://templates/t17_docx_17.docx", label: "Шаблон 18 — Договор (основной)", color: "slate" },
+                { key: "docx://templates/t18_docx_18.docx", label: "Шаблон 19 — Договор (вар 7)", color: "slate" },
+
                 ].map(t => {
-                  const colorMap: Record<string, string> = { blue: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100", purple: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100", green: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100", orange: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100", teal: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100", cyan: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100", amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100", indigo: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" };
+                  const colorMap: Record<string, string> = { blue: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100", purple: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100", green: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100", orange: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100", teal: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100", cyan: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100", amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100", indigo: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100", slate: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" };
                   return (
-                    <button key={t.key} onClick={() => setDocPreview({template: t.key, label: t.label})}
+                    <button key={t.key} onClick={() => { if (t.key.startsWith("docx://")) { window.open("/" + t.key.replace("docx://", ""), "_blank"); } else { setDocPreview({template: t.key, label: t.label}); } }}
                       className={"flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors " + (colorMap[t.color] || colorMap.blue)}>
                       <FileText className="w-3.5 h-3.5" />{t.label}
                     </button>
