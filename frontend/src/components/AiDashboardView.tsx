@@ -1,133 +1,143 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "../api";
-import { RefreshCw, Zap, TrendingUp, AlertTriangle, CheckCircle, BarChart3, ArrowRight, User, Box } from "lucide-react";
+import { RefreshCw, Zap, AlertTriangle, CheckCircle, ArrowRight, Sparkles, ThumbsUp } from "lucide-react";
 
 interface DashboardBlock {
   type: "hero" | "metric-grid" | "insight" | "chart-bar" | "action-row" | "alert-row" | "summary-text";
-  title?: string;
-  subtitle?: string;
+  title?: string; subtitle?: string;
   items?: { label: string; value: string; sub?: string; color?: string; icon?: string }[];
-  content?: string;
-  severity?: "info" | "warning" | "success" | "danger";
+  content?: string; severity?: "info" | "warning" | "success" | "danger";
   action?: { label: string; link: string };
 }
 
-const SEVERITY_ICONS: Record<string, any> = { info: Zap, warning: AlertTriangle, success: CheckCircle, danger: AlertTriangle };
-const SEVERITY_BG: Record<string, string> = { 
-  info: "bg-blue-50 border-blue-200", warning: "bg-amber-50 border-amber-200", 
-  success: "bg-green-50 border-green-200", danger: "bg-red-50 border-red-200" 
-};
-const SEVERITY_TEXT: Record<string, string> = { 
-  info: "text-blue-700", warning: "text-amber-700", 
-  success: "text-green-700", danger: "text-red-700" 
-};
-const METRIC_COLORS: Record<string, string> = {
-  blue: "from-blue-500 to-blue-600", green: "from-emerald-500 to-emerald-600",
-  purple: "from-purple-500 to-purple-600", amber: "from-amber-500 to-amber-600",
-  red: "from-red-500 to-red-600", teal: "from-teal-500 to-teal-600",
-  default: "from-gray-500 to-gray-600"
-};
-const METRIC_ICONS: Record<string, string> = {
-  blue: "📊", green: "💰", purple: "👥", amber: "⚠️", red: "🔥", teal: "📦", default: "📌"
-};
+const SEV_ICONS: Record<string, any> = { info: Zap, warning: AlertTriangle, success: CheckCircle, danger: AlertTriangle };
+const SEV_BG: Record<string, string> = { info: "bg-blue-50 border-blue-200", warning: "bg-amber-50 border-amber-200", success: "bg-green-50 border-green-200", danger: "bg-red-50 border-red-200" };
+const SEV_TEXT: Record<string, string> = { info: "text-blue-700", warning: "text-amber-700", success: "text-green-700", danger: "text-red-700" };
+const M_COLORS: Record<string, string> = { blue: "from-blue-500 to-blue-600", green: "from-emerald-500 to-emerald-600", purple: "from-purple-500 to-purple-600", amber: "from-amber-500 to-amber-600", red: "from-red-500 to-red-600", teal: "from-teal-500 to-teal-600", default: "from-gray-500 to-gray-600" };
 
 export default function AiDashboardView({ crmData }: { crmData: any }) {
   const [blocks, setBlocks] = useState<DashboardBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [promptSeed, setPromptSeed] = useState(Math.random());
+  const [variation, setVariation] = useState(0);
+  const [liked, setLiked] = useState(false);
 
-  const fetchDashboard = async () => {
-    setLoading(true); setError("");
+  const generateDashboard = useCallback(async () => {
+    setLoading(true); setError(""); setLiked(false);
+    const newVar = variation + 1;
+    setVariation(newVar);
+    
     try {
-      const context = JSON.stringify({
-        summary: crmData.summary,
-        finances: crmData.finances,
-        pulse: crmData.pulse,
-        deals: crmData.deals,
-      }).substring(0, 6000);
+      const context = JSON.stringify({ summary: crmData.summary, finances: crmData.finances, pulse: crmData.pulse, deals: crmData.deals }).substring(0, 5000);
 
-      const prompt = `Ты — AI-директор CRM. На основе данных создай КРЕАТИВНЫЙ дашборд в JSON.
+      const prompt = `Ты — креативный AI-дизайнер дашбордов. Создай УНИКАЛЬНЫЙ дашборд в JSON. Вариация №${newVar}.
 
 Данные CRM: ${context}
 
-Верни ТОЛЬКО JSON массив блоков. Каждый блок — один из типов:
-1. {"type":"hero","title":"...","subtitle":"..."} — главный заголовок с ключевой метрикой
-2. {"type":"metric-grid","title":"...","items":[{"label":"...","value":"...","sub":"...","color":"blue|green|purple|amber|red|teal"}]} — сетка метрик
-3. {"type":"insight","title":"...","content":"...","severity":"info|warning|success|danger"} — инсайт/совет
-4. {"type":"chart-bar","title":"...","items":[{"label":"...","value":"...(число или ₽)","color":"blue|green|..."}]} — горизонтальная диаграмма
-5. {"type":"action-row","title":"...","items":[{"label":"...","link":"/путь"}]} — кнопки действий
-6. {"type":"alert-row","items":[{"label":"...","severity":"warning|danger"}]} — предупреждения
-7. {"type":"summary-text","content":"..."} — текстовый блок
+Типы блоков (верни ТОЛЬКО JSON-массив):
+{"type":"hero","title":"...","subtitle":"..."}
+{"type":"metric-grid","title":"...","items":[{"label":"...","value":"...","color":"blue|green|purple|amber|red|teal"}]}
+{"type":"insight","title":"...","content":"...","severity":"info|warning|success|danger"}
+{"type":"chart-bar","title":"...","items":[{"label":"...","value":"...","color":"blue|green|..."}]}
+{"type":"action-row","title":"...","items":[{"label":"...","link":"/путь"}]}
+{"type":"alert-row","items":[{"label":"...","severity":"warning|danger"}]}
+{"type":"summary-text","content":"..."}
 
-ПРАВИЛА:
-- Будь КРЕАТИВНЫМ — каждый раз разный набор блоков
-- Используй РЕАЛЬНЫЕ числа из данных
-- Минимум 5 блоков, максимум 8
-- Только JSON в ответе, без markdown и комментариев
-- Числа форматируй с разделителями (1 234 567)
-- Суммы в ₽`;
+ВАЖНО: каждый раз НОВАЯ структура блоков, НОВЫЕ заголовки, НОВЫЙ порядок. Будь креативным! 5-8 блоков. Только JSON.`;
 
       const res = await api.post("/ai/coordinator", { content: prompt });
       const text = res.data?.response || "";
-      
-      // Extract JSON from response
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        setBlocks(parsed.slice(0, 8));
+        setBlocks(JSON.parse(jsonMatch[0]).slice(0, 8));
       } else {
         setBlocks([{ type: "summary-text", content: text.substring(0, 500) }]);
       }
     } catch (e: any) {
-      console.error("AI Dashboard error:", e);
-      setError("Не удалось загрузить. Попробуйте снова.");
-      setBlocks([{ type: "summary-text", content: "⚠️ AI-дашборд временно недоступен. Нажмите обновить." }]);
+      setError("Не удалось сгенерировать. Попробуйте снова.");
     }
     setLoading(false);
-  };
+  }, [variation, crmData]);
 
-  useEffect(() => { fetchDashboard(); }, [promptSeed]);
+  useEffect(() => { generateDashboard(); }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-4 animate-pulse">
-        {[1,2,3,4,5].map(i => (
-          <div key={i} className="bg-white rounded-2xl p-6 space-y-3 shadow-sm">
-            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-3 bg-gray-100 rounded w-2/3"></div>
-            <div className="h-3 bg-gray-100 rounded w-1/2"></div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const maxVal = (items?: any[]) => Math.max(...(items || []).map(i => parseInt(i.value?.replace(/[^0-9]/g, "") || "0")), 1);
 
   return (
-    <div className="space-y-4">
-      {/* Refresh button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🧠</span>
-          <span className="text-sm font-semibold text-gray-700">AI Дашборд</span>
-          <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">экспериментальный</span>
+    <div>
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-5 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-violet-600" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-gray-800">AI-дашборд #{variation || 1}</h2>
+            <p className="text-[10px] text-gray-400">Нажмите «Сгенерировать» для нового варианта</p>
+          </div>
         </div>
-        <button
-          onClick={() => setPromptSeed(Math.random())}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />Обновить
-        </button>
+        <div className="flex items-center gap-2">
+          {!loading && blocks.length > 0 && (
+            <button
+              onClick={() => setLiked(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all ${liked ? "bg-green-100 text-green-700 border border-green-200" : "bg-gray-50 text-gray-500 border border-gray-200 hover:border-green-300 hover:text-green-600"}`}
+              title="Оставить этот вариант"
+            >
+              <ThumbsUp className="w-3.5 h-3.5" />{liked ? "Оставлен!" : "Оставить"}
+            </button>
+          )}
+          <button
+            onClick={() => setVariation(v => v + 1)}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md active:scale-95"
+          >
+            {loading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {loading ? "Генерация..." : "Сгенерировать"}
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-          {error}
-          <button onClick={() => setPromptSeed(Math.random())} className="ml-2 underline">Повторить</button>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-700 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setVariation(v => v + 1)} className="underline text-xs">Повторить</button>
         </div>
       )}
 
-      {/* Render blocks */}
+      {loading && blocks.length === 0 && (
+        <div className="space-y-4 animate-pulse">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="bg-white rounded-2xl p-6 space-y-3 shadow-sm border border-gray-100">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-3 bg-gray-100 rounded w-2/3"></div>
+              <div className="h-3 bg-gray-100 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && blocks.length > 0 && (
+        <div className="relative">
+          <div className="absolute inset-0 bg-white/60 z-10 rounded-2xl flex items-center justify-center">
+            <RefreshCw className="w-8 h-8 text-violet-500 animate-spin" />
+          </div>
+          <DashboardBlocks blocks={blocks} maxVal={maxVal} />
+        </div>
+      )}
+
+      {!loading && <DashboardBlocks blocks={blocks} maxVal={maxVal} />}
+    </div>
+  );
+}
+
+function DashboardBlocks({ blocks, maxVal }: { blocks: DashboardBlock[]; maxVal: (items?: any[]) => number }) {
+  return (
+    <div className="space-y-4">
       {blocks.map((block, i) => {
         switch (block.type) {
           case "hero":
@@ -137,17 +147,16 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                 {block.subtitle && <p className="text-white/70 text-sm">{block.subtitle}</p>}
               </div>
             );
-
           case "metric-grid":
             return (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 {block.title && <h3 className="text-sm font-semibold text-gray-700 mb-3">{block.title}</h3>}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {(block.items || []).map((item, j) => {
-                    const color = item.color || "default";
+                    const c = item.color || "default";
                     return (
-                      <div key={j} className={`bg-gradient-to-br ${METRIC_COLORS[color] || METRIC_COLORS.default} rounded-xl p-3 text-white`}>
-                        <p className="text-[10px] opacity-80 uppercase">{item.label}</p>
+                      <div key={j} className={`bg-gradient-to-br ${M_COLORS[c] || M_COLORS.default} rounded-xl p-3 text-white`}>
+                        <p className="text-[10px] opacity-80 uppercase font-medium">{item.label}</p>
                         <p className="text-lg font-bold mt-0.5">{item.value}</p>
                         {item.sub && <p className="text-[10px] opacity-70">{item.sub}</p>}
                       </div>
@@ -156,38 +165,32 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                 </div>
               </div>
             );
-
           case "insight":
             return (
-              <div key={i} className={`${SEVERITY_BG[block.severity || "info"]} border rounded-2xl p-4`}>
+              <div key={i} className={`${SEV_BG[block.severity || "info"]} border rounded-2xl p-4`}>
                 <div className="flex items-start gap-3">
-                  {(() => { const Icon = SEVERITY_ICONS[block.severity || "info"]; return <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${SEVERITY_TEXT[block.severity || "info"]}`} />; })()}
+                  {(() => { const Icon = SEV_ICONS[block.severity || "info"]; return <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${SEV_TEXT[block.severity || "info"]}`} />; })()}
                   <div>
-                    <h4 className={`text-sm font-semibold ${SEVERITY_TEXT[block.severity || "info"]}`}>{block.title}</h4>
+                    <h4 className={`text-sm font-semibold ${SEV_TEXT[block.severity || "info"]}`}>{block.title}</h4>
                     {block.content && <p className="text-xs text-gray-600 mt-1 leading-relaxed">{block.content}</p>}
                   </div>
                 </div>
               </div>
             );
-
-          case "chart-bar":
-            const maxVal = Math.max(...(block.items || []).map(i => {
-              const v = i.value?.replace(/[^0-9]/g, "");
-              return parseInt(v) || 0;
-            }), 1);
+          case "chart-bar": {
+            const m = maxVal(block.items);
             return (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 {block.title && <h3 className="text-sm font-semibold text-gray-700 mb-3">{block.title}</h3>}
                 <div className="space-y-2.5">
                   {(block.items || []).map((item, j) => {
                     const val = parseInt(item.value?.replace(/[^0-9]/g, "") || "0") || 0;
-                    const pct = Math.min((val / maxVal) * 100, 100);
-                    const color = item.color || "blue";
+                    const pct = Math.min((val / m) * 100, 100);
                     return (
                       <div key={j} className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500 w-24 truncate">{item.label}</span>
+                        <span className="text-xs text-gray-500 w-24 truncate text-right">{item.label}</span>
                         <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full bg-gradient-to-r ${METRIC_COLORS[color] || METRIC_COLORS.default} rounded-full transition-all flex items-center justify-end pr-2`} style={{ width: `${pct}%` }}>
+                          <div className={`h-full bg-gradient-to-r ${M_COLORS[item.color || "blue"] || M_COLORS.default} rounded-full flex items-center justify-end pr-2`} style={{ width: `${pct}%` }}>
                             <span className="text-[10px] text-white font-medium">{item.value}</span>
                           </div>
                         </div>
@@ -197,48 +200,41 @@ export default function AiDashboardView({ crmData }: { crmData: any }) {
                 </div>
               </div>
             );
-
+          }
           case "action-row":
             return (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 {block.title && <h3 className="text-sm font-semibold text-gray-700 mb-3">{block.title}</h3>}
                 <div className="flex flex-wrap gap-2">
                   {(block.items || []).map((item, j) => (
-                    <a
-                      key={j}
-                      href={item.link || "#"}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-medium hover:bg-violet-100 transition-colors"
-                    >
+                    <a key={j} href={item.link || "#"} className="flex items-center gap-1.5 px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-medium hover:bg-violet-100 transition-colors">
                       {item.label} <ArrowRight className="w-3.5 h-3.5" />
                     </a>
                   ))}
                 </div>
               </div>
             );
-
           case "alert-row":
             return (
               <div key={i} className="flex flex-wrap gap-2">
                 {(block.items || []).map((item, j) => {
-                  const sev = item.severity || "warning";
-                  const Icon = SEVERITY_ICONS[sev];
+                  const s = item.severity || "warning";
+                  const Icon = SEV_ICONS[s];
                   return (
-                    <div key={j} className={`flex items-center gap-2 ${SEVERITY_BG[sev]} border rounded-xl px-4 py-2`}>
-                      <Icon className={`w-4 h-4 ${SEVERITY_TEXT[sev]}`} />
-                      <span className={`text-xs font-medium ${SEVERITY_TEXT[sev]}`}>{item.label}</span>
+                    <div key={j} className={`flex items-center gap-2 ${SEV_BG[s]} border rounded-xl px-4 py-2`}>
+                      <Icon className={`w-4 h-4 ${SEV_TEXT[s]}`} />
+                      <span className={`text-xs font-medium ${SEV_TEXT[s]}`}>{item.label}</span>
                     </div>
                   );
                 })}
               </div>
             );
-
           case "summary-text":
             return (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{block.content}</p>
               </div>
             );
-
           default:
             return null;
         }
