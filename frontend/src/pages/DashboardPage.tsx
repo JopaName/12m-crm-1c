@@ -4,6 +4,8 @@ import api, { dashboardAPI, dealsAPI, referralAPI } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
+import AiDashboardView from "../components/AiDashboardView";
+import { AlertCircle } from "lucide-react";
 
 const WIDGETS = [
   { key: "summary", label: "Сводка", icon: "\u{1F4CA}" },
@@ -345,6 +347,7 @@ export default function DashboardPage() {
   const [editing, setEditing] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [aiMode, setAiMode] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(getStorageKey(userId), JSON.stringify(activeWidgets));
@@ -390,6 +393,12 @@ export default function DashboardPage() {
     queryFn: () => dashboardAPI.getPulse().then((r) => r.data as PulseData),
     refetchInterval: 30000,
   });
+
+  const crmDataForAI = {
+    summary, finances, pulse,
+    deals: dealsList?.slice(0, 10)?.map((d: any) => ({ dealNumber: d.dealNumber, status: d.status, expectedAmount: d.expectedAmount, client: d.client?.name })),
+    pipeline: pipelineData, myActive: myActive?.length, myClosed: myClosed?.length, myAmount, myCommission,
+  };
 
   const orderedWidgets = WIDGETS.filter((w) => activeWidgets.includes(w.key));
   const hiddenWidgets = WIDGETS.filter((w) => !activeWidgets.includes(w.key));
