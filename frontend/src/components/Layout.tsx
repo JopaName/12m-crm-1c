@@ -20,6 +20,7 @@ const ALL_MENU_ITEMS = [
   { path: "/service", label: "Сервис", icon: "🛠️", permission: "service:view" },
   { path: "/tasks", label: "Задачи", icon: "✅", permission: "tasks:view" },
   { path: "/referrals", label: "Рефералы", icon: "🤝" },
+  { path: "/calculator", label: "Калькулятор", icon: "🧮" },
   { path: "/users", label: "Пользователи", icon: "👤", permission: "users:view" },
   { path: "/roles", label: "Роли", icon: "🔐", permission: "roles:view" },
 ];

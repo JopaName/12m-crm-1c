@@ -20,6 +20,7 @@ import RolesPage from "./pages/RolesPage";
 import ChatPage from "./pages/ChatPage";
 import RegisterPage from "./pages/RegisterPage";
 import ReferralPage from "./pages/ReferralPage";
+import CalculatorPage from "./pages/CalculatorPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import Layout from "./components/Layout";
 
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="referrals/earnings" element={<ReferralPage />} />
         <Route path="referrals/invite" element={<ReferralPage />} />
         <Route path="referrals/config" element={<ReferralPage />} />
+        <Route path="calculator" element={<CalculatorPage />} />
               </Route>
         </Routes>
   );
