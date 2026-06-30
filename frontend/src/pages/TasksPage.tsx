@@ -191,7 +191,8 @@ export default function TasksPage() {
           {selectMode ? <X className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
           {selectMode ? "Отмена" : "Выбрать"}
         </button>
-        <button onClick={() => { setEditingTask(null); setQuickDate(""); setShowForm(true); }} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-sm"><Plus className="w-3.5 h-3.5" />Задача</button>
+        <button onClick={() => setShowCalendarModal(true)} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 font-medium shadow-sm mr-2"><Smartphone className="w-3.5 h-3.5" />На телефон</button>
+          <button onClick={() => { setEditingTask(null); setQuickDate(""); setShowForm(true); }} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-sm"><Plus className="w-3.5 h-3.5" />Задача</button>
       </div>
 
       {/* Kanban/List/Calendar content */}
