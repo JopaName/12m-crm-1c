@@ -7,6 +7,19 @@ import DocumentFormModal from "./DocumentFormModal";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
+
+const PIPELINE_STAGES = [
+  { key: "Lead_Created", label: "Лид", icon: "📋" },
+  { key: "Invoice_Generation", label: "Счёт", icon: "📄" },
+  { key: "Legal_Review", label: "Юристы", icon: "⚖️" },
+  { key: "Doc_Sending", label: "Доки", icon: "📨" },
+  { key: "Waiting_Payment", label: "Оплата", icon: "💰" },
+  { key: "Paid_And_Reserved", label: "Резерв", icon: "📦" },
+  { key: "Issuing_Goods", label: "Отгрузка", icon: "🚚" },
+  { key: "Deal_Closed", label: "Закрыто", icon: "✅" },
+];
+
+
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
@@ -73,19 +86,46 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Status movement */}
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl shrink-0">
-              {prevStatus && (
-                <button onClick={() => onStatusChange(prevStatus)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
-                  <ArrowLeft className="w-3 h-3" />{STATUS_META[prevStatus]?.label}
-                </button>
-              )}
-              <div className="flex-1" />
-              {nextStatuses.length > 0 && (
-                <button onClick={() => onStatusChange(nextStatuses[0])} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                  {STATUS_META[nextStatuses[0]]?.label}<ArrowRight className="w-3 h-3" />
-                </button>
-              )}
+            {/* Status pipeline */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-medium">
+                <span>Воронка сделки</span>
+                <span className="text-gray-300">— нажмите на этап для перехода</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {PIPELINE_STAGES.map((stage, i) => {
+                  const isCurrent = linked.status === stage.key;
+                  const isPast = PIPELINE_STAGES.findIndex(s => s.key === linked.status) > i;
+                  const isNext = nextStatuses.includes(stage.key);
+                  const isPrev = prevStatus === stage.key;
+                  const canClick = isNext || isPrev;
+                  
+                  return (
+                    <div key={stage.key} className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => canClick && onStatusChange(stage.key)}
+                        disabled={!canClick}
+                        className={`relative flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                          isCurrent ? "bg-primary-600 text-white shadow-md scale-105 ring-2 ring-primary-200" :
+                          isPast ? "bg-gray-200 text-gray-400" :
+                          canClick ? "bg-white border-2 border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400 cursor-pointer" :
+                          "bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed"
+                        }`}
+                        title={canClick ? (isNext ? "Перейти на этот этап" : "Вернуть на этот этап") : (isPast ? "Пройден" : "Недоступен")}
+                      >
+                        <span className="text-lg mb-0.5">{stage.icon}</span>
+                        <span className="text-[10px] font-semibold leading-tight text-center">{stage.label}</span>
+                        {isCurrent && (
+                          <span className="absolute -bottom-1.5 w-2 h-2 bg-primary-600 rounded-full ring-2 ring-white" />
+                        )}
+                      </button>
+                      {i < PIPELINE_STAGES.length - 1 && (
+                        <div className={`w-4 h-0.5 ${isPast || isCurrent ? "bg-primary-300" : "bg-gray-200"}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Document generation */}
