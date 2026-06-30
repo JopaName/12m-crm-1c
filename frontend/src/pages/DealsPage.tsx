@@ -352,7 +352,7 @@ export default function DealsPage() {
           isPending={updateMutation.isPending || deleteMutation.isPending}
           nextStatuses={getNextStatuses(detailDeal.status)}
           prevStatus={getPrevStatus(detailDeal.status)}
-          onStatusChange={(s: string) => statusMutation.mutate({ id: detailDeal.id, status: s })}
+          onStatusChange={(s: string) => { statusMutation.mutate({ id: detailDeal.id, status: s }); setDetailDeal((prev: any) => prev ? { ...prev, status: s } : prev); }}
           users={users}
           clients={clients}
         />
