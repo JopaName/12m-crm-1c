@@ -24,6 +24,9 @@ export default function DealsPage() {
   const [viewUserId, setViewUserId] = useState<string | null>(null);
   const [showPipelineEditor, setShowPipelineEditor] = useState(false);
   const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
+  const PST = pipelineStages.map(s => s.key);
+  const PSL: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, s.label]));
+  const PSC: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, `bg-${s.color}-500`]));
   const { user } = useAuth();
   const canEdit = user?.permissions?.includes("deals.edit") ?? true;
   const canDelete = user?.permissions?.includes("deals.delete") ?? true;
