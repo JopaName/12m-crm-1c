@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
 import DocumentFormModal from "./DocumentFormModal";
-import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard } from "lucide-react";
+import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
@@ -27,6 +27,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   const [edit, setEdit] = useState(editDealData || null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [docPreview, setDocPreview] = useState<{template: string; label: string} | null>(null);
+  const [showDocDrawer, setShowDocDrawer] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -327,6 +328,96 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
           <DealChatPanel dealId={deal.id} dealNumber={linked.dealNumber} />
         </div>
       </div>
+
+      {/* Document Templates Drawer */}
+      {showDocDrawer && (
+        <div className="fixed inset-0 z-[60]" onClick={() => setShowDocDrawer(false)}>
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="absolute right-0 top-0 bottom-0 w-[420px] bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm">Составить договор</h3>
+                <p className="text-[10px] text-gray-400 mt-0.5">Выберите шаблон для автозаполнения</p>
+              </div>
+              <button onClick={() => setShowDocDrawer(false)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* HTML Templates */}
+              <div>
+                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">HTML — автозаполнение</h4>
+                <div className="space-y-1.5">
+                  {[
+                    { key: "kp", label: "Коммерческое предложение (КП)", desc: "Основной КП с таблицей товаров", color: "blue" },
+                    { key: "dogovor", label: "Договор поставки", desc: "Договор с автоподстановкой данных", color: "purple" },
+                    { key: "schet", label: "Счёт на оплату", desc: "Платёжный документ", color: "green" },
+                    { key: "commercial_offer", label: "КП (расширенное)", desc: "Детальное предложение", color: "orange" },
+                    { key: "1_спецификация", label: "Спецификация", desc: "Перечень товаров и услуг", color: "teal" },
+                    { key: "10_журнал", label: "Журнал", desc: "Журнал учёта", color: "cyan" },
+                    { key: "2_-_акт_осмотра_кровли", label: "Акт осмотра кровли", desc: "Технический акт", color: "amber" },
+                    { key: "2_схема_установки", label: "Схема установки", desc: "Монтажная схема", color: "indigo" },
+                  ].map(t => {
+                    const colors: Record<string, string> = { blue: "border-l-blue-400 bg-blue-50/50", purple: "border-l-purple-400 bg-purple-50/50", green: "border-l-green-400 bg-green-50/50", orange: "border-l-orange-400 bg-orange-50/50", teal: "border-l-teal-400 bg-teal-50/50", cyan: "border-l-cyan-400 bg-cyan-50/50", amber: "border-l-amber-400 bg-amber-50/50", indigo: "border-l-indigo-400 bg-indigo-50/50" };
+                    return (
+                      <button key={t.key} onClick={() => { setShowDocDrawer(false); setDocPreview({template: t.key, label: t.label}); }}
+                        className={`w-full text-left px-4 py-3 rounded-xl border border-gray-100 border-l-4 ${colors[t.color] || ""} hover:shadow-sm hover:border-gray-200 transition-all flex items-center gap-3`}>
+                        <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{t.label}</p>
+                          <p className="text-[10px] text-gray-400">{t.desc}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-300 ml-auto shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* DOCX Templates */}
+              <div>
+                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">DOCX — скачать и заполнить</h4>
+                <div className="space-y-1.5">
+                  {[
+                    { key: "docx://templates/1_1docx_0.docx", label: "Спецификация" },
+                    { key: "docx://templates/1_1docx_1.docx", label: "Договор" },
+                    { key: "docx://templates/2___2docx_3.docx", label: "Договор (вар 2)" },
+                    { key: "docx://templates/3___3docx_6.docx", label: "Договор-перевозка" },
+                    { key: "docx://templates/2_2docx_4.docx", label: "Договор (вар 3)" },
+                    { key: "docx://templates/2__22docx_5.docx", label: "Договор (вар 4)" },
+                    { key: "docx://templates/3_3docx_7.docx", label: "Договор (вар 5)" },
+                    { key: "docx://templates/4_4docx_8.docx", label: "Документ 8" },
+                    { key: "docx://templates/4_4docx_9.docx", label: "Документ 9" },
+                    { key: "docx://templates/4__41docx_10.docx", label: "Документ 10" },
+                    { key: "docx://templates/5_5docx_11.docx", label: "Документ 11" },
+                    { key: "docx://templates/6_6docx_12.docx", label: "Документ 12" },
+                    { key: "docx://templates/6__61docx_13.docx", label: "Документ 13" },
+                    { key: "docx://templates/7_7docx_14.docx", label: "Документ 14" },
+                    { key: "docx://templates/8_8docx_15.docx", label: "Документ 15" },
+                    { key: "docx://templates/9_9docx_16.docx", label: "Документ 16" },
+                    { key: "docx://templates/10_10docx_2.docx", label: "Договор (вар 6)" },
+                    { key: "docx://templates/t17_docx_17.docx", label: "Договор (основной)" },
+                    { key: "docx://templates/t18_docx_18.docx", label: "Договор (вар 7)" },
+                  ].map(t => (
+                    <button key={t.key} onClick={() => { window.open("/" + t.key.replace("docx://", ""), "_blank"); }}
+                      className="w-full text-left px-4 py-3 rounded-xl border border-gray-100 hover:shadow-sm hover:border-gray-200 transition-all flex items-center gap-3">
+                      <Download className="w-4 h-4 text-gray-400 shrink-0" />
+                      <p className="text-sm font-medium text-gray-800">{t.label}</p>
+                      <FileDown className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Legal section link */}
+              <button onClick={() => { setShowDocDrawer(false); onClose(); navigate("/legal"); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-colors">
+                <Shield className="w-4 h-4" />Все договоры в реестре
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {docPreview && (
         <DocumentFormModal
