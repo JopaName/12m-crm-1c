@@ -10,7 +10,7 @@ import DealDetailPanel from "../components/DealDetailPanel";
 import ProfileModal from "../components/ProfileModal";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText } from "lucide-react";
+import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText, Circle } from "lucide-react";
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
 
@@ -27,6 +27,24 @@ export default function DealsPage() {
   const PST = pipelineStages.map(s => s.key);
   const PSL: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, s.label]));
   const PSC: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, `bg-${s.color}-500`]));
+  // Dynamic STATUS_META from pipeline config + hardcoded defaults for backward compat
+  const dynamicStatusMeta = useMemo(() => {
+    const meta: Record<string, any> = {};
+    pipelineStages.forEach(s => {
+      meta[s.key] = {
+        label: s.label,
+        color: `text-${s.color}-600`,
+        bg: `bg-${s.color}-500`,
+        lightBg: `bg-${s.color}-50`,
+        icon: Circle, // Default icon
+      };
+    });
+    // Merge with original STATUS_META for backward compat
+    Object.keys(STATUS_META).forEach(k => {
+      if (!meta[k]) meta[k] = STATUS_META[k];
+    });
+    return meta;
+  }, [pipelineStages]);
   const { user } = useAuth();
   const canEdit = user?.permissions?.includes("deals.edit") ?? true;
   const canDelete = user?.permissions?.includes("deals.delete") ?? true;
@@ -169,14 +187,14 @@ export default function DealsPage() {
           <div><p className="text-lg font-bold text-gray-900">{stats.total}</p><p className="text-[11px] text-gray-500">Всего</p></div>
         </div>
         {PST.map((s) => {
-          const Icon = STATUS_META[s].icon;
+          const Icon = dynamicStatusMeta[s]?.icon || null;
           return (
             <div key={s} onClick={() => setFilterStatus(filterStatus === s ? "" : s)}
               className={cn("rounded-xl border p-3 flex items-center gap-2.5 shadow-sm cursor-pointer transition-all hover:shadow-md",
-                STATUS_META[s].lightBg,
+                (dynamicStatusMeta[s]?.lightBg || "bg-gray-50"),
                 filterStatus === s ? "ring-2 ring-offset-2 ring-gray-900 shadow-lg" : filterStatus ? "opacity-40 grayscale" : "")}>
               <Icon className={cn("w-4 h-4", STATUS_META[s].color)} />
-              <div><p className="text-sm font-bold text-gray-900">{stats.counts[s] || 0}</p><p className="text-[10px] text-gray-500 leading-tight">{STATUS_META[s].label}</p></div>
+              <div><p className="text-sm font-bold text-gray-900">{stats.counts[s] || 0}</p><p className="text-[10px] text-gray-500 leading-tight">{(dynamicStatusMeta[s]?.label || s)}</p></div>
             </div>
           );
         })}
@@ -273,13 +291,13 @@ export default function DealsPage() {
                             {prevStatus && (
                               <button onClick={() => statusMutation.mutate({ id: d.id, status: prevStatus })}
                                 className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100">
-                                <ArrowLeft className="w-3 h-3" />{STATUS_META[prevStatus]?.label}
+                                <ArrowLeft className="w-3 h-3" />{(dynamicStatusMeta[prevStatus]?.label || prevStatus)}
                               </button>
                             )}
                             {nextStatuses.length > 0 && (
                               <button onClick={() => statusMutation.mutate({ id: d.id, status: nextStatuses[0] })}
                                 className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-primary-600 hover:bg-gray-50 transition-colors">
-                                {STATUS_META[nextStatuses[0]]?.label}<ArrowRight className="w-3 h-3" />
+                                {(dynamicStatusMeta[nextStatuses[0]]?.label || nextStatuses[0])}<ArrowRight className="w-3 h-3" />
                               </button>
                             )}
                           </div>
@@ -320,8 +338,8 @@ export default function DealsPage() {
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(d.createdAt)}</span>
                     </div>
                   </div>
-                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", STATUS_META[d.status]?.lightBg, STATUS_META[d.status]?.color)}>
-                    {STATUS_META[d.status]?.label}
+                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", (dynamicStatusMeta[d.status]?.lightBg || "bg-gray-50"), (dynamicStatusMeta[d.status]?.color || "text-gray-600"))}>
+                    {(dynamicStatusMeta[d.status]?.label || d.status)}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {prevStatus && (
