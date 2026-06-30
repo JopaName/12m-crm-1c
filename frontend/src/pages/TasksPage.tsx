@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI, dealsAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, Edit3, Trash2, X, Check, ArrowUp, ArrowLeft, ArrowRight, Inbox, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, Save, CheckSquare, Square } from "lucide-react";
+import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, Edit3, Trash2, X, Check, ArrowUp, ArrowLeft, ArrowRight, Inbox, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, Save, CheckSquare, Square, Smartphone, Copy, CalendarDays } from "lucide-react";
 
 const STATUSES = ["New", "InProgress", "Completed", "Cancelled"];
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];
@@ -419,6 +419,79 @@ export default function TasksPage() {
         onSubmit={(d) => editingTask ? updateMutation.mutate({ id: editingTask.id, data: d }) : createMutation.mutate(d)}
         isPending={createMutation.isPending || updateMutation.isPending} />}
       {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
+    
+      {/* Calendar Sync Modal */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowCalendarModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-br from-violet-600 to-purple-700 px-6 py-5 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5" />
+                  <h3 className="font-semibold">Задачи в календаре телефона</h3>
+                </div>
+                <button onClick={() => setShowCalendarModal(false)} className="p-1 rounded-full bg-white/20 hover:bg-white/30 text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-white/70 mt-2">Подпишитесь на календарь — задачи с дедлайнами появятся в телефоне</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Calendar URL */}
+              <div>
+                <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Ссылка для подписки</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={`${window.location.origin}/api/tasks/calendar.ics?token=${localStorage.getItem("token") || ""}`}
+                    className="flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg text-gray-600 outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/api/tasks/calendar.ics?token=${localStorage.getItem("token") || ""}`);
+                      setCalCopied(true);
+                      setTimeout(() => setCalCopied(false), 2000);
+                    }}
+                    className="p-2 bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-colors"
+                  >
+                    {calCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="space-y-3">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span>🍎</span> iPhone (Apple Calendar)
+                  </h4>
+                  <ol className="text-xs text-gray-600 mt-2 space-y-1 list-decimal list-inside">
+                    <li>Скопируйте ссылку выше</li>
+                    <li>Настройки → Календарь → Учётные записи → Добавить → Другое</li>
+                    <li>Выберите «Подписной календарь»</li>
+                    <li>Вставьте ссылку → Готово</li>
+                  </ol>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span>🤖</span> Android (Google Calendar)
+                  </h4>
+                  <ol className="text-xs text-gray-600 mt-2 space-y-1 list-decimal list-inside">
+                    <li>Скопируйте ссылку выше</li>
+                    <li>Google Календарь → + → Добавить по URL</li>
+                    <li>Вставьте ссылку → Добавить</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                <strong>Важно:</strong> ссылка содержит ваш персональный токен. Не передавайте её третьим лицам. Календарь обновляется автоматически.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
