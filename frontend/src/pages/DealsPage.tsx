@@ -4,6 +4,7 @@ import { dealsAPI, clientsAPI, authAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { STATUSES, STATUS_META } from "../constants/deals";
+import PipelineEditor, { getPipelineConfig } from "../components/PipelineEditor";
 import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import ProfileModal from "../components/ProfileModal";
@@ -21,6 +22,8 @@ export default function DealsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [detailDeal, setDetailDeal] = useState<any | null>(null);
   const [viewUserId, setViewUserId] = useState<string | null>(null);
+  const [showPipelineEditor, setShowPipelineEditor] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
   const { user } = useAuth();
   const canEdit = user?.permissions?.includes("deals.edit") ?? true;
   const canDelete = user?.permissions?.includes("deals.delete") ?? true;
@@ -112,24 +115,24 @@ export default function DealsPage() {
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
-    STATUSES.forEach((s) => (counts[s] = 0));
+    PST.forEach((s) => (counts[s] = 0));
     (deals || []).forEach((d: any) => { counts[d.status] = (counts[d.status] || 0) + 1; });
     return { total: (deals || []).length, counts };
   }, [deals]);
 
-  const kanbanColumns = STATUSES.map((status) => ({
+  const kanbanColumns = PST.map((status) => ({
     status,
     items: active.filter((d: any) => d.status === status),
     meta: STATUS_META[status],
   }));
 
   const getPrevStatus = (current: string): string | null => {
-    const idx = STATUSES.indexOf(current);
-    return idx > 0 ? STATUSES[idx - 1] : null;
+    const idx = PST.indexOf(current);
+    return idx > 0 ? PST[idx - 1] : null;
   };
   const getNextStatuses = (current: string): string[] => {
     const idx = STATUSES.indexOf(current);
-    return idx >= 0 && idx < STATUSES.length - 1 ? STATUSES.slice(idx + 1) : [];
+    return idx >= 0 && idx < PST.length - 1 ? PST.slice(idx + 1) : [];
   };
 
   if (isLoading) return (
@@ -162,7 +165,7 @@ export default function DealsPage() {
           </div>
           <div><p className="text-lg font-bold text-gray-900">{stats.total}</p><p className="text-[11px] text-gray-500">Всего</p></div>
         </div>
-        {STATUSES.map((s) => {
+        {PST.map((s) => {
           const Icon = STATUS_META[s].icon;
           return (
             <div key={s} onClick={() => setFilterStatus(filterStatus === s ? "" : s)}
@@ -362,6 +365,7 @@ export default function DealsPage() {
         onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
 
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
+      {showPipelineEditor && <PipelineEditor onClose={() => { setShowPipelineEditor(false); setPipelineStages(getPipelineConfig()); }} />}
     </div>
   );
 }
