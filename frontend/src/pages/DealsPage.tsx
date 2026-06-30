@@ -144,7 +144,7 @@ export default function DealsPage() {
   const kanbanColumns = PST.map((status) => ({
     status,
     items: active.filter((d: any) => d.status === status),
-    meta: STATUS_META[status],
+    meta: dynamicStatusMeta[status] || { label: status, color: "text-gray-600", bg: "bg-gray-500", lightBg: "bg-gray-50", icon: Circle },
   }));
 
   const getPrevStatus = (current: string): string | null => {
@@ -193,7 +193,7 @@ export default function DealsPage() {
               className={cn("rounded-xl border p-3 flex items-center gap-2.5 shadow-sm cursor-pointer transition-all hover:shadow-md",
                 (dynamicStatusMeta[s]?.lightBg || "bg-gray-50"),
                 filterStatus === s ? "ring-2 ring-offset-2 ring-gray-900 shadow-lg" : filterStatus ? "opacity-40 grayscale" : "")}>
-              <Icon className={cn("w-4 h-4", STATUS_META[s].color)} />
+              <Icon className={cn("w-4 h-4", (dynamicStatusMeta[s]?.color || "text-gray-600"))} />
               <div><p className="text-sm font-bold text-gray-900">{stats.counts[s] || 0}</p><p className="text-[10px] text-gray-500 leading-tight">{(dynamicStatusMeta[s]?.label || s)}</p></div>
             </div>
           );
@@ -328,7 +328,7 @@ export default function DealsPage() {
               const prevStatus = getPrevStatus(d.status);
               return (
                 <div key={d.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group">
-                  <div className={cn("w-2 h-2 rounded-full shrink-0", STATUS_META[d.status]?.bg || "bg-gray-400")} />
+                  <div className={cn("w-2 h-2 rounded-full shrink-0", (dynamicStatusMeta[d.status]?.bg || "bg-gray-400"))} />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 text-sm">{d.dealNumber}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
