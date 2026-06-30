@@ -36,6 +36,8 @@ export default function TasksPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("kanban");
   const [showForm, setShowForm] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [calCopied, setCalCopied] = useState(false);
   const [detailTask, setDetailTask] = useState<any | null>(null);
   const [viewUserId, setViewUserId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
