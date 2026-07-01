@@ -33,7 +33,7 @@ const DEFAULT_STAGES: StageConfig[] = [
 
 function loadPipeline(): StageConfig[] {
   try {
-    const raw = localStorage.getItem("crm_pipeline_config");
+    const raw = localStorage.getItem("crm_pipeline_v2");
     if (raw) return JSON.parse(raw);
   } catch {}
   return DEFAULT_STAGES;
@@ -44,7 +44,7 @@ export function getPipelineConfig(): StageConfig[] {
 }
 
 export function savePipeline(stages: StageConfig[]) {
-  localStorage.setItem("crm_pipeline_config", JSON.stringify(stages));
+  localStorage.setItem("crm_pipeline_v2", JSON.stringify(stages));
 }
 
 export default function PipelineEditor({ onClose }: { onClose: () => void }) {
