@@ -32,6 +32,7 @@ export default function CalculatorPage() {
     saveForm(customPower, next);
   };
 
+  const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
