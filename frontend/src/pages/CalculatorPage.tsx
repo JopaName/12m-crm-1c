@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import api from "../api";
+import FilePreviewModal from "../components/FilePreviewModal";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Minus, Plus, Download, Printer } from "lucide-react";
+import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Minus, Plus, Download, Printer, Save, Eye, Trash2 } from "lucide-react";
 
 const PANEL_POWER = 400; // Ватт на панель
 const EQUIPMENT_TYPES = ["СЭС под ключ", "Солнечные панели", "Инвертор", "АКБ", "Гибридная СЭС", "Сетевая СЭС", "Автономная СЭС"];
@@ -35,6 +36,9 @@ export default function CalculatorPage() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedKps, setSavedKps] = useState<any[]>([]);
+  const [selectedKp, setSelectedKp] = useState<any>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const power = parseInt(customPower) || 30;
@@ -156,6 +160,52 @@ export default function CalculatorPage() {
     const html = '<html><head><meta charset="utf-8"><title>КП</title><style>' + style + '</style></head><body>' + bodyHtml + '</body></html>';
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+  };
+
+  const loadKps = async () => {
+    try {
+      const res = await api.get("/calculator/kps");
+      setSavedKps(res.data || []);
+    } catch {}
+  };
+
+  useEffect(() => { loadKps(); }, []);
+
+  const saveKp = async () => {
+    setSaving(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const safePower = String(power);
+      const fileName = "KP_12M_" + safePower + "kW_" + dateStr + ".doc";
+
+      const style = "@page { size: A4; margin: 2cm 3cm 2cm 2cm; } body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.15; } h2 { font-size: 13pt; font-weight: bold; margin-top: 12pt; margin-bottom: 6pt; color: #000; } table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; } td, th { border: 1px solid #000; padding: 4pt 8pt; } th { background: #e0e0e0; font-weight: bold; text-align: center; }";
+
+      const lines = result.split("\n");
+      let bodyHtml = "";
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) { bodyHtml += "<br>"; return; }
+        if (trimmed.match(/^(КОММЕРЧЕСКОЕ|ТЕХНИЧЕСКОЕ|ТАБЛИЦА|СРОКИ|ГАРАНТИЯ|ИТОГО|КОНТАКТЫ|ИНФОРМАЦИЯ|ПРЕДЛОЖЕНИЕ)/i)) {
+          bodyHtml += "<h2>" + trimmed + "</h2>";
+        } else {
+          bodyHtml += "<p style='text-indent:1.25cm;margin:0 0 6pt 0;'>" + trimmed + "</p>";
+        }
+      });
+      const docContent = "<html><head><meta charset='utf-8'><style>" + style + "</style></head><body>" + bodyHtml + "</body></html>";
+
+      await api.post("/calculator/save-kp", { fileName, content: docContent });
+      loadKps();
+    } catch (e) {
+      // fallback: save anyway
+    }
+    setSaving(false);
+  };
+
+  const deleteKp = async (fileName: string) => {
+    try {
+      await api.delete("/calculator/kp/" + encodeURIComponent(fileName));
+      setSavedKps(prev => prev.filter(k => k.fileName !== fileName));
+    } catch {}
   };
 
   const copyToClipboard = () => {
@@ -300,6 +350,9 @@ export default function CalculatorPage() {
                 <button onClick={printDoc} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 bg-white rounded-lg hover:bg-gray-100 transition-colors text-gray-600 shadow-sm">
                   <Printer className="w-3 h-3" /> Печать
                 </button>
+                <button onClick={saveKp} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50">
+                  <Save className="w-3 h-3" /> {saving ? "Сохраняю..." : "Сохранить"}
+                </button>
                 <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Скопировано" : "Копировать"}
                 </button>
@@ -308,6 +361,42 @@ export default function CalculatorPage() {
           )}
         </div>
       </div>
+
+      {/* Saved KPs */}
+      {savedKps.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-amber-500" /> Сохранённые КП
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {savedKps.map(kp => (
+              <div key={kp.fileName} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-amber-200 transition-colors group">
+                <FileText className="w-8 h-8 text-blue-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-700 truncate">{kp.fileName}</p>
+                  <p className="text-[10px] text-gray-400">{new Date(kp.createdAt).toLocaleDateString("ru-RU")} • {kp.size ? Math.round(kp.size/1024) : "?"} KB</p>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => setSelectedKp(kp)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500" title="Открыть">
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                  <a href={kp.downloadUrl} target="_blank" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title="Скачать">
+                    <Download className="w-3.5 h-3.5" />
+                  </a>
+                  <button onClick={() => deleteKp(kp.fileName)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="Удалить">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* File Preview Modal */}
+      {selectedKp && (
+        <FilePreviewModal file={selectedKp} onClose={() => setSelectedKp(null)} token={localStorage.getItem("token")} />
+      )}
     </div>
   );
 }
