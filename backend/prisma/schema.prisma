@@ -482,7 +482,14 @@ model PurchaseRequest {
   product       Product? @relation(fields: [productId], references: [id])
   productName   String?
   quantity      Int
-  status        String
+  status        String   @default("new")
+  paymentType   String?  // "cash" | "cashless"
+  paymentStatus String?  // "pending" | "paid"
+  reserved      Boolean  @default(false)
+  stockCheck    String?  // "available" | "unavailable" | null = not checked
+  cancelledById   String?
+  cancelNote      String?
+  cancelledAt     DateTime?
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   createdById   String
