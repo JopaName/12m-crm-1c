@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Settings, ChevronDown, Minus, Plus } from "lucide-react";
+import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Settings, Minus, Plus, Download, Printer } from "lucide-react";
 
 const PANEL_POWER = 400; // Ватт на панель
 const EQUIPMENT_TYPES = ["СЭС под ключ", "Солнечные панели", "Инвертор", "АКБ", "Гибридная СЭС", "Сетевая СЭС", "Автономная СЭС"];
@@ -76,6 +76,44 @@ export default function CalculatorPage() {
       setResult("Ошибка генерации.");
     }
     setGenerating(false);
+  };
+
+  
+  const downloadDoc = () => {
+    const html = [
+      "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>",
+      "<head><meta charset='utf-8'><title>Коммерческое предложение</title>",
+      "<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#222;line-height:1.5}",
+      "h1{color:#d97706}table{width:100%;border-collapse:collapse;margin:10px 0}",
+      "td,th{border:1px solid #ddd;padding:6px 10px;font-size:13px}",
+      "th{background:#f59e0b;color:#fff}",
+      ".total{font-size:16px;font-weight:bold;text-align:right;margin:15px 0}",
+      "</style></head><body>",
+      result.replace(/\n/g, "<br>").replace(/^# (.+)/gm, "<h1>$1</h1>").replace(/^## (.+)/gm, "<h2>$1</h2>").replace(/^### (.+)/gm, "<h3>$1</h3>"),
+      "</body></html>"
+    ].join("\n");
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "KP_' + power + 'kW_12M.doc";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printDoc = () => {
+    const html = [
+      "<html><head><meta charset='utf-8'><title>КП</title>",
+      "<style>body{font-family:Arial;max-width:800px;margin:40px auto;color:#222;line-height:1.5}",
+      "h1{color:#d97706;font-size:18px}table{width:100%;border-collapse:collapse;margin:10px 0}",
+      "td,th{border:1px solid #ddd;padding:6px 10px;font-size:13px}th{background:#f59e0b;color:#fff}",
+      "@media print{body{margin:20px}}",
+      "</style></head><body>",
+      result.replace(/\n/g, "<br>"),
+      "</body></html>"
+    ].join("\n");
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
   };
 
   const copyToClipboard = () => {
@@ -255,15 +293,19 @@ export default function CalculatorPage() {
                   {result}
                 </div>
               </div>
-              <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
+              <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2 flex-wrap">
                 <button onClick={generateProposal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
-                  <Sparkles className="w-3 h-3" /> Перегенерировать
+                  <Sparkles className="w-3 h-3" /> Новое КП
+                </button>
+                <button onClick={downloadDoc} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                  <Download className="w-3 h-3" /> Скачать .doc
+                </button>
+                <button onClick={printDoc} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 bg-white rounded-lg hover:bg-gray-100 transition-colors text-gray-600 shadow-sm">
+                  <Printer className="w-3 h-3" /> Печать
                 </button>
                 <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Скопировано" : "Копировать"}
                 </button>
-                <div className="flex-1" />
-                <span className="text-[10px] text-gray-400">Панели {PANEL_POWER}W • AI-генерация</span>
               </div>
             </div>
           )}
