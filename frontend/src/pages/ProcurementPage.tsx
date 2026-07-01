@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { procurementAPI, authAPI } from "../api";
-import { useAuth } from "../context/AuthContext";
 import SuppliersPanel from "../components/SuppliersPanel";
 import OrdersPanel from "../components/OrdersPanel";
 import ProcurementFormModal from "../components/ProcurementFormModal";
@@ -10,16 +9,6 @@ import FilePreviewModal from "../components/FilePreviewModal";
 import { Plus, Search, LayoutDashboard, List, Archive, Clock, User, FileText, Package, ChevronDown, Calendar, AlertCircle, ArrowLeft, ArrowRight, Trash2, Edit3, X, Check, Inbox, ShoppingCart, Truck, Eye, EyeOff, Users, Building2, ClipboardList, Phone, Mail, CreditCard, Ban, SortDesc, Paperclip, Link, ExternalLink, Download } from "lucide-react";
 
 const STATUSES = [
-  "new",
-  "payment_pending",
-  "processing",
-  "in_progress",
-  "ready_for_pickup",
-  "shipped",
-  "cancelled",
-  "for_production",
-  "awaiting_production",
-  // legacy
   "Не прочитано",
   "Прочитано",
   "Найдено но не оплачено",
@@ -28,16 +17,6 @@ const STATUSES = [
 ];
 
 const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; icon: any; label: string }> = {
-  "new": { color: "text-gray-600", bg: "bg-gray-500", lightBg: "bg-gray-50", icon: Plus, label: "Новая" },
-  "payment_pending": { color: "text-amber-600", bg: "bg-amber-500", lightBg: "bg-amber-50", icon: Clock, label: "Ожидает оплаты" },
-  "processing": { color: "text-blue-600", bg: "bg-blue-500", lightBg: "bg-blue-50", icon: ShoppingCart, label: "В обработке" },
-  "in_progress": { color: "text-purple-600", bg: "bg-purple-500", lightBg: "bg-purple-50", icon: Package, label: "В работе" },
-  "ready_for_pickup": { color: "text-emerald-600", bg: "bg-emerald-500", lightBg: "bg-emerald-50", icon: Check, label: "Готово к отгрузке" },
-  "shipped": { color: "text-teal-600", bg: "bg-teal-500", lightBg: "bg-teal-50", icon: Truck, label: "Отгружено" },
-  "cancelled": { color: "text-red-600", bg: "bg-red-500", lightBg: "bg-red-50", icon: X, label: "Отменено" },
-  "for_production": { color: "text-orange-600", bg: "bg-orange-500", lightBg: "bg-orange-50", icon: AlertCircle, label: "Под производство" },
-  "awaiting_production": { color: "text-yellow-600", bg: "bg-yellow-500", lightBg: "bg-yellow-50", icon: Clock, label: "Ожидание производства" },
-  // legacy
   "Не прочитано": { color: "text-rose-600", bg: "bg-rose-500", lightBg: "bg-rose-50", icon: Ban, label: "Не прочитано" },
   "Прочитано": { color: "text-slate-600", bg: "bg-slate-500", lightBg: "bg-slate-100", icon: Eye, label: "Прочитано" },
   "Найдено но не оплачено": { color: "text-amber-600", bg: "bg-amber-500", lightBg: "bg-amber-50", icon: ShoppingCart, label: "Найдено" },
@@ -86,7 +65,6 @@ const cleanData = (d: Record<string, any>) => {
 const API_BASE = "";
 
 export default function ProcurementPage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("kanban");
   const [sortBy, setSortBy] = useState<SortKey>("-createdAt");
@@ -422,11 +400,11 @@ export default function ProcurementPage() {
       {tab === "suppliers" && <SuppliersPanel data={data} users={users} />}
       {tab === "orders" && <OrdersPanel data={data} />}
 
-      {showForm && tab === "requests" && <ProcurementFormModal onClose={() => setShowForm(false)} users={users} suppliers={data?.suppliers || []} currentUser={user}
+      {showForm && tab === "requests" && <ProcurementFormModal onClose={() => setShowForm(false)} users={users} suppliers={data?.suppliers || []}
         onSubmit={(d) => createReq.mutate(d)} isPending={createReq.isPending} />}
 
       {editId && <ProcurementFormModal data={active.find((r: any) => r.id === editId) || archived.find((r: any) => r.id === editId)}
-        onClose={() => setEditId(null)} users={users} suppliers={data?.suppliers || []} isEdit currentUser={user}
+        onClose={() => setEditId(null)} users={users} suppliers={data?.suppliers || []} isEdit
         onUpdate={(id, d) => updateReq.mutate({ id, data: d })} onDelete={(id) => deleteReq.mutate(id)}
         isPending={updateReq.isPending} />}
 \n      {previewFile && (
