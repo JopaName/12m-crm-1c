@@ -386,7 +386,7 @@ export default function DealsPage() {
         />
       )}
 
-      {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} clients={clients} users={users} initialClientId={newDealClientId}
+      {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} currentUser={user}
         onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
 
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
