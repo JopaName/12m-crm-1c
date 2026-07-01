@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Settings, Minus, Plus, Download, Printer } from "lucide-react";
+import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Minus, Plus, Download, Printer } from "lucide-react";
 
 const PANEL_POWER = 400; // Ватт на панель
 const EQUIPMENT_TYPES = ["СЭС под ключ", "Солнечные панели", "Инвертор", "АКБ", "Гибридная СЭС", "Сетевая СЭС", "Автономная СЭС"];
@@ -32,19 +32,6 @@ export default function CalculatorPage() {
     saveForm(customPower, next);
   };
 
-  const scenarios = [
-    { label: "Частный дом", icon: "🏠", power: "10", roof: "Скатная", equip: "СЭС под ключ" },
-    { label: "Бизнес", icon: "🏢", power: "30", roof: "Плоская", equip: "СЭС под ключ" },
-    { label: "Пром", icon: "🏭", power: "100", roof: "Плоская", equip: "Автономная СЭС" },
-  ];
-
-  const applyScenario = (s: typeof scenarios[0]) => {
-    setCustomPower(s.power);
-    const next = { ...form, roofType: s.roof, equipment: s.equip };
-    setForm(next);
-    saveForm(s.power, next);
-  };
-  const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -57,6 +44,7 @@ export default function CalculatorPage() {
   const adjustPower = (delta: number) => {
     const next = Math.max(1, power + delta);
     setCustomPower(String(next));
+    saveForm(String(next), form);
   };
 
   const generateProposal = async () => {
@@ -207,7 +195,7 @@ export default function CalculatorPage() {
                 <input
                   type="number"
                   value={customPower}
-                  onChange={e => setCustomPower(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ""); setCustomPower(v); saveForm(v, form); }}
                   className="w-full py-3 text-center text-3xl font-bold text-gray-800 bg-amber-50 border-2 border-amber-200 rounded-2xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100 transition-all"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-lg">кВт</span>
@@ -215,18 +203,6 @@ export default function CalculatorPage() {
               <button onClick={() => adjustPower(5)} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
-            </div>
-
-            {/* Quick presets */}
-            <div className="flex gap-1.5">
-              {[3, 5, 10, 15, 20, 30, 50, 100].map(kw => (
-                <button key={kw} onClick={() => { setCustomPower(String(kw)); saveForm(String(kw), form); }}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
-                    power === kw ? "bg-amber-500 text-white shadow-sm" : "bg-gray-50 text-gray-500 hover:bg-gray-100"
-                  }`}>
-                  {kw}
-                </button>
-              ))}
             </div>
 
             {/* Auto-calculated info — inline compact */}
@@ -239,16 +215,8 @@ export default function CalculatorPage() {
             </div>
           </div>
 
-          {/* Scenario presets + Roof + Equipment — unified card */}
+          {/* Equipment + Roof */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {scenarios.map(s => (
-                <button key={s.label} onClick={() => applyScenario(s)}
-                  className="py-2 rounded-xl text-xs font-medium bg-gray-50 hover:bg-amber-50 hover:text-amber-700 transition-colors border border-gray-100 hover:border-amber-200">
-                  <span className="text-base">{s.icon}</span><br/>{s.label}
-                </button>
-              ))}
-            </div>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <select value={form.equipment} onChange={e => updateForm({ equipment: e.target.value })}
@@ -296,14 +264,7 @@ export default function CalculatorPage() {
               <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
                 Настройте мощность и заполните данные клиента. AI рассчитает КП на основе панелей {PANEL_POWER}W.
               </p>
-              <div className="flex flex-wrap justify-center gap-2 mt-6">
-                {[{p:5, e:"🏠"},{p:15, e:"🏡"},{p:30, e:"🏭"},{p:50, e:"🏢"}].map((t, i) => (
-                  <button key={i} onClick={() => { setCustomPower(String(t.p)); generateProposal(); }}
-                    className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-sm text-amber-700 hover:bg-amber-50 transition-colors">
-                    {t.e} {t.p} кВт
-                  </button>
-                ))}
-              </div>
+              
             </div>
           ) : generating ? (
             <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
