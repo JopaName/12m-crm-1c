@@ -14,7 +14,7 @@ export default function DealFormModal({ onClose, currentUser, onSubmit, isPendin
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!f.name.trim()) { toast.error("Введите имя"); return; }
     if (!f.phone.trim()) { toast.error("Введите телефон"); return; }
     onSubmit({
@@ -23,6 +23,10 @@ export default function DealFormModal({ onClose, currentUser, onSubmit, isPendin
       description: f.description.trim(),
       responsibleAgentId: currentUser?.id,
     });
+    // Direct reload to force kanban refresh
+    setTimeout(() => {
+      try { window.location.reload(); } catch {}
+    }, 800);
   };
 
   return (
