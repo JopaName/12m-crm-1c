@@ -1,10 +1,10 @@
 import React, { useEffect, useNavigate, useState } from "react";;
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { dealsAPI, dealItemsAPI } from "../api";
+import { dealsAPI, dealItemsAPI, procurementAPI } from "../api";
 import { cn } from "./cn";
 import DocumentFormModal from "./DocumentFormModal";
-import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, AlertTriangle, Banknote, Wallet } from "lucide-react";
+import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, AlertTriangle, Banknote, Wallet, Package, ShoppingCart, Clock } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
 
@@ -44,6 +44,14 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
   const [cancelNote, setCancelNote] = useState("");
   const [showCancel, setShowCancel] = useState(false);
+  const [showZayavka, setShowZayavka] = useState(false);
+  const [zayavkaName, setZayavkaName] = useState("");
+  const [zayavkaQty, setZayavkaQty] = useState(1);
+  const [zayavkaPayment, setZayavkaPayment] = useState("наличный");
+  const [zayavkaNote, setZayavkaNote] = useState("");
+  const [zayavkaLoading, setZayavkaLoading] = useState(false);
+  const [zayavkaList, setZayavkaList] = useState<any[]>([]);
+  const [zayavkaError, setZayavkaError] = useState("");
   const navigate = useNavigate();
 
   const { data: fullDeal } = useQuery({
@@ -53,6 +61,63 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   });
 
   const linked = fullDeal || deal;
+
+  // Load zayavka requests for this deal
+  const loadZayavka = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const r = await fetch("/api/procurement/requests?dealId=" + deal.id, { headers: { Authorization: "Bearer " + token } });
+      const data = await r.json();
+      setZayavkaList(data.requests || []);
+    } catch {}
+  };
+  useEffect(() => { loadZayavka(); }, [deal.id]);
+
+  const createZayavka = async () => {
+    if (!zayavkaName.trim()) { setZayavkaError("Введите название товара"); return; }
+    setZayavkaLoading(true); setZayavkaError("");
+    try {
+      const token = localStorage.getItem("token");
+      const r = await fetch("/api/procurement/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ productName: zayavkaName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
+      });
+      if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); return; }
+      setZayavkaName(""); setZayavkaQty(1); setZayavkaNote("");
+      await loadZayavka();
+    } catch (e: any) { setZayavkaError(e.message); }
+    setZayavkaLoading(false);
+  };
+
+  const doZayavkaAction = async (id: string, action: string) => {
+    const token = localStorage.getItem("token");
+    const map: Record<string, string> = {
+      "confirm-payment": "confirm-payment",
+      "cash-paid": "cash-paid", 
+      "take-work": "take-work",
+      "ready": "ready",
+      "ship": "ship",
+      "production-ready": "production-ready",
+    };
+    const endpoint = map[action];
+    if (!endpoint) return;
+    await fetch("/api/procurement/requests/" + id + "/" + endpoint, {
+      method: "PUT",
+      headers: { Authorization: "Bearer " + token }
+    });
+    loadZayavka();
+  };
+
+  const cancelZayavka = async (id: string, note: string) => {
+    const token = localStorage.getItem("token");
+    await fetch("/api/procurement/requests/" + id + "/cancel", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ note: note || "Отменена" })
+    });
+    loadZayavka();
+  };
   const hasProduction = (linked.productionOrders || []).length > 0;
   const hasInstallation = (linked.installationTasks || []).length > 0;
   const hasService = (linked.serviceCases || []).length > 0;
@@ -158,6 +223,130 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 <ChevronRight className="w-4 h-4 ml-auto" />
               </button>
             </div>
+
+            {/* ===== Procurement Zayavka Panel ===== */}
+            {!edit && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setShowZayavka(!showZayavka)} className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-800">
+                    <Package className="w-3.5 h-3.5" />
+                    Заявка на поставку
+                    <span className="text-[10px] text-gray-400 font-normal">({zayavkaList.length})</span>
+                    <ChevronRight className={`w-3 h-3 transition-transform ${showZayavka ? "rotate-90" : ""}`} />
+                  </button>
+                  {!showZayavka && (
+                    <button onClick={() => setShowZayavka(true)} className="text-[10px] text-primary-600 hover:underline">Создать заявку</button>
+                  )}
+                </div>
+
+                {showZayavka && (
+                  <div className="space-y-2">
+                    {/* Create form */}
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                          <input value={zayavkaName} onChange={e => setZayavkaName(e.target.value)} placeholder="Название товара" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
+                        </div>
+                        <input type="number" min={1} value={zayavkaQty} onChange={e => setZayavkaQty(Math.max(1, +e.target.value))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select value={zayavkaPayment} onChange={e => setZayavkaPayment(e.target.value)} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none">
+                          <option value="наличный">Наличный</option>
+                          <option value="безналичный">Безналичный</option>
+                        </select>
+                        <input value={zayavkaNote} onChange={e => setZayavkaNote(e.target.value)} placeholder="Примечание" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none" />
+                      </div>
+                      {zayavkaError && <p className="text-[10px] text-red-500">{zayavkaError}</p>}
+                      <button onClick={createZayavka} disabled={zayavkaLoading}
+                        className="w-full py-1.5 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50">
+                        {zayavkaLoading ? "Создание..." : "Создать заявку"}
+                      </button>
+                    </div>
+
+                    {/* Zayavka list */}
+                    {zayavkaList.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {zayavkaList.map((z: any) => {
+                          const statusLabel: Record<string, string> = {
+                            "new": "Новая", "payment_pending": "Ожидает оплаты", "processing": "В обработке",
+                            "in_progress": "В работе", "ready_for_pickup": "Готово к отгрузке", "shipped": "Отгружено",
+                            "cancelled": "Отменено", "for_production": "Под производство", "awaiting_production": "Ожидание производства"
+                          };
+                          const statusColor: Record<string, string> = {
+                            "new": "bg-gray-100 text-gray-600", "payment_pending": "bg-amber-100 text-amber-700",
+                            "processing": "bg-blue-100 text-blue-700", "in_progress": "bg-purple-100 text-purple-700",
+                            "ready_for_pickup": "bg-green-100 text-green-700", "shipped": "bg-teal-100 text-teal-700",
+                            "cancelled": "bg-red-100 text-red-700", "for_production": "bg-orange-100 text-orange-700",
+                            "awaiting_production": "bg-yellow-100 text-yellow-700"
+                          };
+                          const actions: Record<string, {label: string; action: string; color: string}[]> = {
+                            "payment_pending": [{label:"Оплачено",action:"confirm-payment",color:"bg-green-600 hover:bg-green-700"}],
+                            "processing": [{label:"Взять в работу",action:"take-work",color:"bg-purple-600 hover:bg-purple-700"}],
+                            "in_progress": [{label:"Собрано",action:"ready",color:"bg-blue-600 hover:bg-blue-700"},{label:"Наличными",action:"cash-paid",color:"bg-green-600 hover:bg-green-700"},{label:"Отгрузить",action:"ship",color:"bg-amber-600 hover:bg-amber-700"}],
+                            "ready_for_pickup": [{label:"Наличными",action:"cash-paid",color:"bg-green-600 hover:bg-green-700"},{label:"Отгрузить",action:"ship",color:"bg-amber-600 hover:bg-amber-700"}],
+                            "for_production": [{label:"Произведено",action:"production-ready",color:"bg-orange-600 hover:bg-orange-700"}],
+                            "awaiting_production": [{label:"Произведено",action:"production-ready",color:"bg-orange-600 hover:bg-orange-700"}],
+                          };
+                          const canCancel = ["new","payment_pending","processing","for_production","awaiting_production"].includes(z.status);
+                          return (
+                            <div key={z.id} className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 hover:border-gray-200 transition-colors">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-800">{z.productName}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor[z.status] || "bg-gray-100 text-gray-500"}`}>
+                                  {statusLabel[z.status] || z.status}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                                <span>{z.quantity} шт.</span>
+                                <span>Оплата: {z.paymentType === "наличный" ? "нал" : z.paymentType === "безналичный" ? "безнал" : "—"}</span>
+                                {z.reserved && <span className="text-green-500">Зарезервировано</span>}
+                              </div>
+                              {/* Pipeline stages mini bar */}
+                              {!["cancelled","shipped"].includes(z.status) && (
+                                <div className="flex items-center gap-0.5">
+                                  {["Ожидает оплаты","В обработке","В работе","Готово","Отгружено"].map((s,i) => {
+                                    const keys = ["payment_pending","processing","in_progress","ready_for_pickup","shipped"];
+                                    const zi = keys.indexOf(z.status);
+                                    return (
+                                      <React.Fragment key={s}>
+                                        {i > 0 && <div className={`flex-1 h-0.5 rounded ${i <= zi ? "bg-green-400" : "bg-gray-200"}`} />}
+                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 ${i < zi ? "bg-green-100 text-green-600" : i === zi ? "bg-primary-100 text-primary-600 ring-1 ring-primary-300" : "bg-gray-100 text-gray-300"}`}>
+                                          {i + 1}
+                                        </div>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {/* Action buttons */}
+                              {actions[z.status] && actions[z.status].length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {actions[z.status].map(a => (
+                                    <button key={a.action} onClick={() => doZayavkaAction(z.id, a.action)}
+                                      className={`px-2 py-1 text-[10px] font-medium text-white rounded transition-all ${a.color}`}>
+                                      {a.label}
+                                    </button>
+                                  ))}
+                                  {canCancel && (
+                                    <button onClick={() => cancelZayavka(z.id, "Отменена из сделки")}
+                                      className="px-2 py-1 text-[10px] font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 transition-all">
+                                      Отменить
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-400 text-center py-2">Нет заявок. Создайте первую заявку на поставку.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
 {/* Deal info cards */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Сумма</span><p className="font-semibold text-gray-800">{(linked.expectedAmount || 0).toLocaleString()} ₽</p></div>
