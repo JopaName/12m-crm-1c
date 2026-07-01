@@ -73,8 +73,24 @@ export default function FilePreviewModal({ file, onClose, token }: { file: any; 
         else if (d.type === 'office') {
           try {
             if (d.isDoc) {
-              const result = await mammoth.convertToHtml({ arrayBuffer: d.data });
-              setOfficeHtml(result.value);
+              try {
+                const result = await mammoth.convertToHtml({ arrayBuffer: d.data });
+                setOfficeHtml(result.value);
+              } catch {
+                // Fallback: try reading as text (HTML saved as .doc)
+                try {
+                  const decoder = new TextDecoder("utf-8");
+                  const text = decoder.decode(d.data);
+                  if (text.includes("<html") || text.includes("<body")) {
+                    const match = text.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                    setOfficeHtml(match ? match[1] : text);
+                  } else {
+                    setOfficeHtml("<pre>" + text.replace(/</g, "&lt;") + "</pre>");
+                  }
+                } catch {
+                  setError(true);
+                }
+              }
             } else {
               const wb = XLSX.read(d.data, { type: 'array' });
               const ws = wb.Sheets[wb.SheetNames[0]];
