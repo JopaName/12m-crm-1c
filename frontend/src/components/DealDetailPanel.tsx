@@ -234,7 +234,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                             className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500">
                             <option value="">Выберите товар</option>
                             {productsList.map(p => (
-                              <option key={p.id} value={p.id}>{p.name}{p.inventoryBalances?.length ? ` (${p.inventoryBalances[0]?.quantity || 0} шт)` : ''}</option>
+                              <option key={p.id} value={p.id}>{p.name}{p.stock > 0 ? ` (${p.stock} шт)` : ''}</option>
                             ))}
                           </select>
                         </div>
