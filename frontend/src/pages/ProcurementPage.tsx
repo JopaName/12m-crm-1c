@@ -10,6 +10,16 @@ import FilePreviewModal from "../components/FilePreviewModal";
 import { Plus, Search, LayoutDashboard, List, Archive, Clock, User, FileText, Package, ChevronDown, Calendar, AlertCircle, ArrowLeft, ArrowRight, Trash2, Edit3, X, Check, Inbox, ShoppingCart, Truck, Eye, EyeOff, Users, Building2, ClipboardList, Phone, Mail, CreditCard, Ban, SortDesc, Paperclip, Link, ExternalLink, Download } from "lucide-react";
 
 const STATUSES = [
+  "new",
+  "payment_pending",
+  "processing",
+  "in_progress",
+  "ready_for_pickup",
+  "shipped",
+  "cancelled",
+  "for_production",
+  "awaiting_production",
+  // legacy
   "Не прочитано",
   "Прочитано",
   "Найдено но не оплачено",
@@ -18,6 +28,16 @@ const STATUSES = [
 ];
 
 const STATUS_META: Record<string, { color: string; bg: string; lightBg: string; icon: any; label: string }> = {
+  "new": { color: "text-gray-600", bg: "bg-gray-500", lightBg: "bg-gray-50", icon: Plus, label: "Новая" },
+  "payment_pending": { color: "text-amber-600", bg: "bg-amber-500", lightBg: "bg-amber-50", icon: Clock, label: "Ожидает оплаты" },
+  "processing": { color: "text-blue-600", bg: "bg-blue-500", lightBg: "bg-blue-50", icon: ShoppingCart, label: "В обработке" },
+  "in_progress": { color: "text-purple-600", bg: "bg-purple-500", lightBg: "bg-purple-50", icon: Package, label: "В работе" },
+  "ready_for_pickup": { color: "text-emerald-600", bg: "bg-emerald-500", lightBg: "bg-emerald-50", icon: Check, label: "Готово к отгрузке" },
+  "shipped": { color: "text-teal-600", bg: "bg-teal-500", lightBg: "bg-teal-50", icon: Truck, label: "Отгружено" },
+  "cancelled": { color: "text-red-600", bg: "bg-red-500", lightBg: "bg-red-50", icon: X, label: "Отменено" },
+  "for_production": { color: "text-orange-600", bg: "bg-orange-500", lightBg: "bg-orange-50", icon: AlertCircle, label: "Под производство" },
+  "awaiting_production": { color: "text-yellow-600", bg: "bg-yellow-500", lightBg: "bg-yellow-50", icon: Clock, label: "Ожидание производства" },
+  // legacy
   "Не прочитано": { color: "text-rose-600", bg: "bg-rose-500", lightBg: "bg-rose-50", icon: Ban, label: "Не прочитано" },
   "Прочитано": { color: "text-slate-600", bg: "bg-slate-500", lightBg: "bg-slate-100", icon: Eye, label: "Прочитано" },
   "Найдено но не оплачено": { color: "text-amber-600", bg: "bg-amber-500", lightBg: "bg-amber-50", icon: ShoppingCart, label: "Найдено" },
