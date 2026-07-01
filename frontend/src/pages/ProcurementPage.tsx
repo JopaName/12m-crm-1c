@@ -65,6 +65,7 @@ const cleanData = (d: Record<string, any>) => {
 const API_BASE = "";
 
 export default function ProcurementPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("kanban");
   const [sortBy, setSortBy] = useState<SortKey>("-createdAt");
@@ -400,11 +401,11 @@ export default function ProcurementPage() {
       {tab === "suppliers" && <SuppliersPanel data={data} users={users} />}
       {tab === "orders" && <OrdersPanel data={data} />}
 
-      {showForm && tab === "requests" && <ProcurementFormModal onClose={() => setShowForm(false)} users={users} suppliers={data?.suppliers || []}
+      {showForm && tab === "requests" && <ProcurementFormModal onClose={() => setShowForm(false)} users={users} suppliers={data?.suppliers || []} currentUser={user}
         onSubmit={(d) => createReq.mutate(d)} isPending={createReq.isPending} />}
 
       {editId && <ProcurementFormModal data={active.find((r: any) => r.id === editId) || archived.find((r: any) => r.id === editId)}
-        onClose={() => setEditId(null)} users={users} suppliers={data?.suppliers || []} isEdit
+        onClose={() => setEditId(null)} users={users} suppliers={data?.suppliers || []} isEdit currentUser={user}
         onUpdate={(id, d) => updateReq.mutate({ id, data: d })} onDelete={(id) => deleteReq.mutate(id)}
         isPending={updateReq.isPending} />}
 \n      {previewFile && (
