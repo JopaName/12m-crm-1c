@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { procurementAPI, authAPI } from "../api";
+import { useAuth } from "../context/AuthContext";
 import SuppliersPanel from "../components/SuppliersPanel";
 import OrdersPanel from "../components/OrdersPanel";
 import ProcurementFormModal from "../components/ProcurementFormModal";
