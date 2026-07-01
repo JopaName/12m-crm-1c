@@ -1,19 +1,17 @@
 import { useState, useRef } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, Zap, Sun, Home, User, Phone, Mail, FileText, Download, Calculator, ArrowRight, RefreshCw, Check, Copy, ChevronDown } from "lucide-react";
+import { Sparkles, Zap, Sun, Home, User, Phone, FileText, Calculator, RefreshCw, Check, Copy, Settings, ChevronDown, Minus, Plus } from "lucide-react";
 
-const POWER_OPTIONS = [5, 10, 15, 20, 30, 40, 50, 65, 100];
-const EQUIPMENT_TYPES = [
-  "Солнечные панели", "Инвертор", "АКБ", "Крепления", "Кабель",
-  "СЭС под ключ", "Гибридная СЭС", "Сетевая СЭС", "Автономная СЭС",
-];
+const PANEL_POWER = 400; // Ватт на панель
+const EQUIPMENT_TYPES = ["СЭС под ключ", "Солнечные панели", "Инвертор", "АКБ", "Гибридная СЭС", "Сетевая СЭС", "Автономная СЭС"];
 const ROOF_TYPES = ["Скатная", "Плоская", "Металлочерепица", "Мягкая кровля", "Фальцевая"];
+const PANEL_PRICE = 9500; // Цена за панель 400W (розница)
 
 export default function CalculatorPage() {
   const { user } = useAuth();
+  const [customPower, setCustomPower] = useState("30");
   const [form, setForm] = useState({
-    power: 30,
     equipment: "СЭС под ключ",
     roofType: "Скатная",
     clientName: "",
@@ -24,55 +22,65 @@ export default function CalculatorPage() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const power = parseInt(customPower) || 30;
+  const panelCount = Math.ceil((power * 1000) / PANEL_POWER);
+  const estimatedMin = Math.round(power * 45000);
+  const estimatedMax = Math.round(power * 70000);
+
+  const adjustPower = (delta: number) => {
+    const next = Math.max(1, power + delta);
+    setCustomPower(String(next));
+  };
 
   const generateProposal = async () => {
     setGenerating(true); setResult("");
     try {
       const prompt = `Ты — эксперт по солнечной энергетике компании 12M. Создай КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ на основе данных:
 
-Мощность: ${form.power} кВт
-Тип оборудования: ${form.equipment}
-Тип кровли: ${form.roofType}
-Клиент: ${form.clientName || "Частное лицо"}
-Адрес: ${form.clientAddress || "будет уточнён"}
-Телефон: ${form.clientPhone || "не указан"}
-Заметки: ${form.additionalNotes || "нет"}
+ВАЖНЫЕ ПАРАМЕТРЫ:
+- Мощность: ${power} кВт
+- Используются панели мощностью ${PANEL_POWER}W (400 Вт)
+- Необходимое количество панелей: ${panelCount} шт
+- Ориентировочная цена панели: ${PANEL_PRICE} руб/шт
+- Стоимость панелей: ${(panelCount * PANEL_PRICE).toLocaleString()} руб
+- Тип: ${form.equipment}
+- Кровля: ${form.roofType}
+- Клиент: ${form.clientName || "Частное лицо"}
+- Адрес: ${form.clientAddress || "будет уточнён"}
+- Телефон: ${form.clientPhone || "не указан"}
 
-ФОРМАТ КП (строго следуй структуре):
-1. ЗАГОЛОВОК: "Коммерческое предложение №__ от __"
-2. ИНФОРМАЦИЯ О КЛИЕНТЕ: имя, адрес, телефон
-3. ТЕХНИЧЕСКОЕ РЕШЕНИЕ: опиши состав оборудования для солнечной электростанции ${form.power} кВт
-4. ТАБЛИЦА ОБОРУДОВАНИЯ (в столбик с ценами, примерные):
-   - Солнечные панели (количество и модель)
-   - Инвертор
+ФОРМАТ КП (строго):
+1. ЗАГОЛОВОК: "Коммерческое предложение"
+2. ИНФОРМАЦИЯ О КЛИЕНТЕ
+3. ТЕХНИЧЕСКОЕ РЕШЕНИЕ для ${power} кВт
+4. ТАБЛИЦА (реальные позиции с цифрами):
+   - Солнечные панели 400W: ${panelCount} шт × ${PANEL_PRICE}₽ = ${(panelCount * PANEL_PRICE).toLocaleString()}₽
+   - Инвертор (подходящий для ${power} кВт)
    - Крепления для ${form.roofType} кровли
    - Кабель и коммутация
    - Монтажные работы
    - Пусконаладка
-5. СРОКИ: укажи примерные сроки поставки и монтажа
-6. ГАРАНТИЯ: стандартные условия
-7. ИТОГО: примерная стоимость (реалистичная для ${form.power} кВт)
-8. КОНТАКТЫ: 12M Engineering, телефон, email
+5. СРОКИ
+6. ГАРАНТИЯ
+7. ИТОГО: примерная стоимость ${estimatedMin.toLocaleString()}–${estimatedMax.toLocaleString()} ₽
+8. КОНТАКТЫ: 12M Engineering, +7 861 200-00-12, sales@12m-energy.ru
 
-Оформи в деловом стиле. Цены в рублях, реалистичные. Объём: 1-2 страницы.
-
-ВАЖНО: Это творческая задача генерации текста. Не используй инструменты CRM. Просто напиши готовое КП текстом.`;
+Цены в рублях, реалистичные. НДС включён. Стиль деловой. НЕ используй инструменты CRM — просто напиши текст КП.`;
 
       const res = await api.post("/ai/coordinator", { content: prompt, skipTools: true, maxTokens: 3000 });
-      setResult(res.data?.response || "Не удалось сгенерировать. Попробуйте снова.");
+      setResult(res.data?.response || "Не удалось сгенерировать.");
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }), 200);
     } catch (e) {
-      setResult("Ошибка генерации. Проверьте подключение.");
+      setResult("Ошибка генерации.");
     }
     setGenerating(false);
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -85,7 +93,7 @@ export default function CalculatorPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Калькулятор КП</h1>
-            <p className="text-sm text-gray-400">AI-генератор коммерческих предложений на основе реальных проектов</p>
+            <p className="text-sm text-gray-400">AI-генератор коммерческих предложений • панели {PANEL_POWER}W</p>
           </div>
         </div>
       </div>
@@ -93,36 +101,70 @@ export default function CalculatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* LEFT: Form */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Power selector */}
+          {/* Power selector — always custom input */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-4">
               <Zap className="w-4 h-4 text-amber-500" /> Мощность СЭС
             </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {POWER_OPTIONS.map(kw => (
-                <button key={kw} onClick={() => setForm({...form, power: kw})}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    form.power === kw
-                      ? "bg-amber-500 text-white shadow-md shadow-amber-200"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            
+            {/* Custom power input — big and prominent */}
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => adjustPower(-5)} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+                <Minus className="w-4 h-4" />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="number"
+                  value={customPower}
+                  onChange={e => setCustomPower(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-full py-3 text-center text-3xl font-bold text-gray-800 bg-amber-50 border-2 border-amber-200 rounded-2xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100 transition-all"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-lg">кВт</span>
+              </div>
+              <button onClick={() => adjustPower(5)} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick presets */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {[3, 5, 10, 15, 20, 30, 50, 100].map(kw => (
+                <button key={kw} onClick={() => setCustomPower(String(kw))}
+                  className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    power === kw ? "bg-amber-500 text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                   }`}>
                   {kw} кВт
                 </button>
               ))}
-              <input type="number" placeholder="Свой" value={POWER_OPTIONS.includes(form.power) ? "" : form.power}
-                onChange={e => setForm({...form, power: +e.target.value || 30})}
-                className="py-2.5 rounded-xl text-sm text-center bg-gray-50 border border-gray-200 outline-none focus:ring-2 focus:ring-amber-500/20" />
+            </div>
+
+            {/* Auto-calculated info */}
+            <div className="mt-4 p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-gray-400">Панелей 400W:</span>
+                  <p className="font-bold text-gray-800">{panelCount} шт</p>
+                </div>
+                <div>
+                  <span className="text-gray-400">Стоимость панелей:</span>
+                  <p className="font-bold text-gray-800">{(panelCount * PANEL_PRICE).toLocaleString()} ₽</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-gray-400">Примерный бюджет:</span>
+                  <p className="font-bold text-amber-600">{estimatedMin.toLocaleString()} – {estimatedMax.toLocaleString()} ₽</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Equipment + Roof */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-              <Sun className="w-4 h-4 text-amber-500" /> Параметры
+              <Settings className="w-4 h-4 text-amber-500" /> Параметры
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-medium text-gray-400 uppercase mb-1 block">Тип оборудования</label>
+                <label className="text-[10px] font-medium text-gray-400 uppercase mb-1 block">Тип решения</label>
                 <select value={form.equipment} onChange={e => setForm({...form, equipment: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
                   {EQUIPMENT_TYPES.map(t => <option key={t}>{t}</option>)}
@@ -141,7 +183,7 @@ export default function CalculatorPage() {
           {/* Client info */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-              <User className="w-4 h-4 text-amber-500" /> Данные клиента
+              <User className="w-4 h-4 text-amber-500" /> Клиент
             </h3>
             <div className="space-y-3">
               <div className="relative">
@@ -165,11 +207,7 @@ export default function CalculatorPage() {
           {/* Generate button */}
           <button onClick={generateProposal} disabled={generating}
             className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl text-sm font-bold hover:from-amber-600 hover:to-orange-700 transition-all shadow-lg shadow-amber-500/25 disabled:opacity-50 flex items-center justify-center gap-2">
-            {generating ? (
-              <RefreshCw className="w-5 h-5 animate-spin" />
-            ) : (
-              <Sparkles className="w-5 h-5" />
-            )}
+            {generating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
             {generating ? "Генерирую КП..." : "Сгенерировать КП"}
           </button>
         </div>
@@ -183,13 +221,13 @@ export default function CalculatorPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-700 mb-2">Коммерческое предложение</h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-                Заполните параметры слева и нажмите «Сгенерировать». AI создаст профессиональное КП на основе реальных проектов и шаблонов компании.
+                Настройте мощность и заполните данные клиента. AI рассчитает КП на основе панелей {PANEL_POWER}W.
               </p>
               <div className="flex flex-wrap justify-center gap-2 mt-6">
-                {[{ label: "5 кВт", icon: "🏠" }, { label: "30 кВт", icon: "🏭" }, { label: "100 кВт", icon: "🏢" }].map((t, i) => (
-                  <button key={i} onClick={() => { setForm({...form, power: parseInt(t.label)}); generateProposal(); }}
+                {[{p:5, e:"🏠"},{p:15, e:"🏡"},{p:30, e:"🏭"},{p:50, e:"🏢"}].map((t, i) => (
+                  <button key={i} onClick={() => { setCustomPower(String(t.p)); generateProposal(); }}
                     className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-sm text-amber-700 hover:bg-amber-50 transition-colors">
-                    {t.icon} {t.label}
+                    {t.e} {t.p} кВт
                   </button>
                 ))}
               </div>
@@ -205,7 +243,7 @@ export default function CalculatorPage() {
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-semibold text-gray-700">Коммерческое предложение</span>
+                  <span className="text-sm font-semibold text-gray-700">КП — {power} кВт</span>
                 </div>
                 <button onClick={copyToClipboard}
                   className={`p-1.5 rounded-lg transition-colors ${copied ? "bg-green-100 text-green-600" : "hover:bg-white text-gray-400 hover:text-gray-600"}`}>
@@ -218,16 +256,14 @@ export default function CalculatorPage() {
                 </div>
               </div>
               <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
-                <button onClick={generateProposal}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                <button onClick={generateProposal} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
                   <Sparkles className="w-3 h-3" /> Перегенерировать
                 </button>
-                <button onClick={copyToClipboard}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
+                <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Скопировано" : "Копировать"}
                 </button>
                 <div className="flex-1" />
-                <span className="text-[10px] text-gray-400">Сгенерировано AI на основе шаблонов компании</span>
+                <span className="text-[10px] text-gray-400">Панели {PANEL_POWER}W • AI-генерация</span>
               </div>
             </div>
           )}
