@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, User, Phone, FileText, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function DealFormModal({ onClose, clients, users, onSubmit, isPending, initialClientId }: {
-  onClose: () => void; clients?: any[]; users?: any[]; onSubmit: (d: any) => void; isPending: boolean;
+export default function DealFormModal({ onClose, currentUser, onSubmit, isPending }: {
+  onClose: () => void; currentUser?: any; onSubmit: (d: any) => void; isPending: boolean;
 }) {
-  const [f, setF] = useState({ clientId: initialClientId || "", clientInn: initialClientId ? (clients?.find((c: any) => c.id === initialClientId)?.inn || "") : "", dealType: "Sale", expectedAmount: 0, description: "", responsibleAgentId: "" });
+  const today = new Date().toLocaleDateString("ru-RU");
+  const [f, setF] = useState({ name: "", phone: "", description: "" });
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -14,9 +15,14 @@ export default function DealFormModal({ onClose, clients, users, onSubmit, isPen
   }, [onClose]);
 
   const handleSubmit = () => {
-    if (!f.clientId) { toast.error("Выберите клиента"); return; }
-    if (!f.clientInn) { toast.error("Введите ИНН"); return; }
-    onSubmit(f);
+    if (!f.name.trim()) { toast.error("Введите имя"); return; }
+    if (!f.phone.trim()) { toast.error("Введите телефон"); return; }
+    onSubmit({
+      name: f.name.trim(),
+      phone: f.phone.trim(),
+      description: f.description.trim(),
+      responsibleAgentId: currentUser?.id,
+    });
   };
 
   return (
@@ -27,47 +33,38 @@ export default function DealFormModal({ onClose, clients, users, onSubmit, isPen
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <div className="px-5 py-4 space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Клиент <span className="text-red-500">*</span></label>
-            <select value={f.clientId} onChange={(e) => {
-              const c = clients?.find((x: any) => x.id === e.target.value);
-              setF({ ...f, clientId: e.target.value, clientInn: c?.inn || "" });
-            }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" autoFocus>
-              <option value="">Выберите клиента</option>
-              {clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name} ({c.inn || "—"})</option>)}
-            </select>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Имя <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })}
+              placeholder="Иван Иванов" autoFocus
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">ИНН <span className="text-red-500">*</span></label>
-            <input value={f.clientInn} onChange={(e) => setF({ ...f, clientInn: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
+          <label className="block text-xs font-medium text-gray-500 mb-1">Телефон <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })}
+              placeholder="+7 900 123-45-67"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Тип</label>
-              <select value={f.dealType} onChange={(e) => setF({ ...f, dealType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
-                <option value="Sale">Продажа</option><option value="ProjectSale">Проект</option><option value="Rent">Аренда</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Сумма</label>
-              <input type="number" value={f.expectedAmount} onChange={(e) => setF({ ...f, expectedAmount: +e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Агент</label>
-            <select value={f.responsibleAgentId} onChange={(e) => setF({ ...f, responsibleAgentId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
-              <option value="">Не назначен</option>
-              {users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Описание</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Описание</label>
+          <div className="relative">
+            <FileText className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none" rows={2} />
+              placeholder="Что интересует клиента..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none" rows={2} />
+          </div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Ответственный</label>
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <User className="w-4 h-4 text-primary-500" />
+            <span>{currentUser?.firstName} {currentUser?.lastName}</span>
+            <span className="text-[10px] text-gray-400 ml-auto">авто</span>
+          </div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Дата создания</label>
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <span>{today}</span>
+            <span className="text-[10px] text-gray-400 ml-auto">авто</span>
           </div>
         </div>
         <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
@@ -81,4 +78,3 @@ export default function DealFormModal({ onClose, clients, users, onSubmit, isPen
     </div>
   );
 }
-
