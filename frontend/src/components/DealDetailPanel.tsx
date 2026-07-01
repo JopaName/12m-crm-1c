@@ -37,13 +37,14 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   const [cancelNote, setCancelNote] = useState("");
   const [showCancel, setShowCancel] = useState(false);
   const [showZayavka, setShowZayavka] = useState(false);
-  const [zayavkaName, setZayavkaName] = useState("");
+  const [zayavkaProductId, setZayavkaProductId] = useState("");
   const [zayavkaQty, setZayavkaQty] = useState(1);
   const [zayavkaPayment, setZayavkaPayment] = useState("наличный");
   const [zayavkaNote, setZayavkaNote] = useState("");
   const [zayavkaLoading, setZayavkaLoading] = useState(false);
   const [zayavkaList, setZayavkaList] = useState<any[]>([]);
   const [zayavkaError, setZayavkaError] = useState("");
+  const [productsList, setProductsList] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const { data: fullDeal } = useQuery({
@@ -64,19 +65,25 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
     } catch {}
   };
   useEffect(() => { loadZayavka(); }, [deal.id]);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    fetch("/api/products", { headers: { Authorization: "Bearer " + token } })
+      .then(r => r.json()).then(data => setProductsList(data || [])).catch(() => {});
+  }, []);
 
   const createZayavka = async () => {
-    if (!zayavkaName.trim()) { setZayavkaError("Введите название товара"); return; }
+    if (!zayavkaProductId) { setZayavkaError("Выберите товар со склада"); return; }
+    const selected = productsList.find(p => p.id === zayavkaProductId);
     setZayavkaLoading(true); setZayavkaError("");
     try {
       const token = localStorage.getItem("token");
       const r = await fetch("/api/procurement/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ productName: zayavkaName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
+        body: JSON.stringify({ productId: zayavkaProductId, productName: selected?.name || "", quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
       });
       if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); return; }
-      setZayavkaName(""); setZayavkaQty(1); setZayavkaNote("");
+      setZayavkaProductId(""); setZayavkaQty(1); setZayavkaNote("");
       await loadZayavka();
     } catch (e: any) { setZayavkaError(e.message); }
     setZayavkaLoading(false);
@@ -223,7 +230,13 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                     <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2">
-                          <input value={zayavkaName} onChange={e => setZayavkaName(e.target.value)} placeholder="Название товара" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
+                          <select value={zayavkaProductId} onChange={e => setZayavkaProductId(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500">
+                            <option value="">Выберите товар</option>
+                            {productsList.map(p => (
+                              <option key={p.id} value={p.id}>{p.name}{p.inventoryBalances?.length ? ` (${p.inventoryBalances[0]?.quantity || 0} шт)` : ''}</option>
+                            ))}
+                          </select>
                         </div>
                         <input type="number" min={1} value={zayavkaQty} onChange={e => setZayavkaQty(Math.max(1, +e.target.value))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
                       </div>
@@ -306,7 +319,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                                     </button>
                                   ))}
                                   {canCancel && (
-                                    <button onClick={() => cancelZayavka(z.id, "Отменена из лиды")}
+                                    <button onClick={() => cancelZayavka(z.id, "Отменена из лида")}
                                       className="px-2 py-1 text-[10px] font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 transition-all">
                                       Отменить
                                     </button>
