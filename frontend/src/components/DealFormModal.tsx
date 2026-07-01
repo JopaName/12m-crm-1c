@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Plus, X, User, Phone, FileText, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
+import api from "../api";
 
-export default function DealFormModal({ onClose, currentUser, onSubmit, isPending }: {
-  onClose: () => void; currentUser?: any; onSubmit: (d: any) => void; isPending: boolean;
+export default function DealFormModal({ onClose, currentUser }: {
+  onClose: () => void; currentUser?: any; onSubmit?: (d: any) => void; isPending?: boolean;
 }) {
   const today = new Date().toLocaleDateString("ru-RU");
   const [f, setF] = useState({ name: "", phone: "", description: "" });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -17,16 +19,22 @@ export default function DealFormModal({ onClose, currentUser, onSubmit, isPendin
   const handleSubmit = async () => {
     if (!f.name.trim()) { toast.error("Введите имя"); return; }
     if (!f.phone.trim()) { toast.error("Введите телефон"); return; }
-    onSubmit({
-      name: f.name.trim(),
-      phone: f.phone.trim(),
-      description: f.description.trim(),
-      responsibleAgentId: currentUser?.id,
-    });
-    // Direct reload to force kanban refresh
-    setTimeout(() => {
-      try { window.location.reload(); } catch {}
-    }, 800);
+    setLoading(true);
+    try {
+      await api.post("/deals", {
+        name: f.name.trim(),
+        phone: f.phone.trim(),
+        description: f.description.trim(),
+        responsibleAgentId: currentUser?.id,
+      });
+      toast.success("Лид создан");
+      onClose();
+      // Reload to refresh kanban
+      setTimeout(() => window.location.reload(), 500);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Ошибка создания");
+    }
+    setLoading(false);
   };
 
   return (
@@ -74,9 +82,9 @@ export default function DealFormModal({ onClose, currentUser, onSubmit, isPendin
         <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
           <div className="flex-1" />
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
-          <button onClick={handleSubmit} disabled={isPending}
+          <button onClick={handleSubmit} disabled={loading}
             className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm">
-            {isPending ? "Создание..." : "Создать"}</button>
+            {loading ? "Создание..." : "Создать"}</button>
         </div>
       </div>
     </div>

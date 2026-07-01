@@ -386,8 +386,7 @@ export default function DealsPage() {
         />
       )}
 
-      {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} currentUser={user}
-        onSubmit={(d) => createMutation.mutate(d)} isPending={createMutation.isPending} />}
+      {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} currentUser={user} />}
 
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
       {showPipelineEditor && <PipelineEditor onClose={() => { setShowPipelineEditor(false); setPipelineStages(getPipelineConfig()); }} />}
