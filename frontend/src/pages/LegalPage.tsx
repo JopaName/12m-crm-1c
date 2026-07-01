@@ -236,7 +236,7 @@ export default function LegalPage() {
                     onChange={(e) => setForm({ ...form, dealId: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   >
-                    <option value="">Связать со сделкой</option>
+                    <option value="">Связать с лидом</option>
                     {(deals || []).map((d: any) => (
                       <option key={d.id} value={d.id}>{d.dealNumber || d.id.slice(0, 8)}</option>
                     ))}
@@ -280,7 +280,7 @@ export default function LegalPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Тип</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Номер</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Клиент</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Сделка</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Лид</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Дата</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Статус</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Версия</th>

@@ -188,7 +188,7 @@ function ProductionFormModal({ onClose, deals, routes, onSubmit, isPending }: {
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
         </div>
         <div className="px-5 py-4 space-y-3">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Сделка</label>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Лид</label>
             <select value={f.dealId} onChange={(e) => setF({ ...f, dealId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
               <option value="">Выберите сделку</option>{deals?.map((d: any) => <option key={d.id} value={d.id}>{d.dealNumber}</option>)}</select></div>
           <div><label className="block text-xs font-medium text-gray-500 mb-1">Маршрут</label>

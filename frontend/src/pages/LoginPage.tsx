@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 const STATS = [
   { icon: BarChart3, label: "Контроль производства", desc: "От закупки до монтажа в одном окне" },
   { icon: Shield, label: "Ролевой доступ", desc: "5 уровней прав с гранулярными разрешениями" },
-  { icon: Users, label: "Единая CRM", desc: "Клиенты, сделки, воронки и KPI" },
+  { icon: Users, label: "Единая CRM", desc: "Клиенты, лиды, воронки и KPI" },
 ];
 
 export default function LoginPage() {
@@ -44,7 +44,7 @@ export default function LoginPage() {
             <div><h1 className="text-2xl font-bold text-white tracking-tight">12M CRM</h1><p className="text-xs text-primary-400/70 font-medium tracking-[0.15em] uppercase">Enterprise Platform</p></div>
           </div>
           <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight mb-3">Управляйте<br/><span className="bg-gradient-to-r from-primary-400 to-blue-300 bg-clip-text text-transparent">производством</span></h2>
-          <p className="text-gray-400 text-sm max-w-md leading-relaxed">Единая ERP / CRM платформа для производственно-инжинирингового предприятия. От сделки до отгрузки - всё в одной системе.</p>
+          <p className="text-gray-400 text-sm max-w-md leading-relaxed">Единая ERP / CRM платформа для производственно-инжинирингового предприятия. От лида до отгрузки - всё в одной системе.</p>
         </div>
         <div className="relative z-10 space-y-3">
           {STATS.map((s, i) => (

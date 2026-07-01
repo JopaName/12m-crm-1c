@@ -45,7 +45,7 @@ function DetailView({
               <span className="ml-2 text-gray-800">{doc.client?.name || doc.deal?.client?.name || "-"}</span>
             </div>
             <div>
-              <span className="text-gray-400">Сделка:</span>
+              <span className="text-gray-400">Лид:</span>
               <span className="ml-2 text-gray-800">{doc.deal?.dealNumber || "-"}</span>
             </div>
             <div>

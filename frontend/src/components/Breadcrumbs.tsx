@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { clientsAPI, dealsAPI, tasksAPI } from "../api";
 
 const ROUTE_LABELS: Record<string, string> = {
-  clients: "Клиенты", deals: "Сделки", products: "Номенклатура",
+  clients: "Клиенты", deals: "Лиды", products: "Номенклатура",
   tasks: "Задачи", warehouse: "Склад", production: "Производство",
   procurement: "Закупки", legal: "Договоры", service: "Сервис",
   installation: "Монтажи", rent: "Аренда", users: "Пользователи",
