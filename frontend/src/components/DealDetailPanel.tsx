@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { dealsAPI, dealItemsAPI } from "../api";
 import { cn } from "./cn";
 import DocumentFormModal from "./DocumentFormModal";
-import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download } from "lucide-react";
+import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, AlertTriangle, Banknote, Wallet } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 
 
@@ -42,6 +42,8 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   const [docPreview, setDocPreview] = useState<{template: string; label: string} | null>(null);
   const [showDocDrawer, setShowDocDrawer] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
+  const [cancelNote, setCancelNote] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
   const navigate = useNavigate();
 
   const { data: fullDeal } = useQuery({
@@ -128,6 +130,23 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
               </div>
             </div>
 
+            {/* Pipeline actions */}
+            {!edit && linked.status !== "Deal_Closed" && linked.status !== "Lead_Created" && (
+              <div className="space-y-2">
+                {showCancel ? (
+                  <div className="flex items-center gap-2">
+                    <input value={cancelNote} onChange={e => setCancelNote(e.target.value)} placeholder="Причина отмены" className="flex-1 px-3 py-2 border border-red-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-200" />
+                    <button onClick={async () => { try { const r = await fetch('/api/deals/' + linked.id + '/cancel', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ note: cancelNote }) }); if (r.ok) { onClose(); } else { const e = await r.json(); alert(e.error || 'Ошибка'); } } catch {} }} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">Отменить сделку</button>
+                    <button onClick={() => setShowCancel(false)} className="px-2 py-2 text-gray-500 text-xs">✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowCancel(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-all">
+                    <AlertTriangle className="w-3 h-3" /> Отменить сделку
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Document generation */}
             <div className="space-y-2">
               <button
@@ -144,6 +163,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Сумма</span><p className="font-semibold text-gray-800">{(linked.expectedAmount || 0).toLocaleString()} ₽</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Клиент</span><p className="font-semibold text-gray-800 truncate">{client?.name || "—"}</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Тип</span><p className="font-semibold text-gray-800">{linked.dealType}</p></div>
+              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Оплата</span><p className="font-semibold text-gray-800">{linked.paymentType || "—"}</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Менеджер</span><p className="font-semibold text-gray-800 truncate">{agent || "—"}</p></div>
             </div>
 
@@ -159,6 +179,8 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Тип</label>
                     <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="Sale">Продажа</option><option value="ProjectSale">Проект</option><option value="Rent">Аренда</option></select></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Оплата</label>
+                    <select value={edit.paymentType || ""} onChange={(e) => setEdit({ ...edit, paymentType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="">Не указан</option><option value="безналичный">Безналичный</option><option value="наличный">Наличный</option></select></div>
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Сумма</label>
                     <input type="number" value={edit.expectedAmount || 0} onChange={(e) => setEdit({ ...edit, expectedAmount: +e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
                 </div>

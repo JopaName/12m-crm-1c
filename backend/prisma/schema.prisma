@@ -168,6 +168,10 @@ model Deal {
   dealNumber          String       @unique
   dealType            String
   status              String
+  paymentType         String?
+  cancelledById       String?
+  cancelNote          String?
+  cancelledAt         DateTime?
   clientId            String
   client              Client       @relation(fields: [clientId], references: [id])
   clientInn           String?
@@ -482,14 +486,7 @@ model PurchaseRequest {
   product       Product? @relation(fields: [productId], references: [id])
   productName   String?
   quantity      Int
-  status        String   @default("new")
-  paymentType   String?  // "cash" | "cashless"
-  paymentStatus String?  // "pending" | "paid"
-  reserved      Boolean  @default(false)
-  stockCheck    String?  // "available" | "unavailable" | null = not checked
-  cancelledById   String?
-  cancelNote      String?
-  cancelledAt     DateTime?
+  status        String
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   createdById   String
