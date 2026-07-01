@@ -10,7 +10,7 @@ const ALL_MENU_ITEMS = [
   { path: "/", label: "Дашборд", icon: "📊", permission: "dashboard:view" },
   { path: "/chat", label: "Чат", icon: "💬", permission: "chat:view" },
   { path: "/clients", label: "Клиенты", icon: "👥", permission: "clients:view" },
-  { path: "/deals", label: "Сделки", icon: "🤝", permission: "deals:view" },
+  { path: "/deals", label: "Лиды", icon: "🤝", permission: "deals:view" },
   { path: "/warehouse", label: "Склад", icon: "🏭", permission: "warehouse:view" },
   { path: "/production", label: "Производство", icon: "⚙️", permission: "production:view" },
   { path: "/procurement", label: "Закупки", icon: "📥", permission: "procurement:view" },

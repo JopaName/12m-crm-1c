@@ -67,7 +67,7 @@ export default function DocumentPreviewModal({
             </div>
             <div>
               <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
-              <p className="text-[11px] text-gray-500">Сделка {dealNumber} · предпросмотр</p>
+              <p className="text-[11px] text-gray-500">Лида {dealNumber} · предпросмотр</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export default function DocumentPreviewModal({
                 { k: "clientInn", l: "ИНН" },
                 { k: "clientPhone", l: "Телефон" },
                 { k: "clientEmail", l: "Email" },
-                { k: "dealNumber", l: "Номер сделки" },
+                { k: "dealNumber", l: "Номер лиды" },
                 { k: "date", l: "Дата" },
                 { k: "amount", l: "Сумма" },
               ].map(f => (

@@ -78,7 +78,7 @@ export default function DealsPage() {
 
   const createMutation = useMutation({
     mutationFn: (d: any) => dealsAPI.create(d),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Сделка создана"); setShowForm(false); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Лид создан"); setShowForm(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
 
@@ -96,13 +96,13 @@ export default function DealsPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => dealsAPI.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Сделка обновлена"); setEditDealData(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Лид обновлён"); setEditDealData(null); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => dealsAPI.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Сделка удалена"); setDetailDeal(null); setConfirmDelete(false); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Лид удалён"); setDetailDeal(null); setConfirmDelete(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
 
@@ -172,7 +172,7 @@ export default function DealsPage() {
     <div className="max-w-7xl mx-auto px-2 sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
-          <Briefcase className="w-6 h-6 text-primary-500" />Сделки
+          <Briefcase className="w-6 h-6 text-primary-500" />Лиды
         </h1>
       </div>
 
@@ -238,7 +238,7 @@ export default function DealsPage() {
         </button>
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all font-medium shadow-sm hover:shadow-md">
-          <Plus className="w-3.5 h-3.5" />Новая сделка</button>
+          <Plus className="w-3.5 h-3.5" />Новый лид</button>
       </div>
 
       {/* Kanban */}

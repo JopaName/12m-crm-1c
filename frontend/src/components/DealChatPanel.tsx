@@ -169,7 +169,7 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-white shrink-0">
         <MessageCircle className="w-4 h-4 text-primary-500" />
-        <span className="text-xs font-semibold text-gray-700">Обсуждение сделки</span>
+        <span className="text-xs font-semibold text-gray-700">Обсуждение лиды</span>
         <span className="text-[10px] text-gray-400 ml-auto">{messages.length} сообщ.</span>
       </div>
 
