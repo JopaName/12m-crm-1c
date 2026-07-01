@@ -10,15 +10,40 @@ const PANEL_PRICE = 9500; // Цена за панель 400W (розница)
 
 export default function CalculatorPage() {
   const { user } = useAuth();
-  const [customPower, setCustomPower] = useState("30");
-  const [form, setForm] = useState({
-    equipment: "СЭС под ключ",
-    roofType: "Скатная",
-    clientName: "",
-    clientPhone: "",
-    clientAddress: "",
-    additionalNotes: "",
-  });
+  const STORAGE_KEY = "12m_cp_form";
+  const loadForm = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { equipment: "СЭС под ключ", roofType: "Скатная", clientName: "", clientPhone: "", clientAddress: "" };
+  };
+  const savedForm = loadForm();
+  const [customPower, setCustomPower] = useState(savedForm.power || "30");
+  const [form, setForm] = useState(savedForm);
+
+  const saveForm = (p: string, f: typeof form) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ power: p, ...f }));
+  };
+
+  const updateForm = (patch: Partial<typeof form>) => {
+    const next = { ...form, ...patch };
+    setForm(next);
+    saveForm(customPower, next);
+  };
+
+  const scenarios = [
+    { label: "Частный дом", icon: "🏠", power: "10", roof: "Скатная", equip: "СЭС под ключ" },
+    { label: "Бизнес", icon: "🏢", power: "30", roof: "Плоская", equip: "СЭС под ключ" },
+    { label: "Пром", icon: "🏭", power: "100", roof: "Плоская", equip: "Автономная СЭС" },
+  ];
+
+  const applyScenario = (s: typeof scenarios[0]) => {
+    setCustomPower(s.power);
+    const next = { ...form, roofType: s.roof, equipment: s.equip };
+    setForm(next);
+    saveForm(s.power, next);
+  };
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
@@ -193,80 +218,62 @@ export default function CalculatorPage() {
             </div>
 
             {/* Quick presets */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="flex gap-1.5">
               {[3, 5, 10, 15, 20, 30, 50, 100].map(kw => (
-                <button key={kw} onClick={() => setCustomPower(String(kw))}
-                  className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    power === kw ? "bg-amber-500 text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                <button key={kw} onClick={() => { setCustomPower(String(kw)); saveForm(String(kw), form); }}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    power === kw ? "bg-amber-500 text-white shadow-sm" : "bg-gray-50 text-gray-500 hover:bg-gray-100"
                   }`}>
-                  {kw} кВт
+                  {kw}
                 </button>
               ))}
             </div>
 
-            {/* Auto-calculated info */}
-            <div className="mt-4 p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-gray-400">Панелей 400W:</span>
-                  <p className="font-bold text-gray-800">{panelCount} шт</p>
-                </div>
-                <div>
-                  <span className="text-gray-400">Стоимость панелей:</span>
-                  <p className="font-bold text-gray-800">{(panelCount * PANEL_PRICE).toLocaleString()} ₽</p>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-400">Примерный бюджет:</span>
-                  <p className="font-bold text-amber-600">{estimatedMin.toLocaleString()} – {estimatedMax.toLocaleString()} ₽</p>
-                </div>
-              </div>
+            {/* Auto-calculated info — inline compact */}
+            <div className="mt-3 flex items-center gap-3 text-[10px] text-gray-400 bg-amber-50/30 rounded-lg px-3 py-2">
+              <span>Панелей 400W: <b className="text-gray-700">{panelCount} шт</b></span>
+              <span className="text-gray-300">|</span>
+              <span>Стоимость: <b className="text-gray-700">{(panelCount * PANEL_PRICE).toLocaleString()} ₽</b></span>
+              <span className="text-gray-300">|</span>
+              <span>Бюджет: <b className="text-amber-600">{estimatedMin.toLocaleString()} – {estimatedMax.toLocaleString()} ₽</b></span>
             </div>
           </div>
 
-          {/* Equipment + Roof */}
+          {/* Scenario presets + Roof + Equipment — unified card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-              <Settings className="w-4 h-4 text-amber-500" /> Параметры
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-medium text-gray-400 uppercase mb-1 block">Тип решения</label>
-                <select value={form.equipment} onChange={e => setForm({...form, equipment: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {scenarios.map(s => (
+                <button key={s.label} onClick={() => applyScenario(s)}
+                  className="py-2 rounded-xl text-xs font-medium bg-gray-50 hover:bg-amber-50 hover:text-amber-700 transition-colors border border-gray-100 hover:border-amber-200">
+                  <span className="text-base">{s.icon}</span><br/>{s.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <select value={form.equipment} onChange={e => updateForm({ equipment: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-gray-50">
                   {EQUIPMENT_TYPES.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-medium text-gray-400 uppercase mb-1 block">Тип кровли</label>
-                <select value={form.roofType} onChange={e => setForm({...form, roofType: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
+              <div className="flex-1">
+                <select value={form.roofType} onChange={e => updateForm({ roofType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-gray-50">
                   {ROOF_TYPES.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Client info */}
+          {/* Client info — compact single row */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-              <User className="w-4 h-4 text-amber-500" /> Клиент
-            </h3>
-            <div className="space-y-3">
-              <div className="relative">
-                <User className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
-                <input value={form.clientName} onChange={e => setForm({...form, clientName: e.target.value})}
-                  placeholder="Имя или организация" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20" />
-              </div>
-              <div className="relative">
-                <Phone className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
-                <input value={form.clientPhone} onChange={e => setForm({...form, clientPhone: e.target.value})}
-                  placeholder="Телефон" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20" />
-              </div>
-              <div className="relative">
-                <Home className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
-                <input value={form.clientAddress} onChange={e => setForm({...form, clientAddress: e.target.value})}
-                  placeholder="Адрес объекта" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20" />
-              </div>
+            <div className="grid grid-cols-3 gap-2">
+              <input value={form.clientName} onChange={e => updateForm({ clientName: e.target.value })}
+                placeholder="Имя / Компания" className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20" />
+              <input value={form.clientPhone} onChange={e => updateForm({ clientPhone: e.target.value })}
+                placeholder="Телефон" className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20" />
+              <input value={form.clientAddress} onChange={e => updateForm({ clientAddress: e.target.value })}
+                placeholder="Адрес" className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20" />
             </div>
           </div>
 
