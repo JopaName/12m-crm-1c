@@ -80,40 +80,68 @@ export default function CalculatorPage() {
 
   
   const downloadDoc = () => {
-    const html = [
-      "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>",
-      "<head><meta charset='utf-8'><title>Коммерческое предложение</title>",
-      "<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#222;line-height:1.5}",
-      "h1{color:#d97706}table{width:100%;border-collapse:collapse;margin:10px 0}",
-      "td,th{border:1px solid #ddd;padding:6px 10px;font-size:13px}",
-      "th{background:#f59e0b;color:#fff}",
-      ".total{font-size:16px;font-weight:bold;text-align:right;margin:15px 0}",
-      "</style></head><body>",
-      result.replace(/\n/g, "<br>").replace(/^# (.+)/gm, "<h1>$1</h1>").replace(/^## (.+)/gm, "<h2>$1</h2>").replace(/^### (.+)/gm, "<h3>$1</h3>"),
-      "</body></html>"
-    ].join("\n");
-    const blob = new Blob([html], { type: "application/msword" });
+    const style = "@page { size: A4; margin: 2cm 3cm 2cm 2cm; } body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.15; } h1 { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12pt; color: #000; text-transform: uppercase; } h2 { font-size: 13pt; font-weight: bold; margin-top: 12pt; margin-bottom: 6pt; color: #000; } h3 { font-size: 12pt; font-weight: bold; margin-top: 8pt; margin-bottom: 4pt; color: #000; } p { margin: 0 0 6pt 0; text-indent: 1.25cm; } p.no-indent { text-indent: 0; } table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; } td, th { border: 1px solid #000; padding: 4pt 8pt; } th { background: #e0e0e0; font-weight: bold; text-align: center; } .right { text-align: right; } .center { text-align: center; } .bold { font-weight: bold; } .signature { margin-top: 40pt; display: flex; justify-content: space-between; } .signature div { width: 200pt; }";
+
+    const lines = result.split('\n');
+    let bodyHtml = '';
+    let inTable = false;
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) { bodyHtml += '<br>'; return; }
+
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        if (!inTable) { bodyHtml += '<table>'; inTable = true; }
+        const cells = trimmed.split('|').filter(c => c.trim());
+        if (cells.every(c => c.match(/^[-:]+$/))) return;
+        bodyHtml += '<tr>' + cells.map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>';
+        return;
+      } else if (inTable) {
+        bodyHtml += '</table>';
+        inTable = false;
+      }
+
+      if (trimmed.match(/^(# |\\d+\\.)/)) {
+        bodyHtml += '<p class="no-indent bold">' + trimmed.replace(/^# /, '') + '</p>';
+      } else if (trimmed.match(/^(КОММЕРЧЕСКОЕ|ТЕХНИЧЕСКОЕ|ТАБЛИЦА|СРОКИ|ГАРАНТИЯ|ИТОГО|КОНТАКТЫ|ИНФОРМАЦИЯ|ПРЕДЛОЖЕНИЕ)/i)) {
+        bodyHtml += '<h2>' + trimmed + '</h2>';
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        bodyHtml += '<p class="no-indent">• ' + trimmed.substring(2) + '</p>';
+      } else {
+        bodyHtml += '<p>' + trimmed + '</p>';
+      }
+    });
+    if (inTable) bodyHtml += '</table>';
+
+    const html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Коммерческое предложение</title><style>" + style + "</style></head><body>" + bodyHtml + "</body></html>";
+
+    const blob = new Blob([html], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "KP_' + power + 'kW_12M.doc";
+    a.download = 'КП_12M_' + power + 'kW.doc';
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const printDoc = () => {
-    const html = [
-      "<html><head><meta charset='utf-8'><title>КП</title>",
-      "<style>body{font-family:Arial;max-width:800px;margin:40px auto;color:#222;line-height:1.5}",
-      "h1{color:#d97706;font-size:18px}table{width:100%;border-collapse:collapse;margin:10px 0}",
-      "td,th{border:1px solid #ddd;padding:6px 10px;font-size:13px}th{background:#f59e0b;color:#fff}",
-      "@media print{body{margin:20px}}",
-      "</style></head><body>",
-      result.replace(/\n/g, "<br>"),
-      "</body></html>"
-    ].join("\n");
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(html); w.document.close(); w.print(); }
+    const style = "@page { size: A4; margin: 2cm 3cm 2cm 2cm; } body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.15; } h2 { font-size: 13pt; font-weight: bold; margin-top: 12pt; margin-bottom: 6pt; color: #000; } table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; } td, th { border: 1px solid #000; padding: 4pt 8pt; } th { background: #e0e0e0; font-weight: bold; text-align: center; } @media print { body { margin: 0; } }";
+
+    const lines = result.split('\n');
+    let bodyHtml = '';
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) { bodyHtml += '<br>'; return; }
+      if (trimmed.match(/^(КОММЕРЧЕСКОЕ|ТЕХНИЧЕСКОЕ|ТАБЛИЦА|СРОКИ|ГАРАНТИЯ|ИТОГО|КОНТАКТЫ|ИНФОРМАЦИЯ|ПРЕДЛОЖЕНИЕ)/i)) {
+        bodyHtml += '<h2>' + trimmed + '</h2>';
+      } else {
+        bodyHtml += '<p style="margin: 0 0 6pt 0; text-indent: 1.25cm;">' + trimmed + '</p>';
+      }
+    });
+
+    const html = '<html><head><meta charset="utf-8"><title>КП</title><style>' + style + '</style></head><body>' + bodyHtml + '</body></html>';
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
   };
 
   const copyToClipboard = () => {
