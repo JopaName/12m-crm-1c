@@ -14,8 +14,6 @@ const ALL_MENU_ITEMS = [
   { path: "/warehouse", label: "Склад", icon: "🏭", permission: "warehouse:view" },
   { path: "/production", label: "Производство", icon: "⚙️", permission: "production:view" },
   { path: "/procurement", label: "Закупки", icon: "📥", permission: "procurement:view" },
-  { path: "/rent", label: "Аренда", icon: "🔑", permission: "rent:view" },
-  { path: "/installation", label: "Монтажи", icon: "🔧", permission: "installation:view" },
   { path: "/legal", label: "Договоры", icon: "📄", permission: "legal:view" },
   { path: "/service", label: "Сервис", icon: "🛠️", permission: "service:view" },
   { path: "/tasks", label: "Задачи", icon: "✅", permission: "tasks:view" },
