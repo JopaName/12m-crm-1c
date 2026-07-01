@@ -156,7 +156,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
             {/* Status pipeline */}
             <div className="space-y-2">
               <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-medium">
-                <span>Воронка сделки</span>
+                <span>Воронка лиды</span>
                 <span className="text-gray-300">— нажмите на этап для перехода</span>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -201,12 +201,12 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 {showCancel ? (
                   <div className="flex items-center gap-2">
                     <input value={cancelNote} onChange={e => setCancelNote(e.target.value)} placeholder="Причина отмены" className="flex-1 px-3 py-2 border border-red-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-200" />
-                    <button onClick={async () => { try { const r = await fetch('/api/deals/' + linked.id + '/cancel', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ note: cancelNote }) }); if (r.ok) { onClose(); } else { const e = await r.json(); alert(e.error || 'Ошибка'); } } catch {} }} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">Отменить сделку</button>
+                    <button onClick={async () => { try { const r = await fetch('/api/deals/' + linked.id + '/cancel', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ note: cancelNote }) }); if (r.ok) { onClose(); } else { const e = await r.json(); alert(e.error || 'Ошибка'); } } catch {} }} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">Отменить лиду</button>
                     <button onClick={() => setShowCancel(false)} className="px-2 py-2 text-gray-500 text-xs">✕</button>
                   </div>
                 ) : (
                   <button onClick={() => setShowCancel(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-all">
-                    <AlertTriangle className="w-3 h-3" /> Отменить сделку
+                    <AlertTriangle className="w-3 h-3" /> Отменить лиду
                   </button>
                 )}
               </div>
@@ -328,7 +328,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                                     </button>
                                   ))}
                                   {canCancel && (
-                                    <button onClick={() => cancelZayavka(z.id, "Отменена из сделки")}
+                                    <button onClick={() => cancelZayavka(z.id, "Отменена из лиды")}
                                       className="px-2 py-1 text-[10px] font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 transition-all">
                                       Отменить
                                     </button>
@@ -358,12 +358,12 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 
             {edit ? (
               <div className="space-y-3">
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер сделки</label>
+                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер лиды</label>
                   <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
                 <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Клиент</label>
                   <select value={edit.clientId || ""} onChange={(e) => { const c = clients?.find((x: any) => x.id === e.target.value); setEdit({ ...edit, clientId: e.target.value, clientInn: c?.inn || "" }); setValidationError(null); }} className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${validationError === "clientId" ? "border-red-400 ring-2 ring-red-200" : "border-gray-300 focus:ring-primary-500/20"}`}>
                     <option value="">Выберите клиента</option>{clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                {validationError === "clientId" && <p className="text-red-500 text-xs mt-1">Клиент обязателен для сделки</p>}
+                {validationError === "clientId" && <p className="text-red-500 text-xs mt-1">Клиент обязателен для лиды</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Тип</label>
@@ -513,7 +513,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 <Edit3 className="w-3.5 h-3.5" />Редактировать</button>
               {confirmDelete ? (
                 <>
-                  <span className="text-xs text-red-600 font-medium">Удалить сделку?</span>
+                  <span className="text-xs text-red-600 font-medium">Удалить лиду?</span>
                   <button onClick={onDelete} disabled={isPending}
                     className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors">{isPending ? "Удаление..." : "Да, удалить"}</button>
                   <button onClick={onCancelDelete} className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-300 transition-colors">Нет</button>

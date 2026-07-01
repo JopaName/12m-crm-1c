@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { X, ChevronRight, Briefcase, Building2, Package, ShoppingCart, Wrench, FileText, CreditCard, Factory, Users, Shield, User, MessageCircle, BarChart3 } from "lucide-react";
 
 const SECTION_INFO: Record<string, { icon: any; label: string; desc: string; color: string; path: string; perm: string }> = {
-  deals: { icon: Briefcase, label: "Сделки", desc: "Воронка продаж: от лида до закрытия. Двигайте сделки по этапам, привязывайте задачи и монтажи", color: "bg-blue-100 text-blue-600", path: "/deals", perm: "deals:view" },
+  deals: { icon: Briefcase, label: "Лиды", desc: "Воронка продаж: от лида до закрытия. Двигайте лиды по этапам, привязывайте задачи и монтажи", color: "bg-blue-100 text-blue-600", path: "/deals", perm: "deals:view" },
   clients: { icon: Building2, label: "Клиенты", desc: "База клиентов с контактами, ИНН и историей сделок. Вся информация в одном месте", color: "bg-green-100 text-neon-green", path: "/clients", perm: "clients:view" },
   warehouse: { icon: Package, label: "Склад", desc: "Учёт товаров по каталогам. Перемещение между зонами, контроль остатков", color: "bg-teal-100 text-teal-600", path: "/warehouse", perm: "warehouse:view" },
   procurement: { icon: ShoppingCart, label: "Закупки", desc: "Заявки на закупку, поставщики, заказы. Канбан по статусам с файлами", color: "bg-rose-100 text-rose-600", path: "/procurement", perm: "procurement:view" },
@@ -103,7 +103,7 @@ export default function OnboardingGuide() {
             <ul className="text-xs text-amber-400 space-y-1.5">
               <li>• <kbd className="px-1.5 py-0.5 bg-amber-100 rounded text-[10px] font-mono">Ctrl+K</kbd> — глобальный поиск по всем разделам</li>
               <li>• Кликайте на имена и номера сделок — они ведут в связанные разделы</li>
-              <li>• В карточке сделки есть быстрые действия: задача, монтаж, договор</li>
+              <li>• В карточке лиды есть быстрые действия: задача, монтаж, договор</li>
               <li>• Перетаскивайте пункты меню для удобной навигации</li>
             </ul>
           </div>
