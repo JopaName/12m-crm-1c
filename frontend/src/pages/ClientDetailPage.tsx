@@ -235,7 +235,7 @@ export default function ClientDetailPage() {
 
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold mb-4">
-            Сделки ({client.deals?.length || 0})
+            Лиды ({client.deals?.length || 0})
           </h2>
           <div className="space-y-2">
             {client.deals?.map((deal: any) => (

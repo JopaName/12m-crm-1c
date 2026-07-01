@@ -89,7 +89,7 @@ export default function InstallationPage() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input placeholder="Поиск по сделке..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+          <input placeholder="Поиск по лиду..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-8 py-1.5 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
           {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"><X className="w-3.5 h-3.5" /></button>}
         </div>

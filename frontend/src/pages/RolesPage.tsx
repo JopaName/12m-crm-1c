@@ -20,7 +20,7 @@ const PERMISSION_GROUPS = [
     perms: ["view", "create", "edit", "delete", "convert"],
   },
   {
-    label: "Сделки",
+    label: "Лиды",
     key: "deals",
     perms: ["view", "create", "edit", "delete"],
   },

@@ -99,7 +99,7 @@ export default function ClientsPage() {
             </div>
           </div>
           <div className="px-5 pb-2">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Сделки ({clientDeals.length})</h4>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Лиды ({clientDeals.length})</h4>
             {clientDeals.length === 0 && <p className="text-xs text-gray-400 py-3 text-center">Нет сделок</p>}
             <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
               {clientDeals.map((d: any) => (
@@ -146,7 +146,7 @@ export default function ClientsPage() {
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Быстрые действия</h4>
             <div className="flex gap-2">
               <button onClick={() => { setDetailClient(null); navigate("/deals?openCreate=1&clientId=" + detailClient.id + "&clientName=" + encodeURIComponent(detailClient.name)); }}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"><Briefcase className="w-3.5 h-3.5" />Создать сделку</button>
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"><Briefcase className="w-3.5 h-3.5" />Создать лид</button>
               <button onClick={() => { setDetailClient(null); navigate("/tasks?openCreate=1&clientId=" + detailClient.id + "&clientName=" + encodeURIComponent(detailClient.name)); }}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"><FileText className="w-3.5 h-3.5" />Создать задачу</button>
             </div>
