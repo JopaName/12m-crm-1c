@@ -6,18 +6,10 @@ import { cn } from "./cn";
 import DocumentFormModal from "./DocumentFormModal";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, AlertTriangle, Banknote, Wallet, Package, ShoppingCart, Clock } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
+import { getPipelineConfig } from "./PipelineEditor";
 
 
-const PIPELINE_STAGES = [
-  { key: "Lead_Created", label: "Лид", icon: "📋" },
-  { key: "Invoice_Generation", label: "Счёт", icon: "📄" },
-  { key: "Legal_Review", label: "Юристы", icon: "⚖️" },
-  { key: "Doc_Sending", label: "Доки", icon: "📨" },
-  { key: "Waiting_Payment", label: "Оплата", icon: "💰" },
-  { key: "Paid_And_Reserved", label: "Резерв", icon: "📦" },
-  { key: "Issuing_Goods", label: "Отгрузка", icon: "🚚" },
-  { key: "Deal_Closed", label: "Закрыто", icon: "✅" },
-];
+const PIPELINE_STAGES = getPipelineConfig();
 
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
@@ -153,46 +145,32 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Status pipeline */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase font-medium">
-                <span>Воронка лиды</span>
-                <span className="text-gray-300">— нажмите на этап для перехода</span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {PIPELINE_STAGES.map((stage, i) => {
-                  const isCurrent = linked.status === stage.key;
-                  const isPast = PIPELINE_STAGES.findIndex(s => s.key === linked.status) > i;
-                  const isNext = nextStatuses.includes(stage.key);
-                  const isPrev = prevStatus === stage.key;
-                  const canClick = isNext || isPrev;
-                  
-                  return (
-                    <div key={stage.key} className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => canClick && onStatusChange(stage.key)}
-                        disabled={!canClick}
-                        className={`relative flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                          isCurrent ? "bg-primary-600 text-white shadow-md scale-105 ring-2 ring-primary-200" :
-                          isPast ? "bg-gray-200 text-gray-400" :
-                          canClick ? "bg-white border-2 border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400 cursor-pointer" :
-                          "bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed"
-                        }`}
-                        title={canClick ? (isNext ? "Перейти на этот этап" : "Вернуть на этот этап") : (isPast ? "Пройден" : "Недоступен")}
-                      >
-                        <span className="text-lg mb-0.5">{stage.icon}</span>
-                        <span className="text-[10px] font-semibold leading-tight text-center">{stage.label}</span>
-                        {isCurrent && (
-                          <span className="absolute -bottom-1.5 w-2 h-2 bg-primary-600 rounded-full ring-2 ring-white" />
-                        )}
-                      </button>
-                      {i < PIPELINE_STAGES.length - 1 && (
-                        <div className={`w-4 h-0.5 ${isPast || isCurrent ? "bg-primary-300" : "bg-gray-200"}`} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Pipeline tabs */}
+            <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 overflow-x-auto">
+              {PIPELINE_STAGES.map((stage, i) => {
+                const isCurrent = linked.status === stage.key;
+                const isPast = PIPELINE_STAGES.findIndex(s => s.key === linked.status) > i;
+                const isNext = nextStatuses.includes(stage.key);
+                const isPrev = prevStatus === stage.key;
+                const canClick = isNext || isPrev;
+                
+                return (
+                  <button
+                    key={stage.key}
+                    onClick={() => canClick && onStatusChange(stage.key)}
+                    disabled={!canClick}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      isCurrent ? "bg-white text-primary-700 shadow-sm" :
+                      isPast ? "text-gray-400" :
+                      canClick ? "text-gray-600 hover:bg-white/60 hover:text-primary-600 cursor-pointer" :
+                      "text-gray-400 cursor-not-allowed"
+                    }`}
+                    title={canClick ? (isNext ? "Перейти на этот этап" : "Вернуть на этот этап") : (isPast ? "Пройден" : "Недоступен")}
+                  >
+                    {stage.icon} {stage.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Pipeline actions */}
