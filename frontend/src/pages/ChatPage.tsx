@@ -342,17 +342,17 @@ export default function ChatPage() {
                           ) : (
                             msg.content
                           )}
-                          {/* Hover actions */}
-                          <div className={`absolute -top-3 ${isMine ? "left-2" : "right-2"} hidden group-hover:flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg shadow-sm px-0.5 py-0.5`}>
-                            <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-500" title="Ответить">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                          {/* Hover action toolbar */}
+                          <div className={`absolute -top-8 ${isMine ? "left-2" : "right-2"} hidden group-hover:flex items-center gap-0.5 bg-white border border-gray-200 rounded-xl shadow-lg px-1.5 py-1`}>
+                            <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }} className="flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded-lg text-gray-500 hover:text-blue-600 transition-colors text-[11px] font-medium" title="Ответить">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>Ответить
                             </button>
                             {isMine && (<>
-                              <button onClick={(e) => { e.stopPropagation(); setEditingMsg(msg); setNewMessage(msg.content); }} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-amber-500" title="Редактировать">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                              <button onClick={(e) => { e.stopPropagation(); setEditingMsg(msg); setNewMessage(msg.content); }} className="flex items-center gap-1 px-2 py-1 hover:bg-amber-50 rounded-lg text-gray-500 hover:text-amber-600 transition-colors text-[11px] font-medium" title="Редактировать">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>Изменить
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить сообщение?")) deleteMutation.mutate(msg.id); }} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-500" title="Удалить">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить сообщение?")) deleteMutation.mutate(msg.id); }} className="flex items-center gap-1 px-2 py-1 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-500 transition-colors text-[11px] font-medium" title="Удалить">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Удалить
                               </button>
                             </>)}
                           </div>
@@ -366,20 +366,26 @@ export default function ChatPage() {
                               <path d="M11.071.653a.457.457 0 00-.304-.102.493.493 0 00-.381.178l-6.19 7.636-2.011-2.095a.463.463 0 00-.336-.153.457.457 0 00-.337.14.538.538 0 00-.14.349c0 .133.047.26.14.356l2.405 2.509a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.533.533 0 00.127-.343.506.506 0 00-.142-.321zm-2.26 0a.458.458 0 00-.305-.102.494.494 0 00-.38.178l-6.19 7.636-1.084-1.13a.46.46 0 00-.337-.146.456.456 0 00-.337.14.538.538 0 00-.14.349c0 .134.047.26.14.356l1.478 1.54a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.534.534 0 00.127-.343.506.506 0 00-.142-.32z" />
                             </svg>
                           )}
-                          {/* Reaction bar */}
+                          {/* Reaction badges */}
                           {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                            <div className={`flex items-center gap-0.5 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                            <div className="flex items-center gap-1 mt-1">
                               {Object.entries(msg.reactions).map(([emoji, count]: [string, any]) => (
-                                <span key={emoji} className="text-[10px] bg-gray-100 hover:bg-gray-200 rounded-full px-1.5 py-0.5 cursor-pointer transition-colors">{emoji} {(count as number) > 1 ? count : ""}</span>
+                                <span key={emoji} onClick={() => { chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); refetchRoomMessages(); }); }}
+                                  className="text-xs bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border border-gray-200 rounded-full px-2 py-0.5 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-sm">
+                                  {emoji} <span className="text-[10px] text-gray-500 font-medium ml-0.5">{count as number}</span>
+                                </span>
                               ))}
                             </div>
                           )}
-                          {/* Quick emoji picker on hover */}
-                          <div className={`hidden group-hover:flex items-center gap-0.5 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                          {/* Quick emoji picker */}
+                          <div className="flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             {["👍","❤️","😂","😮","😢","😡","🔥","👏"].map(emoji => (
                               <button key={emoji} onClick={(e) => { e.stopPropagation(); chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); refetchRoomMessages(); }); }}
-                                className="text-xs hover:scale-125 transition-transform">{emoji}</button>
+                                className="text-sm w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 hover:scale-125 transition-all active:scale-90">{emoji}</button>
                             ))}
+                            <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }} className="ml-1 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-colors" title="Ответить">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -393,12 +399,15 @@ export default function ChatPage() {
 
           {/* Reply preview */}
           {replyTo && (
-            <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-3">
+            <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200 flex items-center gap-3">
+              <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-blue-600">В ответ {replyTo.sender?.firstName || "пользователю"}</p>
-                <p className="text-xs text-gray-600 truncate">{replyTo.content?.substring(0, 100)}</p>
+                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Ответ {replyTo.sender?.firstName || "пользователю"}</p>
+                <div className="border-l-2 border-blue-300 pl-2 mt-0.5">
+                  <p className="text-xs text-gray-600 truncate">{replyTo.content?.substring(0, 120)}</p>
+                </div>
               </div>
-              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 p-1">
+              <button onClick={() => setReplyTo(null)} className="p-1.5 hover:bg-white rounded-lg text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -406,10 +415,13 @@ export default function ChatPage() {
 
           {/* Editing preview */}
           {editingMsg && (
-            <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 flex items-center gap-3">
-              <span className="text-[10px] font-semibold text-amber-700">Редактирование</span>
-              <p className="text-xs text-gray-600 truncate flex-1">{editingMsg.content?.substring(0, 80)}</p>
-              <button onClick={() => setEditingMsg(null)} className="text-gray-400 hover:text-gray-600 p-1">
+            <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t-2 border-amber-200 flex items-center gap-3">
+              <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">Редактирование</span>
+                <p className="text-xs text-gray-600 truncate mt-0.5">{editingMsg.content?.substring(0, 80)}</p>
+              </div>
+              <button onClick={() => { setEditingMsg(null); setNewMessage(""); }} className="p-1.5 hover:bg-white rounded-lg text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -505,24 +517,32 @@ export default function ChatPage() {
 
       {/* Context menu */}
       {contextMenu && (
-        <div className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1 min-w-[160px]" style={{ left: Math.min(contextMenu.x, window.innerWidth - 180), top: Math.min(contextMenu.y, window.innerHeight - 200) }} onClick={() => setContextMenu(null)}>
-          <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-            Копировать
+        <div className="fixed z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl py-2 min-w-[180px] animate-in fade-in zoom-in-95" style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 220) }} onClick={() => setContextMenu(null)}>
+          <div className="px-4 pb-1.5 mb-1 border-b border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Сообщение</p>
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.content); toast.success("Скопировано"); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            <span className="font-medium">Копировать</span>
           </button>
-          <button onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-            Ответить
+          <button onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+            <span className="font-medium">Ответить</span>
+          </button>
+          <button onClick={() => { setReplyTo(contextMenu.msg); /* will be forwarded */ setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+            <span className="font-medium">Переслать</span>
           </button>
           {contextMenu.msg.senderId === user?.id && (
             <>
-              <button onClick={() => { setEditingMsg(contextMenu.msg); setNewMessage(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                Редактировать
+              <div className="border-t border-gray-100 my-1" />
+              <button onClick={() => { setEditingMsg(contextMenu.msg); setNewMessage(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center gap-3 transition-colors">
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                <span className="font-medium">Редактировать</span>
               </button>
-              <button onClick={() => { if (confirm("Удалить сообщение?")) { deleteMutation.mutate(contextMenu.msg.id); } setContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 text-red-500">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                Удалить
+              <button onClick={() => { if (confirm("Удалить сообщение?")) { deleteMutation.mutate(contextMenu.msg.id); } setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-3 transition-colors">
+                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <span className="font-medium text-red-500">Удалить</span>
               </button>
             </>
           )}
