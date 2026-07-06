@@ -194,8 +194,8 @@ export default function ChatPage() {
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-800">Messages</h2><button onClick={() => setShowCreateRoom(true)} className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded hover:bg-primary-200">+</button></div>
-            <span className="text-xs text-gray-400">{conversations.length} chats</span>
+            <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-800">Сообщения</h2><button onClick={() => setShowCreateRoom(true)} className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded hover:bg-primary-200">+</button></div>
+            <span className="text-xs text-gray-400">{conversations.length} чатов</span>
           </div>
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +203,7 @@ export default function ChatPage() {
             </svg>
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Поиск..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -247,7 +247,7 @@ export default function ChatPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm text-gray-900 truncate">
-                        {conv.isRoom ? (conv.user.name || "Group") : `${conv.user.firstName} ${conv.user.lastName}`}
+                        {conv.isRoom ? (conv.user.name || "Группа") : `${conv.user.firstName} ${conv.user.lastName}`}
                       </span>
                       <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
                         {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ""}
@@ -256,7 +256,7 @@ export default function ChatPage() {
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-xs text-gray-500 truncate">
                         {conv.lastMessage?.fileUrl ? "📎 " : ""}
-                        {conv.lastMessage?.content || "No messages"}
+                        {conv.lastMessage?.content || "Нет сообщений"}
                       </span>
                       {conv.unreadCount > 0 && (
                         <span className="bg-blue-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ml-2 flex-shrink-0">
@@ -288,9 +288,9 @@ export default function ChatPage() {
             <Avatar user={selectedUser} size="md" />
             <div>
               <div className="font-semibold text-sm text-gray-900">
-                {selectedUser.isGroup ? (selectedUser.name || "Group") : `${selectedUser.firstName} ${selectedUser.lastName}`}
+                {selectedUser.isGroup ? (selectedUser.name || "Группа") : `${selectedUser.firstName} ${selectedUser.lastName}`}
               </div>
-              <div className="text-xs text-gray-400">{typing ? <span className="text-green-500 animate-pulse">печатает...</span> : (selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "User"))}</div>
+              <div className="text-xs text-gray-400">{typing ? <span className="text-green-500 animate-pulse">печатает...</span> : (selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "Пользователь"))}</div>
             </div>
           </div>
 
@@ -298,7 +298,7 @@ export default function ChatPage() {
           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
             {groupedMessages.length === 0 && (
               <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                No messages yet. Send something!
+                Нет сообщений. Отправьте первое!
               </div>
             )}
             {groupedMessages.map((group, gi) => (
@@ -470,8 +470,8 @@ export default function ChatPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-600 mb-1">Your messages</h3>
-            <p className="text-sm text-gray-400">Select a conversation to start chatting</p>
+            <h3 className="text-lg font-medium text-gray-600 mb-1">Ваши сообщения</h3>
+            <p className="text-sm text-gray-400">Выберите чат чтобы начать общение</p>
           </div>
         </div>
       )}
@@ -480,8 +480,8 @@ export default function ChatPage() {
       {showCreateRoom && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setShowCreateRoom(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-gray-800 mb-3">Create Group</h3>
-            <input placeholder="Room name" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
+            <h3 className="font-semibold text-gray-800 mb-3">Создать группу</h3>
+            <input placeholder="Название группы" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-primary-500/20" />
             <div className="flex gap-2">
               <button
@@ -495,8 +495,8 @@ export default function ChatPage() {
                   } catch (err) { console.error("Failed to create room:", err); }
                 }}
                 className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
-              >Create</button>
-              <button onClick={() => setShowCreateRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+              >Создать</button>
+              <button onClick={() => setShowCreateRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
             </div>
           </div>
         </div>
@@ -537,7 +537,7 @@ export default function ChatPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span className="text-sm text-gray-700">Uploading file...</span>
+            <span className="text-sm text-gray-700">Загрузка файла...</span>
           </div>
         </div>
       )}
