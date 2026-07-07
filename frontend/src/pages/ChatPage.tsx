@@ -47,6 +47,10 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: ChatMessage } | null>(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
+  const [forwardUserIds, setForwardUserIds] = useState<string[]>([]);
+  const [forwardSearch, setForwardSearch] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,20 @@ export default function ChatPage() {
     mutationFn: (userId: string) => chatAPI.markRead(userId),
   });
 
+  const handleForward = async () => {
+    if (!forwardMsg || forwardUserIds.length === 0) return;
+    try {
+      for (const uid of forwardUserIds) {
+        await chatAPI.send({ receiverId: uid, content: forwardMsg.content, fileUrl: forwardMsg.fileUrl, fileName: forwardMsg.fileName });
+      }
+      toast.success(`Переслано ${forwardUserIds.length} пользователям`);
+      setShowForwardModal(false);
+      setForwardMsg(null);
+      setForwardUserIds([]);
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+    } catch { toast.error("Ошибка пересылки"); }
+  };
+
   const scrollToBottom = useCallback((smooth = true) => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -114,6 +132,12 @@ export default function ChatPage() {
       queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
     }
   }, [selectedUserId]);
+
+  // Tab title badge — unread count
+  useEffect(() => {
+    const total = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+    document.title = total > 0 ? `(${total}) Чат — 12M CRM` : "12M CRM / ERP";
+  }, [conversations]);
 
   useEffect(() => {
     if (messages && messages.length > prevMessagesLength) {
@@ -340,7 +364,11 @@ export default function ChatPage() {
                               )}
                             </div>
                           ) : (
-                            msg.content
+                            msg.content && msg.content.includes('@') ? (
+                              <span dangerouslySetInnerHTML={{
+                                __html: msg.content.replace(/@(\w+)/g, '<span class="font-bold text-blue-600 bg-blue-100/30 px-1 rounded">@$1</span>')
+                              }} />
+                            ) : msg.content
                           )}
                           {/* Hover action toolbar */}
                           <div className={`absolute -top-8 ${isMine ? "left-2" : "right-2"} hidden group-hover:flex items-center gap-0.5 bg-white border border-gray-200 rounded-xl shadow-lg px-1.5 py-1`}>
@@ -529,7 +557,7 @@ export default function ChatPage() {
             <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
             <span className="font-medium">Ответить</span>
           </button>
-          <button onClick={() => { setReplyTo(contextMenu.msg); /* will be forwarded */ setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center gap-3 transition-colors">
+          <button onClick={() => { setForwardMsg(contextMenu.msg); setForwardUserIds([]); setForwardSearch(""); setShowForwardModal(true); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center gap-3 transition-colors">
             <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
             <span className="font-medium">Переслать</span>
           </button>
@@ -546,6 +574,43 @@ export default function ChatPage() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Forward modal */}
+      {showForwardModal && forwardMsg && (
+        <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center" onClick={() => setShowForwardModal(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-800 mb-1">Переслать сообщение</h3>
+            <div className="bg-gray-50 rounded-lg p-3 mb-3 border-l-4 border-purple-400">
+              <p className="text-xs text-gray-600 truncate">{forwardMsg.content?.substring(0, 100)}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{forwardMsg.sender?.firstName} {forwardMsg.sender?.lastName}</p>
+            </div>
+            <input placeholder="Поиск пользователей..." value={forwardSearch} onChange={e => setForwardSearch(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-purple-500/20" />
+            <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
+              {conversations
+                .filter(c => !c.isRoom && c.user.id !== user?.id && (forwardSearch ? `${c.user.firstName} ${c.user.lastName}`.toLowerCase().includes(forwardSearch.toLowerCase()) : true))
+                .map(c => (
+                  <label key={c.user.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${forwardUserIds.includes(c.user.id) ? "bg-purple-50 border border-purple-200" : "hover:bg-gray-50 border border-transparent"}`}>
+                    <input type="checkbox" checked={forwardUserIds.includes(c.user.id)} onChange={() => setForwardUserIds(prev => prev.includes(c.user.id) ? prev.filter(id => id !== c.user.id) : [...prev, c.user.id])}
+                      className="rounded" />
+                    <Avatar user={c.user} size="sm" />
+                    <span className="text-sm font-medium text-gray-700">{c.user.firstName} {c.user.lastName}</span>
+                  </label>
+                ))}
+              {conversations.filter(c => !c.isRoom && c.user.id !== user?.id).length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">Нет доступных пользователей</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowForwardModal(false)} className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
+              <button onClick={handleForward} disabled={forwardUserIds.length === 0}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                Переслать ({forwardUserIds.length})
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
