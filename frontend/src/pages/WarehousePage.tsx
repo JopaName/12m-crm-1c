@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { warehouseAPI } from "../api";
 import { cn } from "../components/cn";
@@ -40,13 +40,49 @@ export default function WarehousePage() {
   const selectedCat = categories?.find((c: any) => c.id === selectedCategory);
 
   // Breadcrumbs path
-  const breadcrumbs = React.useMemo(() => {
+  const breadcrumbs = useMemo(() => {
     if (!selectedCategory || !categories) return [];
     const path: any[] = [];
     let current = categories.find((c: any) => c.id === selectedCategory);
     while (current) { path.unshift(current); current = categories.find((c: any) => c.id === current.parentId); }
     return path;
   }, [selectedCategory, categories]);
+
+  // Get descendant IDs to exclude from parent selector
+  const getDescendantIds = useCallback((parentId: string, allCats: any[]): string[] => {
+    const ids: string[] = [];
+    const children = allCats.filter((c: any) => c.parentId === parentId);
+    children.forEach(child => {
+      ids.push(child.id);
+      ids.push(...getDescendantIds(child.id, allCats));
+    });
+    return ids;
+  }, []);
+
+  // Available parent categories for the form (exclude self + descendants)
+  const availableParents = useMemo(() => {
+    if (!categories) return [];
+    const excludedIds = new Set<string>();
+    if (editingCat) {
+      excludedIds.add(editingCat.id);
+      getDescendantIds(editingCat.id, categories).forEach(id => excludedIds.add(id));
+    }
+    return categories.filter((c: any) => !excludedIds.has(c.id));
+  }, [categories, editingCat, getDescendantIds]);
+
+  // Build hierarchy display for parent selector
+  const parentOptions = useMemo(() => {
+    const result: { id: string; name: string; depth: number }[] = [];
+    const addChildren = (parentId: string | null, depth: number) => {
+      const children = availableParents.filter((c: any) => (c.parentId || null) === parentId);
+      children.forEach(c => {
+        result.push({ id: c.id, name: c.name, depth });
+        addChildren(c.id, depth + 1);
+      });
+    };
+    addChildren(null, 0);
+    return result;
+  }, [availableParents]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -235,7 +271,14 @@ export default function WarehousePage() {
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">{editingCat ? <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Edit3 className="w-4 h-4 text-primary-500" />Редактировать каталог</h3> : <h3 className="font-semibold text-gray-900">Новый каталог</h3>}<button onClick={() => { setShowCatForm(false); setEditingCat(null); }} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button></div>
             <div className="px-5 py-4 space-y-3">
               <input placeholder="Название" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" autoFocus />
-              <select value={categoryForm.parentId} onChange={e => setCategoryForm({ ...categoryForm, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="">Корневой каталог</option>{rootCategories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <select value={categoryForm.parentId} onChange={e => setCategoryForm({ ...categoryForm, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20">
+                <option value="">Корневой каталог (без родителя)</option>
+                {parentOptions.map((c: any) => (
+                  <option key={c.id} value={c.id} style={{ paddingLeft: c.depth * 16 + 'px' }}>
+                    {'└─ '.repeat(Math.min(c.depth, 1))}{c.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50"><div className="flex-1" /><button onClick={() => { setShowCatForm(false); setEditingCat(null); setCategoryForm({ name: "", parentId: "" }); }} className="px-4 py-2 text-sm text-gray-600">Отмена</button><button onClick={() => { if (!categoryForm.name) { toast.error("Введите название"); return; } editingCat ? updateCat.mutate({ id: editingCat.id, data: categoryForm }) : createCat.mutate(categoryForm); }} className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700">{editingCat ? "Сохранить" : "Создать"}</button></div>
           </div>
@@ -249,20 +292,38 @@ function CatNode({ c, all, sel, onSel, onDel, onEdit, depth = 0 }: any) {
   const [open, setOpen] = useState(true);
   const kids = all.filter((x: any) => x.parentId === c.id);
   const isSel = sel === c.id;
+  const hasKids = kids.length > 0;
+  const indent = 12 + depth * 20;
   return (
     <div>
-      <div className={cn("flex items-center justify-between px-3 py-2 rounded cursor-pointer mb-0.5 text-sm group", isSel ? "bg-primary-100 text-primary-700 font-medium" : "hover:bg-gray-50 text-gray-700")} onClick={() => onSel(c.id)} style={{ paddingLeft: 12 + depth * 16 }}>
-        <div className="flex items-center gap-1.5">
-          {kids.length > 0 && <button onClick={e => { e.stopPropagation(); setOpen(!open); }} className="text-gray-400">{open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</button>}
-          {kids.length === 0 && <span className="w-3" />}
+      <div className={cn(
+        "flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer mb-0.5 text-sm group transition-all border",
+        isSel ? "bg-primary-50 text-primary-700 font-medium border-primary-200 shadow-sm" : "hover:bg-gray-50 text-gray-700 border-transparent hover:border-gray-100"
+      )} onClick={() => onSel(c.id)} style={{ paddingLeft: indent }}>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {hasKids ? (
+            <button onClick={e => { e.stopPropagation(); setOpen(!open); }} className="shrink-0 text-gray-400 hover:text-gray-600 p-0.5">
+              {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+          ) : (
+            <span className="w-[22px] shrink-0" />
+          )}
+          <span className="shrink-0">{hasKids && open ? "📂" : hasKids ? "📁" : "📄"}</span>
           <span className="truncate">{c.name}</span>
+          {hasKids && <span className="text-[10px] text-gray-400 shrink-0">({kids.length})</span>}
         </div>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={e => { e.stopPropagation(); onEdit(c); }} className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" title="Редактировать"><Edit3 className="w-3.5 h-3.5" /></button>
-            <button onClick={e => { e.stopPropagation(); onDel(c.id, c.name, kids.length); }} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
-          </div>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEdit(c); }} className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" title="Редактировать"><Edit3 className="w-3.5 h-3.5" /></button>
+          <button onClick={e => { e.stopPropagation(); onDel(c.id, c.name, kids.length); }} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
-      {open && kids.map((k: any) => <CatNode key={k.id} c={k} all={all} sel={sel} onSel={onSel} onDel={onDel} onEdit={onEdit} depth={depth + 1} />)}
+      {open && hasKids && (
+        <div className="relative">
+          {/* Vertical connector line */}
+          {depth < 10 && <div className="absolute left-[12px] top-0 bottom-3 w-px bg-gray-200" style={{ left: indent + 11 }} />}
+          {kids.map((k: any) => <CatNode key={k.id} c={k} all={all} sel={sel} onSel={onSel} onDel={onDel} onEdit={onEdit} depth={depth + 1} />)}
+        </div>
+      )}
     </div>
   );
 }
