@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { warehouseAPI } from "../api";
 import { cn } from "../components/cn";
-import { Plus, Search, Package, Boxes, ArrowRightLeft, Truck, ShoppingCart, Clipboard, Edit3, Trash2, X, Save, Building2, Calendar, DollarSign, Hash, Ruler, ChevronDown, ChevronRight, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Search, Package, Boxes, ArrowRightLeft, Truck, ShoppingCart, Clipboard, Edit3, Trash2, X, Save, Building2, Calendar, DollarSign, Hash, Ruler, ChevronDown, ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Home } from "lucide-react";
 import toast from "react-hot-toast";
 
 type TabType = "items" | "receipts" | "transfers";
@@ -38,6 +38,15 @@ export default function WarehousePage() {
 
   const rootCategories = (categories || []).filter((c: any) => !c.parentId);
   const selectedCat = categories?.find((c: any) => c.id === selectedCategory);
+
+  // Breadcrumbs path
+  const breadcrumbs = React.useMemo(() => {
+    if (!selectedCategory || !categories) return [];
+    const path: any[] = [];
+    let current = categories.find((c: any) => c.id === selectedCategory);
+    while (current) { path.unshift(current); current = categories.find((c: any) => c.id === current.parentId); }
+    return path;
+  }, [selectedCategory, categories]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -76,12 +85,28 @@ export default function WarehousePage() {
 
           {/* Items table */}
           <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-3 border-b border-gray-100 flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm text-gray-700">{selectedCat?.name || "Выберите каталог"}</span>
-              {selectedCategory && <span className="text-xs text-gray-400">({filteredItems.length})</span>}
+            <div className="p-3 border-b border-gray-100 space-y-2">
+              {/* Breadcrumbs */}
+              <div className="flex items-center gap-1 text-xs flex-wrap">
+                <button onClick={() => setSelectedCategory(null)} className={cn("flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors", !selectedCategory ? "bg-primary-100 text-primary-700 font-medium" : "text-gray-500")}>
+                  <Home className="w-3 h-3" /> Все
+                </button>
+                {breadcrumbs.map((c, i) => (
+                  <span key={c.id} className="flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3 text-gray-300" />
+                    <button onClick={() => setSelectedCategory(c.id)} className={cn("px-2 py-0.5 rounded-lg hover:bg-gray-100 transition-colors", i === breadcrumbs.length - 1 ? "bg-primary-100 text-primary-700 font-medium" : "text-gray-500")}>
+                      {c.name}
+                    </button>
+                  </span>
+                ))}
+                {selectedCategory && <span className="text-[10px] text-gray-400 ml-1">({filteredItems.length})</span>}
+              </div>
+              {/* Controls */}
+              <div className="flex items-center gap-2 flex-wrap">
               <div className="flex-1" />
               <div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" /><input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-40 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
               {selectedCategory && <button onClick={() => { setEditingItem(null); setForm({ productName: "", sku: "", description: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", categoryTag: "", note: "" }); setShowForm(true); }} className="flex items-center gap-1 text-xs px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700"><Plus className="w-3 h-3" />Товар</button>}
+              </div>
             </div>
             <div className="overflow-x-auto">
               {!selectedCategory ? <p className="text-sm text-gray-400 text-center py-12">← Выберите каталог слева</p> : filteredItems.length === 0 ? <p className="text-sm text-gray-400 text-center py-12">{searchQuery ? "Ничего не найдено" : "Нет товаров"}</p> : (
