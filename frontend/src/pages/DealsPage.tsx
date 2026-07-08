@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { dealsAPI, clientsAPI, authAPI } from "../api";
+import { dealsAPI, clientsAPI, authAPI, tasksAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { STATUSES, STATUS_META } from "../constants/deals";
@@ -18,10 +18,44 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("kanban");
   const [showForm, setShowForm] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskDealId, setTaskDealId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [dealTasks, setDealTasks] = useState<Record<string, any[]>>({});
+  const [taskLoading, setTaskLoading] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailDeal, setDetailDeal] = useState<any | null>(null);
   const [viewUserId, setViewUserId] = useState<string | null>(null);
+
+  const createTask = async () => {
+    if (!newTaskTitle.trim() || !taskDealId) return;
+    setTaskLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const r = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ title: newTaskTitle.trim(), dealId: taskDealId, status: "Новая", priority: "Средний" })
+      });
+      if (r.ok) {
+        setNewTaskTitle("");
+        setShowTaskModal(false);
+        // Refresh tasks
+        const r2 = await fetch("/api/tasks", { headers: { Authorization: "Bearer " + token } });
+        const tasks = await r2.json();
+        const map: Record<string, any[]> = {};
+        (Array.isArray(tasks) ? tasks : []).forEach((t: any) => {
+          if (t.dealId) {
+            if (!map[t.dealId]) map[t.dealId] = [];
+            map[t.dealId].push(t);
+          }
+        });
+        setDealTasks(map);
+      }
+    } catch {}
+    setTaskLoading(false);
+  };
   const [showPipelineEditor, setShowPipelineEditor] = useState(false);
   const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
   const PST = pipelineStages.map(s => s.key);
@@ -62,6 +96,21 @@ export default function DealsPage() {
       if (cid) { setNewDealClientId(cid); setShowForm(true); }
     }
   }, []);
+  useEffect(() => {
+    if (!deals || deals.length === 0) return;
+    const token = localStorage.getItem("token");
+    fetch("/api/tasks", { headers: { Authorization: "Bearer " + token } })
+      .then(r => r.json()).then(tasks => {
+        const map: Record<string, any[]> = {};
+        (Array.isArray(tasks) ? tasks : (tasks?.data || tasks?.tasks || [])).forEach((t: any) => {
+          if (t.dealId) {
+            if (!map[t.dealId]) map[t.dealId] = [];
+            map[t.dealId].push(t);
+          }
+        });
+        setDealTasks(map);
+      }).catch(() => {});
+  }, [deals]);
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["deals"],
@@ -264,44 +313,44 @@ export default function DealsPage() {
                     const agent = userMap[d.responsibleAgentId];
                     const nextStatuses = getNextStatuses(d.status);
                     const prevStatus = getPrevStatus(d.status);
+                    const linkedTasks = dealTasks[d.id] || [];
                     return (
-                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md cursor-grab active:cursor-grabbing" onClick={() => setDetailDeal(d)}>
-                        <div className="p-2.5">
+                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary-200 cursor-pointer active:scale-[0.98]" onClick={() => setDetailDeal(d)}>
+                        <div className="p-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold text-gray-900 text-[13px] leading-snug line-clamp-2 flex-1">{d.dealNumber}</p>
-                            <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", col.meta.bg)} />
+                            <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-2 flex-1 italic">{(client?.name || d.client?.name || d.dealNumber)}</p>
+                            <div className={cn("w-2.5 h-2.5 rounded-full shrink-0 mt-1", col.meta.bg)} />
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 font-medium">{d.expectedAmount?.toLocaleString()} ₽</p>
-                          {client && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-1">
-                              <Building2 className="w-3 h-3 shrink-0" /><span className="truncate">{client.name}</span>
-                            </div>
-                          )}
+                          <p className="text-sm font-semibold text-gray-900">{d.expectedAmount?.toLocaleString() || 0} ₽</p>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            <span>{fmtDate(d.createdAt)}</span>
+                            <span className="text-gray-300">·</span>
+                            <span>изм. {fmtDate(d.updatedAt)}</span>
+                          </div>
                           {agent && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-                              <User className="w-3 h-3 shrink-0" /><button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="truncate hover:text-primary-600 hover:underline transition-colors">{agent}</button>
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <div className="w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                                <span className="text-[8px] font-bold text-primary-600">{agent.split(' ').map((n: string) => n[0]).join('')}</span>
+                              </div>
+                              <button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="text-[11px] text-gray-500 hover:text-primary-600 hover:underline transition-colors truncate">{agent}</button>
                             </div>
                           )}
-                          <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-                            <Calendar className="w-3 h-3 shrink-0" /><span>{fmtDate(d.createdAt)}</span>
+                          <div className="border-t border-gray-100 pt-2 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                            {linkedTasks.length > 0 ? (
+                              <button onClick={() => { if (linkedTasks[0]) window.location.href = '/tasks#' + linkedTasks[0].id; }}
+                                className="text-[11px] font-medium text-gray-500 hover:text-primary-600 transition-colors">
+                                📋 Задачи ({linkedTasks.length})
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 italic">Нет задач</span>
+                            )}
+                            <button onClick={() => { setTaskDealId(d.id); setNewTaskTitle(""); setShowTaskModal(true); }}
+                              className="text-[11px] font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 px-2 py-0.5 rounded transition-colors">
+                              + Создать
+                            </button>
                           </div>
                         </div>
-                        {(nextStatuses.length > 0 || prevStatus) && (
-                          <div className="flex border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                            {prevStatus && (
-                              <button onClick={() => statusMutation.mutate({ id: d.id, status: prevStatus })}
-                                className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100">
-                                <ArrowLeft className="w-3 h-3" />{(dynamicStatusMeta[prevStatus]?.label || prevStatus)}
-                              </button>
-                            )}
-                            {nextStatuses.length > 0 && (
-                              <button onClick={() => statusMutation.mutate({ id: d.id, status: nextStatuses[0] })}
-                                className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium text-primary-600 hover:bg-gray-50 transition-colors">
-                                {(dynamicStatusMeta[nextStatuses[0]]?.label || nextStatuses[0])}<ArrowRight className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
                     );
                   })}
