@@ -341,7 +341,6 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 {/* Deal info cards */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Сумма</span><p className="font-semibold text-gray-800">{(linked.expectedAmount || 0).toLocaleString()} ₽</p></div>
-              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Клиент</span><p className="font-semibold text-gray-800 truncate">{client?.name || "—"}</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Тип</span><p className="font-semibold text-gray-800">{linked.dealType}</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Оплата</span><p className="font-semibold text-gray-800">{linked.paymentType || "—"}</p></div>
               <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Менеджер</span><p className="font-semibold text-gray-800 truncate">{agent || "—"}</p></div>
@@ -351,14 +350,10 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
               <div className="space-y-3">
                 <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер лиды</label>
                   <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Клиент</label>
-                  <select value={edit.clientId || ""} onChange={(e) => { const c = clients?.find((x: any) => x.id === e.target.value); setEdit({ ...edit, clientId: e.target.value, clientInn: c?.inn || "" }); setValidationError(null); }} className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${validationError === "clientId" ? "border-red-400 ring-2 ring-red-200" : "border-gray-300 focus:ring-primary-500/20"}`}>
-                    <option value="">Выберите клиента</option>{clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                {validationError === "clientId" && <p className="text-red-500 text-xs mt-1">Клиент обязателен для лиды</p>}
-                </div>
+                
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Тип</label>
-                    <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="Sale">Продажа</option><option value="ProjectSale">Проект</option><option value="Rent">Аренда</option></select></div>
+                    <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="Sale">Продажа</option></select></div>
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Оплата</label>
                     <select value={edit.paymentType || ""} onChange={(e) => setEdit({ ...edit, paymentType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="">Не указан</option><option value="безналичный">Безналичный</option><option value="наличный">Наличный</option></select></div>
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Сумма</label>
@@ -366,12 +361,11 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 </div>
                 <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Агент</label>
                   <select value={edit.responsibleAgentId || ""} onChange={(e) => setEdit({ ...edit, responsibleAgentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="">Не назначен</option>{users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select></div>
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">ИНН клиента</label>
-                  <input value={edit.clientInn || ""} onChange={(e) => setEdit({ ...edit, clientInn: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
+                
                 <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Описание</label>
                   <textarea value={edit.description || ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 resize-none" rows={2} /></div>
                 <div className="flex gap-2 pt-1">
-                  <button onClick={() => onSaveEdit({ ...edit, clientId: edit.clientId || undefined })} disabled={isPending}
+                  <button onClick={() => onSaveEdit({ ...edit })} disabled={isPending}
                     className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"><Save className="w-3.5 h-3.5" />{isPending ? "Сохранение..." : "Сохранить"}</button>
                   <button onClick={onCancelEdit} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
                 </div>
@@ -389,15 +383,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
-                    <span className="text-gray-700 font-medium">{client?.name || "Клиент не указан"}</span>
-                  </div>
-                  {client?.inn && <div className="flex items-center gap-2 text-sm"><CreditCard className="w-4 h-4 text-gray-400 shrink-0" /><span className="text-gray-600">ИНН {client.inn}</span></div>}
-                  {client?.phone && <div className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-gray-400 shrink-0" /><span className="text-gray-600">{client.phone}</span></div>}
-                  {client?.email && <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-gray-400 shrink-0" /><span className="text-gray-600">{client.email}</span></div>}
-                </div>
+                
 
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-gray-400 shrink-0" />
