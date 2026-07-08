@@ -112,7 +112,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
       const r = await fetch("/api/procurement/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ productId: isWhProduct ? null : zayavkaProductId, productName: productName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
+        body: JSON.stringify({ productId: isWhProduct ? null : zayavkaProductId, productName: productName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id, status: "processing" })
       });
       if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); return; }
       setZayavkaProductId(""); setZayavkaQty(1); setZayavkaNote("");
@@ -291,26 +291,28 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                       <div className="space-y-1.5">
                         {zayavkaList.map((z: any) => {
                           const statusLabel: Record<string, string> = {
-                            "new": "Новая", "payment_pending": "Ожидает оплаты", "processing": "В обработке",
-                            "in_progress": "В работе", "ready_for_pickup": "Готово к отгрузке", "shipped": "Отгружено",
-                            "cancelled": "Отменено", "for_production": "Под производство", "awaiting_production": "Ожидание производства"
+                            "processing": "Принято в работу",
+                            "ready_for_pickup": "На складе",
+                            "shipped": "Отгружено",
+                            "cancelled": "Отменено",
+                            // legacy fallbacks
+                            "new": "Новая", "payment_pending": "Ожидает оплаты",
+                            "in_progress": "В работе", "for_production": "Под производство", "awaiting_production": "Ожидание производства"
                           };
                           const statusColor: Record<string, string> = {
+                            "processing": "bg-blue-100 text-blue-700",
+                            "ready_for_pickup": "bg-amber-100 text-amber-700",
+                            "shipped": "bg-emerald-100 text-emerald-700",
+                            "cancelled": "bg-red-100 text-red-700",
                             "new": "bg-gray-100 text-gray-600", "payment_pending": "bg-amber-100 text-amber-700",
-                            "processing": "bg-blue-100 text-blue-700", "in_progress": "bg-purple-100 text-purple-700",
-                            "ready_for_pickup": "bg-green-100 text-green-700", "shipped": "bg-teal-100 text-teal-700",
-                            "cancelled": "bg-red-100 text-red-700", "for_production": "bg-orange-100 text-orange-700",
+                            "in_progress": "bg-purple-100 text-purple-700", "for_production": "bg-orange-100 text-orange-700",
                             "awaiting_production": "bg-yellow-100 text-yellow-700"
                           };
                           const actions: Record<string, {label: string; action: string; color: string}[]> = {
-                            "payment_pending": [{label:"Оплачено",action:"confirm-payment",color:"bg-green-600 hover:bg-green-700"}],
-                            "processing": [{label:"Взять в работу",action:"take-work",color:"bg-purple-600 hover:bg-purple-700"}],
-                            "in_progress": [{label:"Собрано",action:"ready",color:"bg-blue-600 hover:bg-blue-700"},{label:"Наличными",action:"cash-paid",color:"bg-green-600 hover:bg-green-700"},{label:"Отгрузить",action:"ship",color:"bg-amber-600 hover:bg-amber-700"}],
-                            "ready_for_pickup": [{label:"Наличными",action:"cash-paid",color:"bg-green-600 hover:bg-green-700"},{label:"Отгрузить",action:"ship",color:"bg-amber-600 hover:bg-amber-700"}],
-                            "for_production": [{label:"Произведено",action:"production-ready",color:"bg-orange-600 hover:bg-orange-700"}],
-                            "awaiting_production": [{label:"Произведено",action:"production-ready",color:"bg-orange-600 hover:bg-orange-700"}],
+                            "processing": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"},{label:"Отменить",action:"cancel",color:"bg-red-600 hover:bg-red-700"}],
+                            "ready_for_pickup": [{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
                           };
-                          const canCancel = ["new","payment_pending","processing","for_production","awaiting_production"].includes(z.status);
+                          const canCancel = ["processing"].includes(z.status);
                           return (
                             <div key={z.id} className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 hover:border-gray-200 transition-colors">
                               <div className="flex items-center justify-between">
@@ -324,17 +326,20 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                                 <span>Оплата: {z.paymentType === "наличный" ? "нал" : z.paymentType === "безналичный" ? "безнал" : "—"}</span>
                                 {z.reserved && <span className="text-green-500">Зарезервировано</span>}
                               </div>
-                              {/* Pipeline stages mini bar */}
+                              {/* Pipeline stages mini bar — 3 stages */}
                               {!["cancelled","shipped"].includes(z.status) && (
-                                <div className="flex items-center gap-0.5">
-                                  {["Ожидает оплаты","В обработке","В работе","Готово","Отгружено"].map((s,i) => {
-                                    const keys = ["payment_pending","processing","in_progress","ready_for_pickup","shipped"];
+                                <div className="flex items-center gap-1 mt-1">
+                                  {["Принято в работу","На складе","Отгружено"].map((s,i) => {
+                                    const keys = ["processing","ready_for_pickup","shipped"];
                                     const zi = keys.indexOf(z.status);
                                     return (
                                       <React.Fragment key={s}>
                                         {i > 0 && <div className={`flex-1 h-0.5 rounded ${i <= zi ? "bg-green-400" : "bg-gray-200"}`} />}
-                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 ${i < zi ? "bg-green-100 text-green-600" : i === zi ? "bg-primary-100 text-primary-600 ring-1 ring-primary-300" : "bg-gray-100 text-gray-300"}`}>
-                                          {i + 1}
+                                        <div className="flex flex-col items-center">
+                                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${i < zi ? "bg-green-100 text-green-600" : i === zi ? "bg-primary-500 text-white ring-2 ring-primary-200" : "bg-gray-100 text-gray-300"}`}>
+                                            {i + 1}
+                                          </div>
+                                          <span className={`text-[8px] mt-0.5 ${i <= zi ? "text-gray-500 font-medium" : "text-gray-300"}`}>{s}</span>
                                         </div>
                                       </React.Fragment>
                                     );
@@ -351,7 +356,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                                     </button>
                                   ))}
                                   {canCancel && (
-                                    <button onClick={() => cancelZayavka(z.id, "Отменена из лида")}
+                                    <button onClick={() => cancelZayavka(z.id, "Отменена")}
                                       className="px-2 py-1 text-[10px] font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 transition-all">
                                       Отменить
                                     </button>
