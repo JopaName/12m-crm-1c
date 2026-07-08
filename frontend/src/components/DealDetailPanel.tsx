@@ -309,7 +309,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                             "awaiting_production": "bg-yellow-100 text-yellow-700"
                           };
                           const actions: Record<string, {label: string; action: string; color: string}[]> = {
-                            "processing": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"},{label:"Отменить",action:"cancel",color:"bg-red-600 hover:bg-red-700"}],
+                            "processing": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"}],
                             "ready_for_pickup": [{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
                             "in_progress": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"},{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
                           };
