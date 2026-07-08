@@ -91,6 +91,7 @@ model User {
   receivedMessages      ChatMessage[]              @relation("ReceivedMessages")
   legalDocumentComments LegalDocumentComment[]
   notifications Notification[]
+  wallPosts     WallPost[]
   chatRooms      ChatRoom[]
   chatRoomMemberships ChatRoomMember[]
   @@index([isArchived, isActive])
@@ -1087,4 +1088,16 @@ model AiChatFile {
   size          Int
   extractedText String?
   createdAt     DateTime      @default(now())
+}
+
+
+model WallPost {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
 }
