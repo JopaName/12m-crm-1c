@@ -67,20 +67,52 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   useEffect(() => { loadZayavka(); }, [deal.id]);
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("/api/products", { headers: { Authorization: "Bearer " + token } })
-      .then(r => r.json()).then(data => setProductsList(data || [])).catch(() => {});
+    // Fetch products + warehouse stock
+    Promise.all([
+      fetch("/api/products", { headers: { Authorization: "Bearer " + token } }).then(r => r.json()),
+      fetch("/api/warehouse/categories", { headers: { Authorization: "Bearer " + token } }).then(r => r.json())
+    ]).then(([products, categories]) => {
+      const prodList = Array.isArray(products) ? products : [];
+      // Fetch items from each subcategory to build stock map
+      const allCatIds = (categories || []).flatMap((c: any) => [c.id, ...(c.children || []).map((ch: any) => ch.id)]);
+      if (allCatIds.length === 0) { setProductsList(prodList); return; }
+      // For simplicity, add products with stock=0 if not in prodList
+      // Merge warehouse items as product suggestions
+      Promise.all(allCatIds.slice(0, 5).map((cid: string) =>
+        fetch("/api/warehouse/categories/" + cid + "/items", { headers: { Authorization: "Bearer " + token } }).then(r => r.json())
+      )).then((results: any[]) => {
+        const whMap: Record<string, any> = {};
+        results.flat().forEach((item: any) => {
+          if (item && item.productName) {
+            if (!whMap[item.productName]) whMap[item.productName] = { productName: item.productName, stock: 0, unit: item.unit };
+            whMap[item.productName].stock += Number(item.quantity) || 0;
+          }
+        });
+        // Add warehouse-only items as products
+        const whProducts = Object.values(whMap).map((w: any) => ({
+          id: "wh_" + w.productName,
+          name: w.productName + " (" + w.unit + ")",
+          stock: w.stock
+        }));
+        // Merge with existing products, prefer product table entries
+        const existing = prodList.map((p: any) => ({ ...p, stock: p.stock || 0 }));
+        setProductsList([...existing, ...whProducts]);
+      }).catch(() => setProductsList(prodList));
+    }).catch(() => {});
   }, []);
 
   const createZayavka = async () => {
     if (!zayavkaProductId) { setZayavkaError("Выберите товар со склада"); return; }
     const selected = productsList.find(p => p.id === zayavkaProductId);
+    const isWhProduct = zayavkaProductId.startsWith("wh_");
+    const productName = isWhProduct ? zayavkaProductId.slice(3) : (selected?.name || "");
     setZayavkaLoading(true); setZayavkaError("");
     try {
       const token = localStorage.getItem("token");
       const r = await fetch("/api/procurement/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ productId: zayavkaProductId, productName: selected?.name || "", quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
+        body: JSON.stringify({ productId: isWhProduct ? null : zayavkaProductId, productName: productName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id })
       });
       if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); return; }
       setZayavkaProductId(""); setZayavkaQty(1); setZayavkaNote("");
