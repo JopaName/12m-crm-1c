@@ -122,7 +122,7 @@ export default function UsersPage() {
             <div className="px-5 py-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-500 mb-1">Имя <span className="text-red-500">*</span></label><input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" autoFocus /></div>
-                <div><label className="block text-xs font-medium text-gray-500 mb-1">Фамилия <span className="text-red-500">*</span></label><input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" /></div>
+                <div><label className="block text-xs font-medium text-gray-500 mb-1">Фамилия</label><input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" /></div>
               </div>
               <div><label className="block text-xs font-medium text-gray-500 mb-1">Email <span className="text-red-500">*</span></label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" /></div>
               {!editingId && <div><label className="block text-xs font-medium text-gray-500 mb-1">Пароль <span className="text-red-500">*</span></label><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" /></div>}
@@ -135,7 +135,7 @@ export default function UsersPage() {
               <div className="flex-1" />
               <button onClick={() => { setShowModal(false); setEditingId(null); }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
               <button onClick={() => {
-                if (!form.email.trim() || !form.firstName.trim() || !form.lastName.trim()) { toast.error("Заполните обязательные поля"); return; }
+                if (!form.email.trim() || !form.firstName.trim() || (!editingId && !form.password.trim())) { toast.error("Заполните обязательные поля"); return; }
                 if (editingId) updateMutation.mutate({ id: editingId, data: form });
                 else createMutation.mutate(form);
               }} disabled={createMutation.isPending || updateMutation.isPending}
