@@ -96,6 +96,22 @@ export default function DealsPage() {
       if (cid) { setNewDealClientId(cid); setShowForm(true); }
     }
   }, []);
+
+
+  const { data: deals, isLoading } = useQuery({
+    queryKey: ["deals"],
+    queryFn: () => dealsAPI.getAll().then((r) => r.data),
+  });
+  const { data: clients } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => clientsAPI.getAll().then((r) => r.data),
+  });
+  const { data: users } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => authAPI.getUsers().then((r) => r.data),
+  });
+
+  // Load tasks for all deals
   useEffect(() => {
     if (!deals || deals.length === 0) return;
     const token = localStorage.getItem("token");
@@ -111,19 +127,6 @@ export default function DealsPage() {
         setDealTasks(map);
       }).catch(() => {});
   }, [deals]);
-
-  const { data: deals, isLoading } = useQuery({
-    queryKey: ["deals"],
-    queryFn: () => dealsAPI.getAll().then((r) => r.data),
-  });
-  const { data: clients } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsAPI.getAll().then((r) => r.data),
-  });
-  const { data: users } = useQuery({
-    queryKey: ["users"],
-    queryFn: () => authAPI.getUsers().then((r) => r.data),
-  });
 
   const createMutation = useMutation({
     mutationFn: (d: any) => dealsAPI.create(d),
