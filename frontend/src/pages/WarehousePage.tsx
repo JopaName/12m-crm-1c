@@ -17,6 +17,8 @@ export default function WarehousePage() {
   const [form, setForm] = useState({ productName: "", sku: "", description: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", categoryTag: "", note: "" });
   const [categoryForm, setCategoryForm] = useState({ name: "", parentId: "" });
   const [showCatForm, setShowCatForm] = useState(false);
+  const [expandAll, setExpandAll] = useState(false);
+  const [treeKey, setTreeKey] = useState(0);
   const [editingCat, setEditingCat] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -111,10 +113,15 @@ export default function WarehousePage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="p-3 border-b border-gray-100 flex items-center justify-between">
               <span className="font-semibold text-sm text-gray-700">Каталоги</span>
-              <button onClick={() => setShowCatForm(true)} className="p-1 hover:bg-primary-50 rounded text-primary-500"><Plus className="w-4 h-4" /></button>
+              <div className="flex items-center gap-0.5">
+                <button onClick={() => { setExpandAll(!expandAll); setTreeKey(k => k + 1); }} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors" title={expandAll ? "Свернуть все" : "Развернуть все"}>
+                  {expandAll ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+                <button onClick={() => setShowCatForm(true)} className="p-1 hover:bg-primary-50 rounded text-primary-500" title="Новый каталог"><Plus className="w-4 h-4" /></button>
+              </div>
             </div>
-            <div className="p-2 max-h-[60vh] overflow-y-auto">
-              {rootCategories.map((cat: any) => <CatNode key={cat.id} c={cat} all={categories || []} sel={selectedCategory} onSel={setSelectedCategory} onDel={(id, name, childCount) => { if (confirm(`Удалить каталог «${name}»` + (childCount > 0 ? ` и ${childCount} вложенных` : "") + "?")) deleteCat.mutate(id); }} onEdit={(c: any) => { setEditingCat(c); setCategoryForm({ name: c.name, parentId: c.parentId || "" }); setShowCatForm(true); }} />)}
+            <div className="p-2 max-h-[60vh] overflow-y-auto" key={treeKey}>
+              {rootCategories.map((cat: any) => <CatNode key={cat.id} c={cat} all={categories || []} sel={selectedCategory} onSel={setSelectedCategory} expandAll={expandAll} onDel={(id, name, childCount) => { if (confirm(`Удалить каталог «${name}»` + (childCount > 0 ? ` и ${childCount} вложенных` : "") + "?")) deleteCat.mutate(id); }} onEdit={(c: any) => { setEditingCat(c); setCategoryForm({ name: c.name, parentId: c.parentId || "" }); setShowCatForm(true); }} />)}
               {(!categories || categories.length === 0) && <p className="text-xs text-gray-400 text-center py-4">Нет каталогов</p>}
             </div>
           </div>
@@ -288,8 +295,9 @@ export default function WarehousePage() {
   );
 }
 
-function CatNode({ c, all, sel, onSel, onDel, onEdit, depth = 0 }: any) {
-  const [open, setOpen] = useState(true);
+function CatNode({ c, all, sel, onSel, onDel, onEdit, expandAll, depth = 0 }: any) {
+  // When tree key changes (expand/collapse all), use expandAll to set initial state
+  const [open, setOpen] = useState(expandAll !== false);
   const kids = all.filter((x: any) => x.parentId === c.id);
   const isSel = sel === c.id;
   const hasKids = kids.length > 0;
