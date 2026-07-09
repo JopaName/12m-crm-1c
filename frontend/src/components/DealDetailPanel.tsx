@@ -313,7 +313,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                             "ready_for_pickup": [{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
                             "in_progress": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"},{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
                           };
-                          const canCancel = ["processing"].includes(z.status);
+                          const canCancel = ["processing", "in_progress", "ready_for_pickup"].includes(z.status);
                           return (
                             <div key={z.id} className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 hover:border-gray-200 transition-colors">
                               <div className="flex items-center justify-between">
