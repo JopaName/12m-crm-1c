@@ -33,7 +33,15 @@ const DEFAULT_STAGES: StageConfig[] = [
 
 let _cachedPipeline: StageConfig[] | null = null;
 function loadPipeline(): StageConfig[] {
-  if (_cachedPipeline) return _cachedPipeline;
+  if (_cachedPipeline && _cachedPipeline.length > 0) return _cachedPipeline;
+  // Try localStorage cache (last known server state)
+  try {
+    const cached = localStorage.getItem("crm_pipeline_cache");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
   return DEFAULT_STAGES;
 }
 
@@ -45,10 +53,11 @@ export async function fetchPipeline(): Promise<StageConfig[]> {
     const data = await r.json();
     if (data.stages && Array.isArray(data.stages) && data.stages.length > 0) {
       _cachedPipeline = data.stages;
+      localStorage.setItem("crm_pipeline_cache", JSON.stringify(data.stages));
       return data.stages;
     }
   } catch {}
-  return DEFAULT_STAGES;
+  return loadPipeline();
 }
 
 export function getPipelineConfig(): StageConfig[] {
@@ -57,6 +66,7 @@ export function getPipelineConfig(): StageConfig[] {
 
 export async function savePipeline(stages: StageConfig[]) {
   _cachedPipeline = stages;
+  localStorage.setItem("crm_pipeline_cache", JSON.stringify(stages));
   try {
     const token = localStorage.getItem("token");
     await fetch("/api/pipeline/config", {

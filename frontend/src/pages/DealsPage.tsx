@@ -58,7 +58,8 @@ export default function DealsPage() {
   };
   const [showPipelineEditor, setShowPipelineEditor] = useState(false);
   const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
-  useEffect(() => { fetchPipeline().then(stages => { if (stages.length > 0) { setPipelineStages(stages);  } }).catch(() => {}); }, []);
+  const [pipelineReady, setPipelineReady] = useState(false);
+  useEffect(() => { fetchPipeline().then(stages => { if (stages.length > 0) { setPipelineStages(stages); } setPipelineReady(true); }).catch(() => { setPipelineReady(true); }); }, []);
   const PST = pipelineStages.map(s => s.key);
   const PSL: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, s.label]));
   const PSC: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, `bg-${s.color}-500`]));
@@ -130,7 +131,7 @@ export default function DealsPage() {
   }, [deals]);
 
   const createMutation = useMutation({
-    mutationFn: (d: any) => dealsAPI.create({ ...d, status: PST[0] || STATUSES[0] }),
+    mutationFn: (d: any) => dealsAPI.create({ ...d, status: (PST.length > 0 ? PST[0] : STATUSES[0]) }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Лид создан"); setShowForm(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
@@ -442,7 +443,7 @@ export default function DealsPage() {
       {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} currentUser={user} />}
 
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
-      {showPipelineEditor && <PipelineEditor onClose={() => { setShowPipelineEditor(false); setPipelineStages(getPipelineConfig()); }} />}
+      {showPipelineEditor && <PipelineEditor onClose={async () => { setShowPipelineEditor(false); const stages = await fetchPipeline(); setPipelineStages(stages); setPipelineReady(true); }} />}
     </div>
   );
 }
