@@ -22,8 +22,8 @@ export default function WarehousePage() {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: categories } = useQuery({ queryKey: ["warehouse-categories"], queryFn: () => warehouseAPI.getCategories().then((r: any) => r.data) });
-  const { data: items } = useQuery({ queryKey: ["warehouse-items", selectedCategory], queryFn: () => selectedCategory ? warehouseAPI.getCategoryItems(selectedCategory).then((r: any) => r.data) : Promise.resolve([]), enabled: !!selectedCategory });
+  const { data: categories } = useQuery({ queryKey: ["warehouse-categories"], queryFn: () => warehouseAPI.getCategories().then((r: any) => r.data), refetchInterval: 10000 });
+  const { data: items } = useQuery({ queryKey: ["warehouse-items", selectedCategory], queryFn: () => selectedCategory ? warehouseAPI.getCategoryItems(selectedCategory).then((r: any) => r.data) : Promise.resolve([]), enabled: !!selectedCategory, refetchInterval: 5000 });
   const { data: transfers } = useQuery({ queryKey: ["warehouse-transfers"], queryFn: () => warehouseAPI.getTransfers().then((r: any) => r.data) });
 
   const filteredItems = (items || []).filter((i: any) => !searchQuery || (i.productName || "").toLowerCase().includes(searchQuery.toLowerCase()) || (i.sku || "").toLowerCase().includes(searchQuery.toLowerCase()));
