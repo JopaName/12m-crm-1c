@@ -343,14 +343,14 @@ export default function DealsPage() {
                           )}
                           <div className="border-t border-gray-100 pt-2 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                             {linkedTasks.length > 0 ? (
-                              <button onClick={() => { if (linkedTasks[0]) window.location.href = '/tasks#' + linkedTasks[0].id; }}
+                              <button onClick={(e) => { e.stopPropagation(); if (linkedTasks[0]) window.location.href = '/tasks#' + linkedTasks[0].id; }}
                                 className="text-[11px] font-medium text-gray-500 hover:text-primary-600 transition-colors">
                                 📋 Задачи ({linkedTasks.length})
                               </button>
                             ) : (
                               <span className="text-[10px] text-gray-400 italic">Нет задач</span>
                             )}
-                            <button onClick={() => { setTaskDealId(d.id); setNewTaskTitle(""); setShowTaskModal(true); }}
+                            <button onClick={(e) => { e.stopPropagation(); setTaskDealId(d.id); setNewTaskTitle(""); setShowTaskModal(true); }}
                               className="text-[11px] font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 px-2 py-0.5 rounded transition-colors">
                               + Создать
                             </button>
@@ -458,6 +458,30 @@ export default function DealsPage() {
 
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
       {showPipelineEditor && <PipelineEditor onClose={async () => { setShowPipelineEditor(false); const stages = await fetchPipeline(); setPipelineStages(stages); setPipelineReady(true); }} />}
+
+      {/* Task creation modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowTaskModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Новая задача</h3>
+              <button onClick={() => setShowTaskModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Что нужно сделать?" autoFocus
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
+                onKeyDown={e => { if (e.key === "Enter") createTask(); }} />
+            </div>
+            <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
+              <button onClick={() => setShowTaskModal(false)} className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
+              <button onClick={createTask} disabled={!newTaskTitle.trim() || taskLoading}
+                className="flex-1 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
+                {taskLoading ? "Создание..." : "Создать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
