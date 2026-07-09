@@ -408,6 +408,10 @@ export default function DealsPage() {
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     )}
+                    <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить лид " + d.dealNumber + "?")) deleteMutation.mutate(d.id); }}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );
