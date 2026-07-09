@@ -76,7 +76,7 @@ export default function DealFormModal({ onClose, currentUser }: {
           <div className="relative">
             <FileText className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })}
-              placeholder="Что интересует клиента..."
+              placeholder="Опишите потребность..."
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none" rows={2} />
           </div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Ответственный</label>

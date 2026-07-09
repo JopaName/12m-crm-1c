@@ -130,7 +130,7 @@ export default function GlobalSearch() {
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[rgba(0,229,255,0.06)]">
           <Search className="w-5 h-5 text-gray-500 shrink-0" />
-          <input ref={inputRef} type="text" placeholder="Поиск по всем разделам... (лиды, клиенты, задачи, товары)"
+          <input ref={inputRef} type="text" placeholder="Поиск по всем разделам... (лиды, задачи, товары)"
             value={query} onChange={e => setQuery(e.target.value)} onKeyDown={handleKeyDown}
             className="flex-1 text-base outline-none bg-transparent placeholder:text-gray-500" />
           {loading && <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />}
@@ -143,7 +143,7 @@ export default function GlobalSearch() {
             <div className="py-8 text-center text-gray-500 text-sm">
               <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>Начните вводить — минимум 2 символа</p>
-              <p className="text-xs mt-1 text-gray-300">Поиск по лидам, клиентам, задачам, товарам</p>
+              <p className="text-xs mt-1 text-gray-300">Поиск по лидам, задачам, товарам</p>
             </div>
           )}
 

@@ -33,7 +33,7 @@ export default function AiChatInterface() {
   const { user } = useAuth();
   const isAdmin = user?.role?.name === "Administrator" || user?.role?.name === "Director";
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: `Здравствуйте, ${user?.firstName}! Я AI-Координатор 12M CRM.${isAdmin ? "\nВы вошли как администратор \u2014 можете управлять сотрудниками через чат." : ""}\n\nПримеры запросов:\n${isAdmin ? "\u2022 Покажи сотрудников\n\u2022 Создай пользователя\n\u2022 " : ""}\u2022 Что лежит на складе?\n\u2022 Найди клиентов\n\u2022 Какие есть задачи?` },
+    { role: "assistant", content: `Здравствуйте, ${user?.firstName}! Я AI-Координатор 12M CRM.${isAdmin ? "\nВы вошли как администратор \u2014 можете управлять сотрудниками через чат." : ""}\n\nПримеры запросов:\n${isAdmin ? "\u2022 Покажи сотрудников\n\u2022 Создай пользователя\n\u2022 " : ""}\u2022 Что лежит на складе?\n\u2022 Покажи лиды\n\u2022 Какие есть задачи?` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

@@ -41,8 +41,8 @@ function DetailView({
               <span className="ml-2 text-gray-800">{formatDate(doc.documentDate || doc.createdAt)}</span>
             </div>
             <div>
-              <span className="text-gray-400">Клиент:</span>
-              <span className="ml-2 text-gray-800">{doc.client?.name || doc.deal?.client?.name || "-"}</span>
+              <span className="text-gray-400">Лид:</span>
+              <span className="ml-2 text-gray-800">{doc.deal?.client?.name || doc.deal?.dealNumber || "-"}</span>
             </div>
             <div>
               <span className="text-gray-400">Лид:</span>
