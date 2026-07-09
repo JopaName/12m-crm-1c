@@ -31,20 +31,40 @@ const DEFAULT_STAGES: StageConfig[] = [
   { key: "Deal_Closed", label: "Закрыто", color: "emerald" },
 ];
 
+let _cachedPipeline: StageConfig[] | null = null;
 function loadPipeline(): StageConfig[] {
+  if (_cachedPipeline) return _cachedPipeline;
+  return DEFAULT_STAGES;
+}
+
+// Load pipeline from server
+export async function fetchPipeline(): Promise<StageConfig[]> {
   try {
-    const raw = localStorage.getItem("crm_pipeline_v2");
-    if (raw) return JSON.parse(raw);
+    const token = localStorage.getItem("token");
+    const r = await fetch("/api/pipeline/config", { headers: { Authorization: "Bearer " + token } });
+    const data = await r.json();
+    if (data.stages && Array.isArray(data.stages) && data.stages.length > 0) {
+      _cachedPipeline = data.stages;
+      return data.stages;
+    }
   } catch {}
   return DEFAULT_STAGES;
 }
 
 export function getPipelineConfig(): StageConfig[] {
-  return loadPipeline();
+  return _cachedPipeline || DEFAULT_STAGES;
 }
 
-export function savePipeline(stages: StageConfig[]) {
-  localStorage.setItem("crm_pipeline_v2", JSON.stringify(stages));
+export async function savePipeline(stages: StageConfig[]) {
+  _cachedPipeline = stages;
+  try {
+    const token = localStorage.getItem("token");
+    await fetch("/api/pipeline/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ stages })
+    });
+  } catch {}
 }
 
 export default function PipelineEditor({ onClose }: { onClose: () => void }) {
@@ -72,10 +92,10 @@ export default function PipelineEditor({ onClose }: { onClose: () => void }) {
     setDragIdx(null);
   };
 
-  const handleSave = () => {
-    savePipeline(stages);
+  const handleSave = async () => {
+    await savePipeline(stages);
     onClose();
-    window.location.reload(); // Refresh to apply new pipeline
+    window.location.reload();
   };
 
   return (

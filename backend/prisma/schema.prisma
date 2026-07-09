@@ -1101,3 +1101,10 @@ model WallPost {
 
   @@index([createdAt])
 }
+
+model PipelineConfig {
+  id         String   @id @default(cuid())
+  configJson String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

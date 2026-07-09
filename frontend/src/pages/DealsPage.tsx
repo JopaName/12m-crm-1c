@@ -4,7 +4,7 @@ import { dealsAPI, clientsAPI, authAPI, tasksAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { STATUSES, STATUS_META } from "../constants/deals";
-import PipelineEditor, { getPipelineConfig } from "../components/PipelineEditor";
+import PipelineEditor, { getPipelineConfig, fetchPipeline } from "../components/PipelineEditor";
 import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import ProfileModal from "../components/ProfileModal";
@@ -58,6 +58,7 @@ export default function DealsPage() {
   };
   const [showPipelineEditor, setShowPipelineEditor] = useState(false);
   const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
+  useEffect(() => { fetchPipeline().then(stages => { if (stages.length > 0) { setPipelineStages(stages);  } }).catch(() => {}); }, []);
   const PST = pipelineStages.map(s => s.key);
   const PSL: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, s.label]));
   const PSC: Record<string, string> = Object.fromEntries(pipelineStages.map(s => [s.key, `bg-${s.color}-500`]));
