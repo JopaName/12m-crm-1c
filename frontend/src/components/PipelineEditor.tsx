@@ -61,7 +61,7 @@ export async function fetchPipeline(): Promise<StageConfig[]> {
 }
 
 export function getPipelineConfig(): StageConfig[] {
-  return _cachedPipeline || DEFAULT_STAGES;
+  return loadPipeline();
 }
 
 export async function savePipeline(stages: StageConfig[]) {
