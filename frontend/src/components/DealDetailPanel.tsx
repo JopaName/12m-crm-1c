@@ -114,10 +114,10 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ productId: isWhProduct ? null : zayavkaProductId, productName: productName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id, status: "processing" })
       });
-      if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); return; }
+      if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); setZayavkaLoading(false); return; }
       setZayavkaProductId(""); setZayavkaQty(1); setZayavkaNote("");
       await loadZayavka();
-    } catch (e: any) { setZayavkaError(e.message); }
+    } catch (e: any) { setZayavkaError(e.message || "Ошибка сети"); }
     setZayavkaLoading(false);
   };
 
