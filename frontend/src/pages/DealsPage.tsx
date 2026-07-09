@@ -320,7 +320,7 @@ export default function DealsPage() {
                     const prevStatus = getPrevStatus(d.status);
                     const linkedTasks = dealTasks[d.id] || [];
                     return (
-                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary-200 cursor-pointer active:scale-[0.98]" onClick={() => setDetailDeal(d)}>
+                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary-200 cursor-pointer active:scale-[0.98] group" onClick={() => setDetailDeal(d)}>
                         <div className="p-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-2 flex-1 italic">{(client?.name || d.client?.name || d.dealNumber)}</p>
@@ -357,7 +357,7 @@ export default function DealsPage() {
                           </div>
                         </div>
                         {/* Hover curtain — prev/next stage navigation */}
-                        <div className="border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                        <div className="border-t border-gray-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center">
                             {PST.findIndex(s => s === d.status) > 0 && (
                               <button onClick={() => statusMutation.mutate({ id: d.id, status: PST[PST.indexOf(d.status) - 1] })}
