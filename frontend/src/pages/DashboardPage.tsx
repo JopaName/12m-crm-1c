@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const { data: wallPosts } = useQuery({
     queryKey: ["wall"],
     queryFn: () => fetch("/api/wall", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } }).then(r => r.json()),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
 
   const handlePost = async () => {
