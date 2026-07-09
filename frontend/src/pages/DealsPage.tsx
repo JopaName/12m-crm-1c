@@ -357,7 +357,7 @@ export default function DealsPage() {
                           </div>
                         </div>
                         {/* Hover curtain — prev/next stage navigation */}
-                        <div className="border-t border-gray-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                        <div className="border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center">
                             {PST.findIndex(s => s === d.status) > 0 && (
                               <button onClick={() => statusMutation.mutate({ id: d.id, status: PST[PST.indexOf(d.status) - 1] })}
