@@ -356,6 +356,24 @@ export default function DealsPage() {
                             </button>
                           </div>
                         </div>
+                        {/* Hover curtain — prev/next stage navigation */}
+                        <div className="border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center">
+                            {PST.findIndex(s => s === d.status) > 0 && (
+                              <button onClick={() => statusMutation.mutate({ id: d.id, status: PST[PST.indexOf(d.status) - 1] })}
+                                className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors rounded-bl-xl"
+                                title={"← " + (PSL[PST[PST.indexOf(d.status) - 1]] || "Назад")}>
+                                <ArrowLeft className="w-2.5 h-2.5" />{(PSL[PST[PST.indexOf(d.status) - 1]] || "Назад")}
+                              </button>
+                            )}
+                            {PST.indexOf(d.status) < PST.length - 1 && (
+                              <button onClick={() => statusMutation.mutate({ id: d.id, status: PST[PST.indexOf(d.status) + 1] })}
+                                className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium text-primary-600 hover:bg-primary-50 transition-colors rounded-br-xl">
+                                {(PSL[PST[PST.indexOf(d.status) + 1]] || "Вперёд")}<ArrowRight className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
