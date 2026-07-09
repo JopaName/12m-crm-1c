@@ -21,11 +21,24 @@ export default function DealFormModal({ onClose, currentUser }: {
     if (!f.phone.trim()) { toast.error("Введите телефон"); return; }
     setLoading(true);
     try {
+      // Get first pipeline stage
+      var firstStage = "Lead_Created";
+      try {
+        var cached = localStorage.getItem("crm_pipeline_cache");
+        if (cached) {
+          var stages = JSON.parse(cached);
+          if (Array.isArray(stages) && stages.length > 0) {
+            firstStage = stages[0].key;
+          }
+        }
+      } catch(e) {}
+      
       await api.post("/deals", {
         name: f.name.trim(),
         phone: f.phone.trim(),
         description: f.description.trim(),
         responsibleAgentId: currentUser?.id,
+        status: firstStage,
       });
       toast.success("Лид создан");
       onClose();
