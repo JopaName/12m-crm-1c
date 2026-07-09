@@ -378,8 +378,6 @@ export default function DealsPage() {
             {active.map((d: any) => {
               const client = clientMap[d.clientId];
               const agent = userMap[d.responsibleAgentId];
-              const nextStatuses = getNextStatuses(d.status);
-              const prevStatus = getPrevStatus(d.status);
               return (
                 <div key={d.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group">
                   <div className={cn("w-2 h-2 rounded-full shrink-0", (dynamicStatusMeta[d.status]?.bg || "bg-gray-400"))} />
@@ -395,19 +393,13 @@ export default function DealsPage() {
                   <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", (dynamicStatusMeta[d.status]?.lightBg || "bg-gray-50"), (dynamicStatusMeta[d.status]?.color || "text-gray-600"))}>
                     {(dynamicStatusMeta[d.status]?.label || d.status)}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {prevStatus && (
-                      <button onClick={() => statusMutation.mutate({ id: d.id, status: prevStatus })}
-                        className="text-xs font-medium text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                        <ArrowLeft className="w-3 h-3" />
-                      </button>
-                    )}
-                    {nextStatuses.length > 0 && (
-                      <button onClick={() => statusMutation.mutate({ id: d.id, status: nextStatuses[0] })}
-                        className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <select value={d.status} onChange={(e) => { if (e.target.value !== d.status) statusMutation.mutate({ id: d.id, status: e.target.value }); }}
+                      className="text-[11px] font-medium border border-gray-200 rounded-lg py-1 px-2 bg-white text-gray-600 outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                      {PST.map(s => (
+                        <option key={s} value={s} disabled={s === d.status}>{PSL[s] || s}{s === d.status ? " ●" : ""}</option>
+                      ))}
+                    </select>
                     <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить лид " + d.dealNumber + "?")) deleteMutation.mutate(d.id); }}
                       className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Удалить">
                       <Trash2 className="w-3.5 h-3.5" />
