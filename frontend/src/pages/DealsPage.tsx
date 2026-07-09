@@ -129,7 +129,7 @@ export default function DealsPage() {
   }, [deals]);
 
   const createMutation = useMutation({
-    mutationFn: (d: any) => dealsAPI.create({ ...d, status: STATUSES[0] }),
+    mutationFn: (d: any) => dealsAPI.create({ ...d, status: PST[0] || STATUSES[0] }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deals"] }); toast.success("Лид создан"); setShowForm(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
