@@ -1,29 +1,26 @@
 import { useState } from "react";
-import { FileText, X, Save, Calendar, User, Flag, Folder, AlertCircle, Clock, ChevronDown } from "lucide-react";
+import { FileText, X, Save, Calendar, User, Folders } from "lucide-react";
 import toast from "react-hot-toast";
 
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];
-const TYPES = ["General", "Legal", "Technical", "Service", "Procurement"];
 const PRIORITY_META: Record<string, { color: string; bg: string; lightBg: string; label: string; icon: string }> = {
   Critical: { color: "text-red-600", bg: "bg-red-500", lightBg: "bg-red-50", label: "Критический", icon: "🔴" },
   High: { color: "text-amber-600", bg: "bg-amber-500", lightBg: "bg-amber-50", label: "Высокий", icon: "🟠" },
   Medium: { color: "text-blue-600", bg: "bg-blue-500", lightBg: "bg-blue-50", label: "Средний", icon: "🔵" },
   Low: { color: "text-gray-500", bg: "bg-gray-400", lightBg: "bg-gray-50", label: "Низкий", icon: "⚪" },
 };
-const TYPE_LABELS: Record<string, string> = { General: "Общая", Legal: "Юридическая", Technical: "Техническая", Service: "Сервис", Procurement: "Закупки" };
-const TYPE_ICONS: Record<string, string> = { General: "📋", Legal: "⚖️", Technical: "🔧", Service: "🛠️", Procurement: "📦" };
 
-export default function TaskFormModal({ task, onClose, users, onSubmit, isPending, presetDealId }: {
-  task?: any; onClose: () => void; users?: any[]; onSubmit: (d: any) => void; isPending: boolean; presetDealId?: string;
+export default function TaskFormModal({ task, onClose, users, onSubmit, isPending, presetDealId, deals }: {
+  task?: any; onClose: () => void; users?: any[]; onSubmit: (d: any) => void; isPending: boolean; presetDealId?: string; deals?: any[];
 }) {
   const [f, setF] = useState(task ? {
-    title: task.title || "", description: task.description || "", type: task.type || "General", priority: task.priority || "Medium",
+    title: task.title || "", description: task.description || "", priority: task.priority || "Medium",
     assigneeId: task.assigneeId || "", dealId: task.dealId || "", dueDate: task.dueDate ? task.dueDate.split("T")[0] : ""
-  } : { title: "", description: "", type: "General", priority: "Medium", assigneeId: "", dealId: presetDealId || "", dueDate: "" });
+  } : { title: "", description: "", priority: "Medium", assigneeId: "", dealId: presetDealId || "", dueDate: "" });
 
   const handleSubmit = () => {
     if (!f.title.trim()) { toast.error("Введите название задачи"); return; }
-    onSubmit({ title: f.title.trim(), description: f.description.trim(), type: f.type, assigneeId: f.assigneeId || undefined, priority: f.priority, dueDate: f.dueDate || undefined, dealId: f.dealId || undefined });
+    onSubmit({ title: f.title.trim(), description: f.description.trim(), assigneeId: f.assigneeId || undefined, priority: f.priority, dueDate: f.dueDate || undefined, dealId: f.dealId || undefined });
   };
 
   return (
@@ -62,24 +59,29 @@ export default function TaskFormModal({ task, onClose, users, onSubmit, isPendin
             />
           </div>
 
-          {/* Type + Priority as icon buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Тип</label>
-              <div className="grid grid-cols-5 gap-1">
-                {TYPES.map(t => (
-                  <button key={t} type="button"
-                    onClick={() => setF({ ...f, type: t })}
-                    className={`flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-medium transition-all ${
-                      f.type === t ? "bg-primary-100 text-primary-700 ring-2 ring-primary-300 scale-105" : "bg-gray-50 text-gray-500 hover:bg-gray-100"
-                    }`}
-                    title={TYPE_LABELS[t]}>
-                    <span className="text-sm">{TYPE_ICONS[t]}</span>
-                    <span className="leading-none">{TYPE_LABELS[t].slice(0, 4)}</span>
-                  </button>
-                ))}
+          {/* Linked deal */}
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <Folders className="w-3 h-3 inline mr-1" />Связанный лид
+            </label>
+            {presetDealId ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-primary-50 border border-primary-200 rounded-xl text-sm text-primary-700">
+                <Folders className="w-4 h-4 shrink-0" />
+                <span className="truncate">Автоматически привязан</span>
               </div>
-            </div>
+            ) : (
+              <select value={f.dealId} onChange={e => setF({ ...f, dealId: e.target.value })}
+                className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer">
+                <option value="">Без лида</option>
+                {deals?.map((d: any) => (
+                  <option key={d.id} value={d.id}>{d.dealNumber} — {d.client?.name || d.expectedAmount?.toLocaleString() + " ₽" || "—"}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Priority + Assignee */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Приоритет</label>
               <div className="grid grid-cols-2 gap-1">
