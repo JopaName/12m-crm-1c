@@ -8,6 +8,7 @@ import PipelineEditor, { getPipelineConfig, fetchPipeline } from "../components/
 import DealFormModal from "../components/DealFormModal";
 import DealDetailPanel from "../components/DealDetailPanel";
 import ProfileModal from "../components/ProfileModal";
+import TaskFormModal from "../components/TaskFormModal";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, ChevronDown, Edit3, X, DollarSign, ArrowRight, ArrowLeft, Phone, Mail, Briefcase, Inbox, Trash2, Save, Eye, Shield, CreditCard, FileText, Circle } from "lucide-react";
@@ -28,34 +29,25 @@ export default function DealsPage() {
   const [detailDeal, setDetailDeal] = useState<any | null>(null);
   const [viewUserId, setViewUserId] = useState<string | null>(null);
 
-  const createTask = async () => {
-    if (!newTaskTitle.trim() || !taskDealId) return;
-    setTaskLoading(true);
-    try {
+  const taskCreateMutation = useMutation({
+    mutationFn: (d: any) => tasksAPI.create(d),
+    onSuccess: () => {
+      setShowTaskModal(false);
+      setNewTaskTitle("");
+      toast.success("Задача создана");
+      // Refresh tasks for kanban
       const token = localStorage.getItem("token");
-      const r = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ title: newTaskTitle.trim(), dealId: taskDealId, status: "Новая", priority: "Средний" })
-      });
-      if (r.ok) {
-        setNewTaskTitle("");
-        setShowTaskModal(false);
-        // Refresh tasks
-        const r2 = await fetch("/api/tasks", { headers: { Authorization: "Bearer " + token } });
-        const tasks = await r2.json();
-        const map: Record<string, any[]> = {};
-        (Array.isArray(tasks) ? tasks : []).forEach((t: any) => {
-          if (t.dealId) {
-            if (!map[t.dealId]) map[t.dealId] = [];
-            map[t.dealId].push(t);
-          }
-        });
-        setDealTasks(map);
-      }
-    } catch {}
-    setTaskLoading(false);
-  };
+      fetch("/api/tasks", { headers: { Authorization: "Bearer " + token } })
+        .then(r => r.json()).then(tasks => {
+          const map: Record<string, any[]> = {};
+          (Array.isArray(tasks) ? tasks : []).forEach((t: any) => {
+            if (t.dealId) { if (!map[t.dealId]) map[t.dealId] = []; map[t.dealId].push(t); }
+          });
+          setDealTasks(map);
+        }).catch(() => {});
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
+  });
   const [showPipelineEditor, setShowPipelineEditor] = useState(false);
   const [pipelineStages, setPipelineStages] = useState(getPipelineConfig);
   const [pipelineReady, setPipelineReady] = useState(false);
@@ -459,28 +451,15 @@ export default function DealsPage() {
           {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
       {showPipelineEditor && <PipelineEditor onClose={async () => { setShowPipelineEditor(false); const stages = await fetchPipeline(); setPipelineStages(stages); setPipelineReady(true); }} />}
 
-      {/* Task creation modal */}
+      {/* Task creation modal — shared component */}
       {showTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowTaskModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-sm">Новая задача</h3>
-              <button onClick={() => setShowTaskModal(false)} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Что нужно сделать?" autoFocus
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
-                onKeyDown={e => { if (e.key === "Enter") createTask(); }} />
-            </div>
-            <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
-              <button onClick={() => setShowTaskModal(false)} className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
-              <button onClick={createTask} disabled={!newTaskTitle.trim() || taskLoading}
-                className="flex-1 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
-                {taskLoading ? "Создание..." : "Создать"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskFormModal
+          onClose={() => setShowTaskModal(false)}
+          users={users}
+          presetDealId={taskDealId || ""}
+          onSubmit={(data: any) => taskCreateMutation.mutate(data)}
+          isPending={taskCreateMutation.isPending}
+        />
       )}
     </div>
   );
