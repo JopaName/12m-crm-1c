@@ -133,20 +133,32 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
     };
     const endpoint = map[action];
     if (!endpoint) return;
-    await fetch("/api/procurement/requests/" + id + "/" + endpoint, {
+    const r = await fetch("/api/procurement/requests/" + id + "/" + endpoint, {
       method: "PUT",
       headers: { Authorization: "Bearer " + token }
     });
+    if (!r.ok) {
+      const err = await r.json();
+      setZayavkaError(err.error || "Ошибка операции");
+      return;
+    }
+    setZayavkaError("");
     loadZayavka();
   };
 
   const cancelZayavka = async (id: string, note: string) => {
     const token = localStorage.getItem("token");
-    await fetch("/api/procurement/requests/" + id + "/cancel", {
+    const r = await fetch("/api/procurement/requests/" + id + "/cancel", {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
       body: JSON.stringify({ note: note || "Отменена" })
     });
+    if (!r.ok) {
+      const err = await r.json();
+      setZayavkaError(err.error || "Ошибка отмены");
+      return;
+    }
+    setZayavkaError("");
     loadZayavka();
   };
   const hasProduction = (linked.productionOrders || []).length > 0;
