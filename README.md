@@ -59,12 +59,6 @@ pm2 start backend/dist/index.js --name 12m-backend
 
 ## Test Users
 
-| Email | Password | Role |
-|-------|----------|------|
-| admin@nik12m.ru | yiAoRGP_px34 | Director |
-| director@nik12m.ru | yiAoRGP_px34 | Director |
-| lawyer@nik12m.ru | yiAoRGP_px34 | Lawyer |
-
 ## API
 
 Base: `http://95.81.114.106/api`
