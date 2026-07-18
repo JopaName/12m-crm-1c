@@ -688,6 +688,12 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
                     <a href={"tel:" + linked.clientPhone} className="text-gray-700 hover:text-primary-600 hover:underline">{linked.clientPhone}</a>
                   </div>
                 )}
+                {linked.clientInn && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-gray-700">ИНН {linked.clientInn}</span>
+                  </div>
+                )}
 
                 {linked.description && (
                   <div className="relative bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 border border-gray-100">
