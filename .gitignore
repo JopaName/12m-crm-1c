@@ -1,14 +1,70 @@
+# Dependencies
 node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build output
 dist/
+backend/dist/
+frontend/dist/
+
+# Environment
 .env
+backend/.env
+*.env.local
+
+# Database
 *.db
 *.db-journal
-uploads/
-coverage/
-.DS_Store
-*.log
+*.sqlite
+backend/prisma/dev.db
+database/
 
-# Backup files
+# Logs
+*.log
+backend/logs/
+
+# Uploads
+uploads/
+backend/uploads/
+frontend/uploads/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Temp / generated / scripts
+tmp_*
+gen_*
 *.bak
+*.py
+*.bat
+*.exe
 deploy*.js
 backend/prisma/migrations/_add_file_model/
+backend/docs.json
+backend/docs_test.json
+backend/production_shifts.json
+backend/check_*.cjs
+backend/find_file.cjs
+frontend/build.mjs
+frontend/check_*.js
+frontend/gen_*
+frontend/patch_*.js
+
+# Internal docs (not for public repo)
+APP_MAP.md
+DB_AUDIT_REPORT.md
+TEST_REPORT.md
+AGENTS.md
+
+# E2E
+crm-e2e/
