@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import ActionContextPanel from "./ActionContextPanel";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { actionsAPI } from "../api";
+
+import { clientsAPI } from "../api";
 import toast from "react-hot-toast";
 
 const ACTION_TYPES: Record<string, { icon: string; label: string }> = {
@@ -259,11 +260,11 @@ export default function ClientActions({ clientId }: Props) {
 
   const { data: actions, isLoading } = useQuery({
     queryKey: ["client-actions", clientId],
-    queryFn: () => actionsAPI.getByClient(clientId).then((r) => r.data),
+    queryFn: () => clientsAPI.getActions(clientId),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => actionsAPI.create(clientId, data),
+    mutationFn: (data: any) => clientsAPI.createAction(clientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-actions", clientId] });
       toast.success("Действие добавлено");
@@ -275,7 +276,7 @@ export default function ClientActions({ clientId }: Props) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
-      actionsAPI.update(clientId, id, data),
+      clientsAPI.updateAction(clientId, id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-actions", clientId] });
       toast.success("Действие обновлено");
@@ -284,7 +285,7 @@ export default function ClientActions({ clientId }: Props) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => actionsAPI.delete(clientId, id),
+    mutationFn: (id: string) => clientsAPI.deleteAction(clientId, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-actions", clientId] });
       toast.success("Действие удалено");
@@ -293,7 +294,7 @@ export default function ClientActions({ clientId }: Props) {
   });
 
   const reorderMutation = useMutation({
-    mutationFn: (orderedIds: string[]) => actionsAPI.reorder(clientId, orderedIds),
+    mutationFn: (orderedIds: string[]) => clientsAPI.reorderActions(clientId, orderedIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-actions", clientId] });
     },

@@ -1,29 +1,22 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { ServiceCaseService } from "../services/ServiceCaseService";
 import { createServiceCaseSchema } from "../validators";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 const service = new ServiceCaseService();
 
-router.get("/", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/", requirePermission("service:view"), asyncHandler(async (_req, res) => {
     const cases = await service.getAll("", "");
     res.json(cases);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch service cases" });
-  }
-});
+}));
 
-router.post("/", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/", requirePermission("service:create"), asyncHandler(async (req, res) => {
     const data = createServiceCaseSchema.parse(req.body);
     const sc = await service.create(data, req.user!.id);
     res.status(201).json(sc);
-  } catch (e: any) {
-    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
-    res.status(500).json({ error: "Failed to create service case" });
-  }
-});
+}));
 
 export default router;

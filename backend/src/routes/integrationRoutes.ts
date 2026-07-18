@@ -1,21 +1,18 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { IntegrationService } from "../services/IntegrationService";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 const service = new IntegrationService();
 
-router.get("/logs", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/logs", requirePermission("integrations:view"), asyncHandler(async (_req, res) => {
     const logs = await service.getLogs();
     res.json(logs);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch integration logs" });
-  }
-});
+}));
 
-router.post("/sync/1c", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/sync/1c", requirePermission("integrations:create"), asyncHandler(async (req, res) => {
     const log = await service.createLog({
       direction: "Incoming",
       system: "1C",
@@ -24,13 +21,9 @@ router.post("/sync/1c", async (req: AuthRequest, res: Response) => {
       createdById: req.user!.id,
     });
     res.json({ message: "1C sync received", log });
-  } catch (e: any) {
-    res.status(500).json({ error: "1C sync failed" });
-  }
-});
+}));
 
-router.post("/sync/finance-table", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/sync/finance-table", requirePermission("integrations:create"), asyncHandler(async (req, res) => {
     const log = await service.createLog({
       direction: req.body.direction || "Incoming",
       system: "FinanceTable",
@@ -39,13 +32,9 @@ router.post("/sync/finance-table", async (req: AuthRequest, res: Response) => {
       createdById: req.user!.id,
     });
     res.json({ message: "Finance table sync received", log });
-  } catch (e: any) {
-    res.status(500).json({ error: "Finance table sync failed" });
-  }
-});
+}));
 
-router.post("/weather", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/weather", requirePermission("integrations:create"), asyncHandler(async (req, res) => {
     const log = await service.createLog({
       direction: "Incoming",
       system: "Weather",
@@ -54,9 +43,6 @@ router.post("/weather", async (req: AuthRequest, res: Response) => {
       createdById: req.user!.id,
     });
     res.json({ message: "Weather data received", log });
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to process weather data" });
-  }
-});
+}));
 
 export default router;

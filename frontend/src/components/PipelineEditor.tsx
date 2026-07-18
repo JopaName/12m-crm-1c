@@ -34,29 +34,28 @@ const DEFAULT_STAGES: StageConfig[] = [
 let _cachedPipeline: StageConfig[] | null = null;
 function loadPipeline(): StageConfig[] {
   if (_cachedPipeline && _cachedPipeline.length > 0) return _cachedPipeline;
-  // Try localStorage cache (last known server state)
-  try {
-    const cached = localStorage.getItem("crm_pipeline_cache");
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
   return DEFAULT_STAGES;
 }
 
-// Load pipeline from server
+// Load pipeline from server (always fetch, server is source of truth)
 export async function fetchPipeline(): Promise<StageConfig[]> {
   try {
     const token = localStorage.getItem("token");
     const r = await fetch("/api/pipeline/config", { headers: { Authorization: "Bearer " + token } });
+    if (!r.ok) throw new Error("not ok");
     const data = await r.json();
     if (data.stages && Array.isArray(data.stages) && data.stages.length > 0) {
       _cachedPipeline = data.stages;
       localStorage.setItem("crm_pipeline_cache", JSON.stringify(data.stages));
       return data.stages;
     }
-  } catch {}
+  } catch {
+    // Server unreachable - fall back to cache
+    try {
+      const cached = localStorage.getItem("crm_pipeline_cache");
+      if (cached) { const p = JSON.parse(cached); if (Array.isArray(p) && p.length > 0) return p; }
+    } catch {}
+  }
   return loadPipeline();
 }
 
@@ -150,12 +149,6 @@ export default function PipelineEditor({ onClose }: { onClose: () => void }) {
                       placeholder="Название этапа"
                       autoFocus
                     />
-                    <input
-                      value={stage.key}
-                      onChange={e => setStages(stages.map((s, i) => i === idx ? { ...s, key: e.target.value.replace(/\s/g, "_") } : s))}
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-500 outline-none focus:ring-2 focus:ring-blue-500/20"
-                      placeholder="Ключ (например: Lead_Created)"
-                    />
                     <div className="flex flex-wrap gap-1.5">
                       {COLOR_OPTIONS.map(c => (
                         <button key={c.value} onClick={() => setStages(stages.map((s, i) => i === idx ? { ...s, color: c.value } : s))}
@@ -172,7 +165,7 @@ export default function PipelineEditor({ onClose }: { onClose: () => void }) {
                   <>
                     <div className="flex-1 min-w-0" onClick={() => setEditingIdx(idx)}>
                       <p className="text-sm font-medium text-gray-800 cursor-pointer hover:text-blue-600">{stage.label}</p>
-                      <p className="text-[10px] text-gray-400">{stage.key}</p>
+  
                     </div>
                     <div className="flex items-center gap-1">
                       <button onClick={() => setEditingIdx(idx)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Редактировать">

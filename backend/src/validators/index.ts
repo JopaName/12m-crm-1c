@@ -59,15 +59,20 @@ export const convertLeadSchema = z.object({
   dealType: z.string().max(100).optional(),
   expectedAmount: z.number().nonnegative().optional(),
   clientInn: z.string().max(20).optional(),
+  clientId: z.string().optional(),
 });
 
 // --- Deal ---
 export const createDealSchema = z.object({
-  clientId: z.string().min(1),
+  clientName: z.string().min(1).optional(),
+  clientPhone: z.string().optional(),
   clientInn: z.string().max(20).optional(),
-  dealType: z.string().max(100),
+  clientId: z.string().optional(),
+  dealType: z.string().max(100).optional().default("Sale"),
   expectedAmount: z.number().nonnegative().optional(),
   description: z.string().max(5000).optional(),
+  responsibleAgentId: z.string().optional(),
+  status: z.string().optional(),
 });
 
 export const updateDealStatusSchema = z.object({
@@ -153,16 +158,18 @@ export const createPaymentSchema = z.object({
 
 // --- Procurement ---
 export const createPurchaseRequestSchema = z.object({
-  productId: z.string().optional(),
-  productName: z.string().optional(),
+  productId: z.string().nullable().optional(),
+  productName: z.string().nullable().optional(),
   quantity: z.number().int().positive(),
   status: z.string().optional(),
-  supplierId: z.string().optional(),
-  responsibleUserId: z.string().optional(),
-  dueDate: z.string().optional(),
+  dealId: z.string().optional(),
+  paymentType: z.string().optional(),
+  supplierId: z.string().nullable().optional(),
+  responsibleUserId: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
   note: z.string().max(5000).optional(),
-  fileUrl: z.string().optional(),
-  fileName: z.string().optional(),
+  fileUrl: z.string().nullable().optional(),
+  fileName: z.string().nullable().optional(),
   urgency: z.string().max(50).optional(),
   notes: z.string().max(5000).optional(),
 });
@@ -180,8 +187,8 @@ export const createSupplierSchema = z.object({
 export const createSupplierOrderSchema = z.object({
   supplierId: z.string().min(1),
   items: z.array(z.object({
-    productId: z.string().optional(),
-    productName: z.string().optional(),
+    productId: z.string().nullable().optional(),
+    productName: z.string().nullable().optional(),
     quantity: z.number().int().positive(),
     price: z.number().nonnegative(),
   })).optional(),

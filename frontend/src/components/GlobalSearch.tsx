@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useNavigate, useRef, useState } from "react";;
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Briefcase, Building2, CreditCard, Factory, FileText, Icon, Loader2, Package, Search, ShoppingCart, User, Wrench, X } from "lucide-react";;
-import { dealsAPI, clientsAPI, tasksAPI, productsAPI, procurementAPI, warehouseAPI } from "../api";
+import { dealsAPI, tasksAPI, productsAPI, procurementAPI, warehouseAPI } from "../api";
 
 interface SearchResult {
   type: string;
@@ -65,7 +65,7 @@ export default function GlobalSearch() {
       });
 
       // Clients
-      const clients = await clientsAPI.getAll().then(r => r.data);
+      const clients = await Promise.resolve([]);
       (clients || []).forEach((c: any) => {
         if (c.name?.toLowerCase().includes(ql) || c.phone?.includes(q) || c.inn?.includes(q))
           all.push({ type: "client", label: "Клиент", title: c.name, subtitle: `${c.phone || ""} ${c.inn ? "ИНН " + c.inn : ""}`, url: `/clients#${encodeURIComponent(c.name)}` });

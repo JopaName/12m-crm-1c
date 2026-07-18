@@ -1,13 +1,14 @@
 import { Router, Response } from "express";
 import { prisma } from "../db";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { LegalService } from "../services/LegalService";
 import { createLegalDocumentSchema } from "../validators";
 
 const router = Router();
 const service = new LegalService();
 
-router.get("/", async (_req: AuthRequest, res: Response) => {
+router.get("/", requirePermission("legal:view"), async (_req: AuthRequest, res: Response) => {
   try {
     const docs = await service.getAll("", "");
     res.json(docs);
@@ -16,7 +17,7 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
   }
 });
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", requirePermission("legal:create"), async (req: AuthRequest, res: Response) => {
   try {
     const data = createLegalDocumentSchema.parse(req.body);
     const doc = await service.create(data, req.user!.id);
@@ -27,7 +28,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.put("/:id", async (req: AuthRequest, res: Response) => {
+router.put("/:id", requirePermission("legal:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const doc = await service.update(req.params.id, req.body, req.user!.id);
     res.json(doc);
@@ -36,7 +37,7 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get("/categories", async (_req: AuthRequest, res: Response) => {
+router.get("/categories", requirePermission("legal:view"), async (_req: AuthRequest, res: Response) => {
   try {
     const cats = await prisma.legalDocument.findMany({
       where: { category: { not: null }, isArchived: false },
@@ -49,7 +50,7 @@ router.get("/categories", async (_req: AuthRequest, res: Response) => {
   }
 });
 
-router.get("/types", async (req: AuthRequest, res: Response) => {
+router.get("/types", requirePermission("legal:view"), async (req: AuthRequest, res: Response) => {
   try {
     const where: any = { isArchived: false };
     if (req.query.category) where.category = String(req.query.category);

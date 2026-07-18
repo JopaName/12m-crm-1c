@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { prisma } from "../db";
-import { AuthRequest, authMiddleware } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
@@ -60,7 +61,7 @@ router.post("/register", async (req, res: Response) => {
 });
 
 // ─── GET: Team Tree (3 levels down) ───
-router.get("/tree", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/tree", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
@@ -132,7 +133,7 @@ router.get("/tree", authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── GET: My Sales ───
-router.get("/my-sales", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/my-sales", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const deals = await prisma.deal.findMany({
       where: { responsibleAgentId: req.user!.id, isArchived: false },
@@ -148,7 +149,7 @@ router.get("/my-sales", authMiddleware, async (req: AuthRequest, res: Response) 
 });
 
 // ─── GET: Referral Earnings ───
-router.get("/earnings", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/earnings", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const earnings = await prisma.referralEarning.findMany({
       where: { earnerId: req.user!.id },
@@ -165,7 +166,7 @@ router.get("/earnings", authMiddleware, async (req: AuthRequest, res: Response) 
 });
 
 // ─── GET: Invite Link ───
-router.get("/invite-link", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/invite-link", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { referralCode: true } });
     if (!user?.referralCode) {
@@ -181,7 +182,7 @@ router.get("/invite-link", authMiddleware, async (req: AuthRequest, res: Respons
 });
 
 // ─── GET: Commission Config (admin) ───
-router.get("/config", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/config", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const configs = await prisma.referralCommissionConfig.findMany({ orderBy: { level: "asc" } });
     res.json(configs);
@@ -191,7 +192,7 @@ router.get("/config", authMiddleware, async (req: AuthRequest, res: Response) =>
 });
 
 // ─── PUT: Update Commission Config (admin) ───
-router.put("/config", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put("/config", authMiddleware, requirePermission("users:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const { level, percentage, isActive } = req.body;
     const existing = await prisma.referralCommissionConfig.findUnique({ where: { level } });

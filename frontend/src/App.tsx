@@ -15,16 +15,16 @@ import InstallationPage from "./pages/InstallationPage";
 import LegalPage from "./pages/LegalPage";
 import ServicePage from "./pages/ServicePage";
 import TasksPage from "./pages/TasksPage";
-import UsersPage from "./pages/UsersPage";
-import RolesPage from "./pages/RolesPage";
+import CompanyPage from "./pages/CompanyPage";
+
 import ChatPage from "./pages/ChatPage";
 import RegisterPage from "./pages/RegisterPage";
+import InviteRegisterPage from "./pages/InviteRegisterPage";
 import ReferralPage from "./pages/ReferralPage";
 import CalculatorPage from "./pages/CalculatorPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import Layout from "./components/Layout";
 
-<Route path="/register" element={<RegisterPage />} />
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -62,8 +62,7 @@ export default function App() {
         <Route path="legal" element={<LegalPage />} />
         <Route path="service" element={<ServicePage />} />
         <Route path="tasks" element={<TasksPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="roles" element={<RolesPage />} />
+        <Route path="company" element={<CompanyPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="knowledge" element={<KnowledgeBasePage />} />
         <Route path="referrals" element={<ReferralPage />} />
@@ -74,6 +73,8 @@ export default function App() {
         <Route path="referrals/config" element={<ReferralPage />} />
         <Route path="calculator" element={<CalculatorPage />} />
               </Route>
-        </Routes>
+        <Route path="/register/:token" element={<InviteRegisterPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      </Routes>
   );
 }

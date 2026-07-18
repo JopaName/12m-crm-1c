@@ -34,8 +34,8 @@ export default function DealFormModal({ onClose, currentUser }: {
       } catch(e) {}
       
       await api.post("/deals", {
-        name: f.name.trim(),
-        phone: f.phone.trim(),
+        clientName: f.name.trim(),
+        clientPhone: f.phone.trim(),
         description: f.description.trim(),
         responsibleAgentId: currentUser?.id,
         status: firstStage,

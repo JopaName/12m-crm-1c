@@ -8,7 +8,6 @@ interface Props {
 }
 
 const actionLabels: Record<string, string> = {
-  # removed,
   update_deal_status: "Обновить статус сделки",
   create_task: "Создать задачу",
 };

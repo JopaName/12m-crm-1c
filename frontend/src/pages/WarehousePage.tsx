@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { warehouseAPI } from "../api";
 import { cn } from "../components/cn";
-import { Plus, Search, Package, Boxes, ArrowRightLeft, Truck, ShoppingCart, Clipboard, Edit3, Trash2, X, Save, Building2, Calendar, DollarSign, Hash, Ruler, ChevronDown, ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Home } from "lucide-react";
+import { Plus, Search, Package, Boxes, ArrowRightLeft, Truck, ShoppingCart, Clipboard, Edit3, Trash2, X, Save, Building2, Calendar, DollarSign, Hash, Ruler, ChevronDown, ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Home, Download, Clock, FileText, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 
 type TabType = "items" | "receipts" | "transfers";
@@ -14,7 +14,11 @@ export default function WarehousePage() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [detailItem, setDetailItem] = useState<any>(null);
-  const [form, setForm] = useState({ productName: "", sku: "", description: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", categoryTag: "", note: "" });
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptForm, setReceiptForm] = useState<{quantity:string,comment:string,file:File|null}>({ quantity: "", comment: "", file: null });
+  const [receipts, setReceipts] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [form, setForm] = useState({ productName: "", sku: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", note: "" });
   const [categoryForm, setCategoryForm] = useState({ name: "", parentId: "" });
   const [showCatForm, setShowCatForm] = useState(false);
   const [expandAll, setExpandAll] = useState(false);
@@ -25,6 +29,7 @@ export default function WarehousePage() {
   const { data: categories } = useQuery({ queryKey: ["warehouse-categories"], queryFn: () => warehouseAPI.getCategories().then((r: any) => r.data), refetchInterval: 30000 });
   const { data: items } = useQuery({ queryKey: ["warehouse-items", selectedCategory], queryFn: () => selectedCategory ? warehouseAPI.getCategoryItems(selectedCategory).then((r: any) => r.data) : Promise.resolve([]), enabled: !!selectedCategory, refetchInterval: 15000 });
   const { data: transfers } = useQuery({ queryKey: ["warehouse-transfers"], queryFn: () => warehouseAPI.getTransfers().then((r: any) => r.data) });
+  const { data: issuance } = useQuery({ queryKey: ["warehouse-issuance"], queryFn: () => warehouseAPI.getIssuance().then((r: any) => r.data) });
 
   const filteredItems = (items || []).filter((i: any) => !searchQuery || (i.productName || "").toLowerCase().includes(searchQuery.toLowerCase()) || (i.sku || "").toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -32,6 +37,12 @@ export default function WarehousePage() {
 
   const createItem = useMutation({ mutationFn: ({ categoryId, data }: { categoryId: string; data: any }) => warehouseAPI.createItem(categoryId, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-items", selectedCategory] }); toast.success("Товар добавлен"); setShowForm(false); }, onError: () => toast.error("Ошибка") });
   const updateItem = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => warehouseAPI.updateItem(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-items", selectedCategory] }); toast.success("Обновлено"); setShowForm(false); setEditingItem(null); }, onError: () => toast.error("Ошибка") });
+  const createReceipt = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: any }) => warehouseAPI.createReceipt(itemId, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-items", selectedCategory] }); queryClient.invalidateQueries({ queryKey: ["warehouse-all-receipts"] }); toast.success("Приемка оформлена"); setShowReceipt(false); setReceiptForm({ quantity: "", comment: "", file: null }); if (detailItem) loadReceipts(detailItem.id); },
+    onError: () => toast.error("Ошибка приемки")
+  });
+  const loadReceipts = async (itemId: string) => { try { const data = await warehouseAPI.getReceipts(itemId); setReceipts(data || []); } catch { setReceipts([]); } };
   const deleteItem = useMutation({ mutationFn: (id: string) => warehouseAPI.deleteItem(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-items", selectedCategory] }); toast.success("Удалено"); setDetailItem(null); }, onError: () => toast.error("Ошибка") });
   const createCat = useMutation({ mutationFn: (d: any) => warehouseAPI.createCategory(d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-categories"] }); toast.success("Каталог создан"); setShowCatForm(false); setEditingCat(null); setCategoryForm({ name: "", parentId: "" }); }, onError: () => toast.error("Ошибка") });
   const updateCat = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => warehouseAPI.updateCategory(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["warehouse-categories"] }); toast.success("Каталог обновлён"); setShowCatForm(false); setEditingCat(null); setCategoryForm({ name: "", parentId: "" }); }, onError: () => toast.error("Ошибка") });
@@ -148,7 +159,7 @@ export default function WarehousePage() {
               <div className="flex items-center gap-2 flex-wrap">
               <div className="flex-1" />
               <div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" /><input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-40 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
-              {selectedCategory && <button onClick={() => { setEditingItem(null); setForm({ productName: "", sku: "", description: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", categoryTag: "", note: "" }); setShowForm(true); }} className="flex items-center gap-1 text-xs px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700"><Plus className="w-3 h-3" />Товар</button>}
+              {selectedCategory && <button onClick={() => { setEditingItem(null); setForm({ productName: "", sku: "", quantity: "0", unit: "шт", purchasePrice: "", salePrice: "", note: "" }); setShowForm(true); }} className="flex items-center gap-1 text-xs px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700"><Plus className="w-3 h-3" />Товар</button>}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -163,7 +174,7 @@ export default function WarehousePage() {
                         <td className="px-3 py-2.5"><span className={cn("text-sm font-semibold", Number(item.quantity) <= 0 ? "text-red-600" : Number(item.quantity) < 5 ? "text-amber-600" : "text-gray-700")}>{item.quantity} <span className="text-gray-400 font-normal text-xs">{item.unit}</span></span></td>
                         <td className="px-3 py-2.5 text-sm text-gray-600">{item.purchasePrice ? `${Number(item.purchasePrice).toLocaleString()} ₽` : "—"}</td>
                         <td className="px-3 py-2.5 text-sm text-gray-600">{item.salePrice ? `${Number(item.salePrice).toLocaleString()} ₽` : "—"}</td>
-                        <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}><button onClick={() => { setEditingItem(item); setForm({ productName: item.productName, sku: item.sku || "", description: item.description || "", quantity: String(item.quantity), unit: item.unit, purchasePrice: String(item.purchasePrice || ""), salePrice: String(item.salePrice || ""), categoryTag: item.categoryTag || "", note: item.note || "" }); setShowForm(true); }} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded mr-0.5"><Edit3 className="w-3.5 h-3.5" /></button><button onClick={() => { if (confirm("Удалить?")) deleteItem.mutate(item.id); }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button></td>
+                        <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}><button onClick={() => { setEditingItem(item); setForm({ productName: item.productName, sku: item.sku || "", quantity: String(item.quantity), unit: item.unit, purchasePrice: String(item.purchasePrice || ""), salePrice: String(item.salePrice || ""), note: item.note || "" }); setShowForm(true); }} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded mr-0.5"><Edit3 className="w-3.5 h-3.5" /></button><button onClick={() => { if (confirm("Удалить?")) deleteItem.mutate(item.id); }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -177,20 +188,20 @@ export default function WarehousePage() {
       {/* TRANSFERS TAB */}
       {tab === "transfers" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3"><h3 className="font-semibold text-sm text-gray-700">Перемещения товаров</h3></div>
-          {(!transfers || transfers.length === 0) ? <p className="text-sm text-gray-400 text-center py-8">Нет перемещений</p> : (
-            <table className="w-full"><thead><tr className="bg-gray-50 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{["Товар","Откуда","Куда","Кол-во","Дата"].map((h, i) => <th key={i} className="px-3 py-2.5">{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-gray-50">{transfers.map((t: any) => <tr key={t.id} className="text-sm"><td className="px-3 py-2.5 font-medium">{t.productName}</td><td className="px-3 py-2.5 text-gray-500">{categories?.find((c: any) => c.id === t.fromCategoryId)?.name || "—"}</td><td className="px-3 py-2.5 text-gray-500">{categories?.find((c: any) => c.id === t.toCategoryId)?.name || "—"}</td><td className="px-3 py-2.5">{t.quantity}</td><td className="px-3 py-2.5 text-gray-400 text-xs">{new Date(t.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table>
+          <div className="flex items-center justify-between mb-3"><h3 className="font-semibold text-sm text-gray-700">История перемещений</h3></div>
+          {(!transfers || transfers.length === 0) && (!issuance || issuance.length === 0) ? <p className="text-sm text-gray-400 text-center py-8">Нет перемещений</p> : (
+            <table className="w-full"><thead><tr className="bg-gray-50 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{["Тип","Товар","Откуда","Куда","Кол-во","Дата"].map((h, i) => <th key={i} className="px-3 py-2.5">{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-gray-50">
+                {transfers?.map((t: any) => <tr key={t.id} className="text-sm"><td className="px-3 py-2.5"><span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Перемещение</span></td><td className="px-3 py-2.5 font-medium">{t.productName}</td><td className="px-3 py-2.5 text-gray-500">{categories?.find((c: any) => c.id === t.fromCategoryId)?.name || "—"}</td><td className="px-3 py-2.5 text-gray-500">{categories?.find((c: any) => c.id === t.toCategoryId)?.name || "—"}</td><td className="px-3 py-2.5">{t.quantity}</td><td className="px-3 py-2.5 text-gray-400 text-xs">{new Date(t.createdAt).toLocaleDateString()}</td></tr>)}
+                {issuance?.map((i: any) => <tr key={i.id} className="text-sm"><td className="px-3 py-2.5"><span className="text-[10px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Отгрузка</span></td><td className="px-3 py-2.5 font-medium">{i.productName}</td><td className="px-3 py-2.5 text-gray-500">Склад</td><td className="px-3 py-2.5 text-gray-500">{i.clientName} ({i.dealNumber})</td><td className="px-3 py-2.5">{i.quantity}</td><td className="px-3 py-2.5 text-gray-400 text-xs">{new Date(i.createdAt).toLocaleDateString()}</td></tr>)}
+              </tbody></table>
           )}
         </div>
       )}
 
-      {/* RECEIPTS TAB — placeholder */}
+      {/* RECEIPTS TAB — all receipts */}
       {tab === "receipts" && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center text-gray-400 py-12">
-          <Truck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-sm">Поступления будут доступны после интеграции с 1С</p>
-        </div>
+        <AllReceiptsPanel />
       )}
 
       {/* === ITEM DETAIL MODAL (1C-style) === */}
@@ -224,12 +235,62 @@ export default function WarehousePage() {
                 </div>
               )}
             </div>
-            {/* Edit/Delete bar */}
+            {/* Action bar */}
             <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50">
+              <button onClick={() => { setShowReceipt(true); setReceiptForm({ quantity: "", comment: "", file: null }); }} className="flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm"><Download className="w-3.5 h-3.5" />Принять</button>
+              <button onClick={() => { setShowHistory(true); loadReceipts(detailItem.id); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"><Clock className="w-3.5 h-3.5" />История</button>
               <button onClick={() => { const i = detailItem; setDetailItem(null); setEditingItem(i); setForm({ productName: i.productName, sku: i.sku || "", description: i.description || "", quantity: String(i.quantity), unit: i.unit, purchasePrice: String(i.purchasePrice || ""), salePrice: String(i.salePrice || ""), categoryTag: i.categoryTag || "", note: i.note || "" }); setShowForm(true); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors"><Edit3 className="w-3.5 h-3.5" />Редактировать</button>
-              <button onClick={() => { if (confirm("Удалить товар \"" + detailItem.productName + "\"?")) deleteItem.mutate(detailItem.id); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" />Удалить</button>
               <div className="flex-1" />
+              <button onClick={() => { if (confirm("Удалить товар \"" + detailItem.productName + "\"?")) deleteItem.mutate(detailItem.id); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" />Удалить</button>
             </div>
+            {/* Receipt history */}
+            {showHistory && (
+              <div className="px-5 py-3 border-t border-gray-100 max-h-48 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock className="w-3 h-3" />История приемок</span><button onClick={() => setShowHistory(false)} className="text-[10px] text-gray-400 hover:text-gray-600">Скрыть</button></div>
+                {receipts.length === 0 ? (<p className="text-xs text-gray-400 text-center py-3">Нет записей о приемке</p>) : (
+                  <div className="space-y-2">{receipts.map((r: any) => (
+                    <div key={r.id} className="flex items-start gap-2.5 p-2.5 bg-white rounded-lg border border-gray-100">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5"><Download className="w-4 h-4" /></div>
+                      <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><span className="text-sm font-medium text-gray-700">+{r.quantity} {detailItem.unit}</span><span className="text-[10px] text-gray-400">{new Date(r.createdAt).toLocaleDateString("ru-RU",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span></div>
+                      {r.comment && <p className="text-xs text-gray-500 mt-0.5">{r.comment}</p>}
+                      {r.fileUrl && (<a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 mt-1"><FileText className="w-3 h-3" />{r.fileName||"Файл"}</a>)}
+                      <div className="text-[10px] text-gray-400 mt-0.5">{r.createdBy?.firstName} {r.createdBy?.lastName}</div></div>
+                    </div>
+                  ))}</div>
+                )}
+              </div>
+            )}
+            {/* Receipt modal */}
+            {showReceipt && detailItem && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowReceipt(false)}>
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-emerald-50/50">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Download className="w-4 h-4 text-emerald-600" />Приемка товара</h3>
+                    <button onClick={() => setShowReceipt(false)} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-white/60 rounded-lg"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    <div className="bg-emerald-50/50 rounded-lg p-3 flex items-center gap-2.5"><Package className="w-5 h-5 text-emerald-600 shrink-0" /><div className="min-w-0"><div className="text-sm font-medium text-gray-800 truncate">{detailItem.productName}</div><div className="text-xs text-gray-500">В наличии: <span className="font-medium">{detailItem.quantity} {detailItem.unit}</span></div></div></div>
+                    <div><label className="text-xs font-medium text-gray-500 mb-1 block">Количество *</label><div className="flex items-center gap-2"><input type="number" min="0.01" step="0.01" placeholder="0" value={receiptForm.quantity} onChange={e => setReceiptForm(prev=>({...prev,quantity:e.target.value}))} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300" autoFocus /><span className="text-sm text-gray-400">{detailItem.unit}</span></div></div>
+                    <div><label className="text-xs font-medium text-gray-500 mb-1 block">Дата</label><div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50"><Calendar className="w-3.5 h-3.5 text-gray-400" /><span className="text-sm text-gray-600">{new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"})}</span></div></div>
+                    <div><label className="text-xs font-medium text-gray-500 mb-1 block">Комментарий</label><textarea placeholder="Например: поставка от ООО Ромашка..." value={receiptForm.comment} onChange={e=>setReceiptForm(prev=>({...prev,comment:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 resize-none" rows={2} /></div>
+                    <div><label className="text-xs font-medium text-gray-500 mb-1 block">Прикрепить файл</label>
+                      {receiptForm.file ? (
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"><FileText className="w-4 h-4 text-gray-400 shrink-0" /><span className="text-xs text-gray-600 truncate flex-1">{receiptForm.file.name}</span><button onClick={()=>setReceiptForm(prev=>({...prev,file:null}))} className="text-gray-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button></div>
+                      ) : (
+                        <label className="flex items-center justify-center gap-2 px-3 py-3 border-2 border-dashed border-gray-200 rounded-lg text-xs text-gray-400 hover:border-emerald-300 hover:text-emerald-600 cursor-pointer transition-colors"><Upload className="w-4 h-4" />Нажмите, чтобы выбрать файл<input type="file" className="hidden" onChange={e=>{const f=e.target.files?.[0]||null;if(f)setReceiptForm(prev=>({...prev,file:f}))}} /></label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+                    <button onClick={()=>setShowReceipt(false)} className="flex-1 px-4 py-2 text-sm font-medium bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-colors">Отмена</button>
+                    <button onClick={()=>{const qty=parseFloat(receiptForm.quantity);if(!qty||qty<=0){toast.error("Укажите количество");return}createReceipt.mutate({itemId:detailItem.id,data:{quantity:qty,comment:receiptForm.comment||undefined,file:receiptForm.file||undefined}})}} disabled={!receiptForm.quantity||parseFloat(receiptForm.quantity)<=0||createReceipt.isPending} className="flex-1 px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                      {createReceipt.isPending?(<svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>):<Download className="w-3.5 h-3.5" />}
+                      Оформить приемку
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-end px-5 py-3 border-t border-gray-100 bg-gray-50/50">
               <button onClick={() => setDetailItem(null)} className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-colors">Закрыть</button>
             </div>
@@ -248,10 +309,11 @@ export default function WarehousePage() {
             <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
               <input placeholder="Название товара *" value={form.productName} onChange={e => setForm({ ...form, productName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" autoFocus />
               <div className="grid grid-cols-2 gap-3">
-                <input placeholder="Артикул / SKU" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
-                <input placeholder="Категория" value={form.categoryTag} onChange={e => setForm({ ...form, categoryTag: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
+                <div className="flex gap-2">
+                  <input placeholder="Артикул / SKU" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} readOnly={!!form.sku} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
+                  <button type="button" onClick={() => { const ts = Date.now().toString(36).toUpperCase(); const rand = Math.random().toString(36).substring(2, 6).toUpperCase(); setForm({ ...form, sku: 'SKU-' + ts + rand }); }} className="px-2.5 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium whitespace-nowrap transition-colors" title="Сгенерировать артикул">Ген</button>
+                </div>
               </div>
-              <input placeholder="Описание" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
               <div className="grid grid-cols-3 gap-3">
                 <input type="number" placeholder="Кол-во" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
                 <input placeholder="Ед. изм." value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" />
@@ -295,6 +357,70 @@ export default function WarehousePage() {
   );
 }
 
+function AllReceiptsPanel() {
+  const { data: allReceipts, isLoading, isError, refetch } = useQuery({
+    queryKey: ["warehouse-all-receipts"],
+    queryFn: () => warehouseAPI.getAllReceipts().then((r: any) => r || []),
+    refetchInterval: 30000,
+  });
+
+  if (isLoading) return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center text-gray-400 py-12">
+      <svg className="w-10 h-10 mx-auto mb-3 animate-spin text-gray-300" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+      <p className="text-sm">Загрузка...</p>
+    </div>
+  );
+
+  if (isError) return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center py-12">
+      <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-amber-400" />
+      <p className="text-sm text-gray-500 mb-3">Ошибка загрузки</p>
+      <button onClick={() => refetch()} className="px-4 py-2 text-xs font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700">Повторить</button>
+    </div>
+  );
+
+  const receipts = (allReceipts || []) as any[];
+
+  if (receipts.length === 0) return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center text-gray-400 py-12">
+      <Truck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+      <p className="text-sm">Нет поступлений</p>
+      <p className="text-xs text-gray-400 mt-1">История приемок появится здесь</p>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-2.5">Товар</th>
+            <th className="px-4 py-2.5">Категория</th>
+            <th className="px-4 py-2.5 text-right">Кол-во</th>
+            <th className="px-4 py-2.5">Дата</th>
+            <th className="px-4 py-2.5">Комментарий</th>
+            <th className="px-4 py-2.5">Файл</th>
+            <th className="px-4 py-2.5">Кто принял</th>
+          </tr></thead>
+          <tbody>
+            {receipts.map((r: any) => (
+              <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                <td className="px-4 py-2.5 font-medium text-gray-800">{r.item?.productName || "—"}</td>
+                <td className="px-4 py-2.5 text-gray-500">{r.item?.category?.name || "—"}</td>
+                <td className="px-4 py-2.5 text-right font-medium text-emerald-700">+{r.quantity} {r.item?.unit || "шт"}</td>
+                <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                <td className="px-4 py-2.5 text-gray-500 max-w-[180px] truncate">{r.comment || "—"}</td>
+                <td className="px-4 py-2.5">{r.fileUrl ? (<a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 text-xs flex items-center gap-1"><FileText className="w-3 h-3" />Файл</a>) : "—"}</td>
+                <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{r.createdBy?.firstName} {r.createdBy?.lastName}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function CatNode({ c, all, sel, onSel, onDel, onEdit, expandAll, depth = 0 }: any) {
   // When tree key changes (expand/collapse all), use expandAll to set initial state
   const [open, setOpen] = useState(expandAll !== false);
@@ -316,7 +442,7 @@ function CatNode({ c, all, sel, onSel, onDel, onEdit, expandAll, depth = 0 }: an
           ) : (
             <span className="w-[22px] shrink-0" />
           )}
-          <span className="shrink-0">{hasKids && open ? "📂" : hasKids ? "📁" : "📄"}</span>
+          <span className="shrink-0">{hasKids && open ? "📂" : "📁"}</span>
           <span className="truncate">{c.name}</span>
           {hasKids && <span className="text-[10px] text-gray-400 shrink-0">({kids.length})</span>}
         </div>

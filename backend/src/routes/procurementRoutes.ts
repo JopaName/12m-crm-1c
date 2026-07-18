@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
-import { AuthRequest, authMiddleware } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { prisma } from "../db";
 import { ProcurementService } from "../services/ProcurementService";
 import { createPurchaseRequestSchema, createSupplierSchema, createSupplierOrderSchema } from "../validators";
@@ -10,7 +11,7 @@ import path from "path";
 const router = Router();
 const service = new ProcurementService();
 
-router.get("/", async (_req: AuthRequest, res: Response) => {
+router.get("/", requirePermission("procurement:view"), async (_req: AuthRequest, res: Response) => {
   try {
     const data = await service.getProcurementDashboard();
     res.json(data);
@@ -19,7 +20,7 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
   }
 });
 
-router.post("/requests", async (req: AuthRequest, res: Response) => {
+router.post("/requests", requirePermission("procurement:create"), async (req: AuthRequest, res: Response) => {
   try {
     const data = createPurchaseRequestSchema.parse(req.body);
     const request = await service.create(data, req.user!.id);
@@ -30,7 +31,7 @@ router.post("/requests", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post("/suppliers", async (req: AuthRequest, res: Response) => {
+router.post("/suppliers", requirePermission("procurement:create"), async (req: AuthRequest, res: Response) => {
   try {
     const data = createSupplierSchema.parse(req.body);
     const supplier = await service.createSupplier(data);
@@ -41,7 +42,7 @@ router.post("/suppliers", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post("/orders", async (req: AuthRequest, res: Response) => {
+router.post("/orders", requirePermission("procurement:create"), async (req: AuthRequest, res: Response) => {
   try {
     const data = createSupplierOrderSchema.parse(req.body);
     const order = await service.createOrder(data, req.user!.id);
@@ -53,7 +54,7 @@ router.post("/orders", async (req: AuthRequest, res: Response) => {
 });
 
 
-router.put("/requests/:id", async (req: AuthRequest, res: Response) => {
+router.put("/requests/:id", requirePermission("procurement:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const request = await prisma.purchaseRequest.update({
       where: { id: req.params.id },
@@ -65,7 +66,7 @@ router.put("/requests/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete("/requests/:id", async (req: AuthRequest, res: Response) => {
+router.delete("/requests/:id", requirePermission("procurement:delete"), async (req: AuthRequest, res: Response) => {
   try {
     await prisma.purchaseRequest.update({
       where: { id: req.params.id },
@@ -77,7 +78,7 @@ router.delete("/requests/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.put("/suppliers/:id", async (req: AuthRequest, res: Response) => {
+router.put("/suppliers/:id", requirePermission("procurement:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const supplier = await prisma.supplier.update({
       where: { id: req.params.id },
@@ -89,7 +90,7 @@ router.put("/suppliers/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete("/suppliers/:id", async (req: AuthRequest, res: Response) => {
+router.delete("/suppliers/:id", requirePermission("procurement:delete"), async (req: AuthRequest, res: Response) => {
   try {
     await prisma.supplier.update({
       where: { id: req.params.id },
@@ -101,7 +102,7 @@ router.delete("/suppliers/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post("/upload", async (req: AuthRequest, res: Response) => {
+router.post("/upload", requirePermission("procurement:create"), async (req: AuthRequest, res: Response) => {
   try {
     const multer = require("multer");
     const path = require("path");
@@ -129,7 +130,7 @@ router.post("/upload", async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get("/download/:id", async (req: AuthRequest, res: Response) => {
+router.get("/download/:id", requirePermission("procurement:view"), async (req: AuthRequest, res: Response) => {
   try {
     const { prisma } = require("../db");
     const request = await prisma.purchaseRequest.findUnique({

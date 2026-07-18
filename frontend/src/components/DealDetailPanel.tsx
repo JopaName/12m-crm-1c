@@ -1,10 +1,13 @@
-import React, { useEffect, useNavigate, useState } from "react";;
-import { useQuery } from "@tanstack/react-query";
+import FilePreviewModal from "./FilePreviewModal";
+import React, { useEffect, useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { dealsAPI, dealItemsAPI, procurementAPI } from "../api";
+import { dealsAPI, dealItemsAPI, procurementAPI, auditAPI, tasksAPI, dealActionsAPI } from "../api";
 import { cn } from "./cn";
+import toast from "react-hot-toast";
 import DocumentFormModal from "./DocumentFormModal";
-import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, AlertTriangle, Banknote, Wallet, Package, ShoppingCart, Clock } from "lucide-react";
+import TaskFormModal from "./TaskFormModal";
+import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Paperclip, Upload, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, Eye, Banknote, Wallet, Package, ShoppingCart, Clock, Plus } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
 import { getPipelineConfig } from "./PipelineEditor";
 
@@ -13,13 +16,13 @@ const PIPELINE_STAGES = getPipelineConfig();
 
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
-import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Save, Eye } from "lucide-react";
 import DealProgress from "./DealProgress";
 import DealChatPanel from "./DealChatPanel";
 import ProfileModal from "./ProfileModal";
+import { ActionsWorkflow } from "./ActionsWorkflow";
 
-export default function DealDetailPanel({ deal, client, agent, canEdit, canDelete, editDealData, confirmDelete, onClose, onEdit, onSaveEdit, onDelete, onCancelEdit, onCancelDelete, isPending, nextStatuses, prevStatus, onStatusChange, users, clients }: {
-  deal: any; client: any; agent: string; canEdit: boolean; canDelete: boolean;
+export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editDealData, confirmDelete, onClose, onEdit, onSaveEdit, onDelete, onCancelEdit, onCancelDelete, isPending, nextStatuses, prevStatus, onStatusChange, users }: {
+  deal: any; agent: string; canEdit: boolean; canDelete: boolean;
   editDealData: any; confirmDelete: boolean;
   onClose: () => void; onEdit: () => void;
   onSaveEdit: (d: any) => void; onDelete: () => void;
@@ -27,25 +30,39 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
   isPending: boolean;
   nextStatuses: string[]; prevStatus: string | null;
   onStatusChange: (s: string) => void;
-  users?: any[]; clients?: any[];
+  users?: any[];
 }) {
   const [edit, setEdit] = useState(editDealData || null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [docPreview, setDocPreview] = useState<{template: string; label: string} | null>(null);
   const [showDocDrawer, setShowDocDrawer] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
-  const [cancelNote, setCancelNote] = useState("");
-  const [showCancel, setShowCancel] = useState(false);
-  const [showZayavka, setShowZayavka] = useState(false);
-  const [zayavkaProductId, setZayavkaProductId] = useState("");
-  const [zayavkaQty, setZayavkaQty] = useState(1);
-  const [zayavkaPayment, setZayavkaPayment] = useState("наличный");
-  const [zayavkaNote, setZayavkaNote] = useState("");
-  const [zayavkaLoading, setZayavkaLoading] = useState(false);
-  const [zayavkaList, setZayavkaList] = useState<any[]>([]);
-  const [zayavkaError, setZayavkaError] = useState("");
-  const [productsList, setProductsList] = useState<any[]>([]);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [ordersList, setOrdersList] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const [currentOrder, setCurrentOrder] = useState<any | null>(null);
+  const [newOrderNote, setNewOrderNote] = useState("");
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemQty, setNewItemQty] = useState(1);
+  const [newItemPrice, setNewItemPrice] = useState<number | "">("");
+  const [whItems, setWhItems] = useState<any[]>([]);
+  const [newWhItemId, setNewWhItemId] = useState("");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemName, setEditItemName] = useState("");
+  const [editItemQty, setEditItemQty] = useState(1);
+  const [editItemPrice, setEditItemPrice] = useState<number | "">("");
+  const [checklistData, setChecklistData] = useState<Record<string, any>>({});
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [dealFiles, setDealFiles] = useState<any[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: fullDeal } = useQuery({
     queryKey: ["deal-detail", deal.id],
@@ -55,112 +72,204 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
 
   const linked = fullDeal || deal;
 
-  // Load zayavka requests for this deal
-  const loadZayavka = async () => {
+  const linkedTasks = linked.tasks || [];
+
+  const createTaskMut = useMutation({
+    mutationFn: (d: any) => tasksAPI.create({ ...d, dealId: linked.id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deal-detail", deal.id] }); toast.success("Задача создана"); setShowTaskForm(false); },
+    onError: () => toast.error("Ошибка создания задачи")
+  });
+
+  const { data: auditLogs } = useQuery({
+    queryKey: ["deal-audit", deal.id],
+    queryFn: () => auditAPI.getByEntity("Deal", deal.id).then((r) => r.data),
+    enabled: !!deal.id,
+  });
+
+  const _token = () => localStorage.getItem("token") || "";
+  const _fetch = async (method: string, url: string, body?: any) => {
+    const opts: any = { method, headers: { "Content-Type": "application/json", Authorization: "Bearer " + _token() } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw { response: { data: e } }; }
+    return r.json();
+  };
+
+  // Load orders for this deal
+  const loadOrders = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const r = await fetch("/api/procurement/requests?dealId=" + deal.id, { headers: { Authorization: "Bearer " + token } });
-      const data = await r.json();
-      setZayavkaList(data.requests || []);
+      const data = await _fetch("GET", "/api/orders/deal/" + deal.id);
+      setOrdersList(Array.isArray(data) ? data : []);
     } catch {}
   };
-  useEffect(() => { loadZayavka(); }, [deal.id]);
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    // Fetch products + warehouse stock
-    Promise.all([
-      fetch("/api/products", { headers: { Authorization: "Bearer " + token } }).then(r => r.json()),
-      fetch("/api/warehouse/categories", { headers: { Authorization: "Bearer " + token } }).then(r => r.json())
-    ]).then(([products, categories]) => {
-      const prodList = Array.isArray(products) ? products : [];
-      // Fetch items from each subcategory to build stock map
-      const allCatIds = (categories || []).flatMap((c: any) => [c.id, ...(c.children || []).map((ch: any) => ch.id)]);
-      if (allCatIds.length === 0) { setProductsList(prodList); return; }
-      // For simplicity, add products with stock=0 if not in prodList
-      // Merge warehouse items as product suggestions
-      Promise.all(allCatIds.slice(0, 5).map((cid: string) =>
-        fetch("/api/warehouse/categories/" + cid + "/items", { headers: { Authorization: "Bearer " + token } }).then(r => r.json())
-      )).then((results: any[]) => {
-        const whMap: Record<string, any> = {};
-        results.flat().forEach((item: any) => {
-          if (item && item.productName) {
-            if (!whMap[item.productName]) whMap[item.productName] = { productName: item.productName, stock: 0, unit: item.unit };
-            whMap[item.productName].stock += Number(item.quantity) || 0;
-          }
-        });
-        // Add warehouse-only items as products
-        const whProducts = Object.values(whMap).map((w: any) => ({
-          id: "wh_" + w.productName,
-          name: w.productName + " (" + w.unit + ")",
-          stock: w.stock
-        }));
-        // Merge with existing products, prefer product table entries
-        const existing = prodList.map((p: any) => ({ ...p, stock: p.stock || 0 }));
-        setProductsList([...existing, ...whProducts]);
-      }).catch(() => setProductsList(prodList));
-    }).catch(() => {});
-  }, []);
+  useEffect(() => { loadOrders(); }, [deal.id]);
+  const loadWhItems = useCallback(async () => { const token = localStorage.getItem("token"); try { const r = await fetch("/api/warehouse/stock-items", { headers: { Authorization: "Bearer " + token } }); const items = await r.json(); setWhItems(Array.isArray(items) ? items : []); } catch {}; }, []);
+  useEffect(() => { loadWhItems(); }, [ordersOpen, orderModalOpen]);
 
-  const createZayavka = async () => {
-    if (!zayavkaProductId) { setZayavkaError("Выберите товар со склада"); return; }
-    const selected = productsList.find(p => p.id === zayavkaProductId);
-    const isWhProduct = zayavkaProductId.startsWith("wh_");
-    const productName = isWhProduct ? zayavkaProductId.slice(3) : (selected?.name || "");
-    setZayavkaLoading(true); setZayavkaError("");
+  const createOrder = async () => {
+    setOrdersLoading(true); setOrdersError("");
     try {
-      const token = localStorage.getItem("token");
-      const r = await fetch("/api/procurement/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ productId: isWhProduct ? null : zayavkaProductId, productName: productName, quantity: zayavkaQty, paymentType: zayavkaPayment, note: zayavkaNote, dealId: deal.id, status: "processing" })
+      const order = await _fetch("POST", "/api/orders", { dealId: deal.id, note: newOrderNote || undefined });
+      setNewOrderNote("");
+      await loadOrders();
+      setCurrentOrder(order);
+    } catch (e: any) { setOrdersError(e?.response?.data?.error || "Ошибка создания"); }
+    setOrdersLoading(false);
+  };
+
+  const addOrderItem = async (orderId: string) => {
+    const selected = whItems.find((i: any) => i.id === newWhItemId);
+    const pName = selected ? selected.productName + " (" + selected.unit + ")" : newItemName.trim();
+    if (!newWhItemId && !newItemName.trim()) return;
+    setOrdersError("");
+    try {
+      await _fetch("POST", "/api/orders/" + orderId + "/items", {
+        productName: newWhItemId ? pName : newItemName.trim(),
+        quantity: newItemQty,
+        price: newItemPrice === "" ? undefined : (selected ? (selected.salePrice || undefined) : undefined),
+        note: newItemName.trim() || undefined,
+        warehouseItemId: newWhItemId || undefined,
       });
-      if (!r.ok) { const e = await r.json(); setZayavkaError(e.error || "Ошибка"); setZayavkaLoading(false); return; }
-      setZayavkaProductId(""); setZayavkaQty(1); setZayavkaNote("");
-      await loadZayavka();
-    } catch (e: any) { setZayavkaError(e.message || "Ошибка сети"); }
-    setZayavkaLoading(false);
+      setNewWhItemId(""); setNewItemName(""); setNewItemQty(1); setNewItemPrice("");
+      await loadOrders();
+      const updated = await _fetch("GET", "/api/orders/" + orderId);
+      setCurrentOrder(updated);
+    } catch (e: any) { const msg = e?.response?.data?.error || "Ошибка добавления"; setOrdersError(msg); toast.error(msg); }
   };
 
-  const doZayavkaAction = async (id: string, action: string) => {
-    const token = localStorage.getItem("token");
-    const map: Record<string, string> = {
-      "confirm-payment": "confirm-payment",
-      "cash-paid": "cash-paid", 
-      "take-work": "take-work",
-      "ready": "ready",
-      "ship": "ship",
-      "production-ready": "production-ready",
-    };
-    const endpoint = map[action];
-    if (!endpoint) return;
-    const r = await fetch("/api/procurement/requests/" + id + "/" + endpoint, {
-      method: "PUT",
-      headers: { Authorization: "Bearer " + token }
-    });
-    if (!r.ok) {
-      const err = await r.json();
-      setZayavkaError(err.error || "Ошибка операции");
-      return;
-    }
-    setZayavkaError("");
-    loadZayavka();
+  const removeOrderItem = async (orderId: string, itemId: string) => {
+    try {
+      await _fetch("DELETE", "/api/orders/items/" + itemId);
+      await loadOrders();
+      const updated = await _fetch("GET", "/api/orders/" + orderId);
+      setCurrentOrder(updated);
+    } catch {}
   };
 
-  const cancelZayavka = async (id: string, note: string) => {
-    const token = localStorage.getItem("token");
-    const r = await fetch("/api/procurement/requests/" + id + "/cancel", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({ note: note || "Отменена" })
-    });
-    if (!r.ok) {
-      const err = await r.json();
-      setZayavkaError(err.error || "Ошибка отмены");
-      return;
-    }
-    setZayavkaError("");
-    loadZayavka();
+  const startEditItem = (item: any) => {
+    setEditingItemId(item.id);
+    setEditItemName(item.productName);
+    setEditItemQty(item.quantity);
+    setEditItemPrice(item.price ?? "");
   };
+
+  const saveEditItem = async () => {
+    if (!editingItemId) return;
+    try {
+      await _fetch("PUT", "/api/orders/items/" + editingItemId, {
+        productName: editItemName,
+        quantity: editItemQty,
+        price: editItemPrice === "" ? undefined : editItemPrice,
+      });
+      setEditingItemId(null);
+      await loadOrders();
+      if (currentOrder) {
+        const updated = await _fetch("GET", "/api/orders/" + currentOrder.id);
+        setCurrentOrder(updated);
+      }
+    } catch {}
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      await _fetch("PUT", "/api/orders/" + orderId, { status });
+      await loadOrders();
+      const updated = await _fetch("GET", "/api/orders/" + orderId);
+      setCurrentOrder(updated);
+    } catch {}
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await _fetch("DELETE", "/api/orders/" + orderId);
+      if (currentOrder?.id === orderId) setCurrentOrder(null);
+      loadOrders();
+    } catch {}
+  };
+
+  const toggleChecklist = async (order: any) => {
+    try {
+      let cl = checklistData[order.id];
+      if (!cl) {
+        cl = await _fetch("POST", "/api/orders/" + order.id + "/checklist");
+        setChecklistData((prev: any) => ({ ...prev, [order.id]: cl }));
+      } else {
+        setChecklistData((prev: any) => ({ ...prev, [order.id]: undefined }));
+      }
+    } catch (e: any) { setOrdersError(e?.response?.data?.error || "Ошибка"); }
+  };
+
+  const toggleChecklistItem = async (itemId: string, checked: boolean) => {
+    try {
+      await _fetch("PUT", "/api/orders/checklist/items/" + itemId, { checked });
+      // Refresh checklist for current order
+      if (currentOrder) {
+        const cl = await _fetch("GET", "/api/orders/" + currentOrder.id + "/checklist");
+        if (cl) setChecklistData((prev: any) => ({ ...prev, [currentOrder.id]: cl }));
+      }
+    } catch {}
+  };
+
+  const completeChecklist = async (checklistId: string) => {
+    try {
+      await _fetch("PUT", "/api/orders/checklist/" + checklistId, { status: "completed", completedAt: new Date().toISOString() });
+      if (currentOrder) {
+        const cl = await _fetch("GET", "/api/orders/" + currentOrder.id + "/checklist");
+        if (cl) setChecklistData((prev: any) => ({ ...prev, [currentOrder.id]: cl }));
+      }
+    } catch {}
+  };
+
+  const loadFiles = async () => {
+    setFilesLoading(true);
+    try {
+      const data = await _fetch("GET", "/api/deals/" + deal.id + "/files");
+      setDealFiles(Array.isArray(data?.files) ? data.files : Array.isArray(data) ? data : []);
+    } catch {}
+    setFilesLoading(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const fd = new FormData();
+        fd.append("file", files[i]);
+        const token = _token();
+        const r = await fetch("/api/deals/" + deal.id + "/files", { method: "POST", headers: { Authorization: "Bearer " + token }, body: fd });
+        if (r.ok) toast.success("Файл загружен: " + files[i].name);
+        else { const err = await r.json().catch(() => ({})); toast.error(err.error || "Ошибка загрузки"); }
+      } catch { toast.error("Ошибка загрузки: " + files[i].name); }
+    }
+    e.target.value = "";
+    loadFiles();
+  };
+
+  const deleteFile = async (fileId: string) => {
+    try {
+      await _fetch("DELETE", "/api/deals/" + deal.id + "/files/" + fileId);
+      toast.success("Файл удалён");
+      loadFiles();
+    } catch {}
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    if (!e.dataTransfer.files.length) return;
+    for (let i = 0; i < e.dataTransfer.files.length; i++) {
+      try {
+        const fd = new FormData();
+        fd.append("file", e.dataTransfer.files[i]);
+        const token = _token();
+        const r = await fetch("/api/deals/" + deal.id + "/files", { method: "POST", headers: { Authorization: "Bearer " + token }, body: fd });
+        if (r.ok) toast.success("Файл загружен: " + e.dataTransfer.files[i].name);
+      } catch {}
+    }
+    loadFiles();
+  };
+
+  const fmtSize = (b: number) => b < 1024 ? b + " B" : b < 1024*1024 ? (b/1024).toFixed(1) + " KB" : (b/1024/1024).toFixed(1) + " MB";
   const hasProduction = (linked.productionOrders || []).length > 0;
   const hasInstallation = (linked.installationTasks || []).length > 0;
   const hasService = (linked.serviceCases || []).length > 0;
@@ -181,21 +290,57 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
         {/* ===== LEFT COLUMN: Deal details ===== */}
         <div className="flex flex-col flex-1 min-w-0 border-r border-gray-100">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary-500" />
-              <div>
-                <h3 className="font-semibold text-gray-900 text-sm">{linked.dealNumber}</h3>
-                <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", STATUS_META[linked.status]?.lightBg, STATUS_META[linked.status]?.color)}>
-                  {STATUS_META[linked.status]?.label}
-                </span>
+          <div className="relative bg-gradient-to-br from-primary-600 to-primary-800 px-5 py-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
+                  <Briefcase className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-sm">{linked.dealNumber}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", STATUS_META[linked.status]?.lightBg, STATUS_META[linked.status]?.color)}>
+                      {STATUS_META[linked.status]?.label}
+                    </span>
+                    {linked.clientName && <span className="text-[10px] text-white/70">{linked.clientName}</span>}
+                  </div>
+                </div>
               </div>
+              <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* Tab navigation */}
+          <div className="flex items-center gap-1 px-5 py-2 border-b border-gray-100 bg-gray-50/50 shrink-0">
+            {[
+              { key: "details", label: "Детали", icon: "📋" },
+              { key: "tasks", label: "Задачи", icon: "📌" },
+
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === tab.key
+                    ? "bg-white text-primary-700 shadow-sm border border-gray-200"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
+                }`}
+              >
+                <span>{tab.icon}</span>
+                {tab.label}
+                {tab.key === "tasks" && linkedTasks.length > 0 && (
+                  <span className="ml-1 w-4 h-4 rounded-full bg-primary-500 text-white text-[9px] flex items-center justify-center font-bold">{linkedTasks.length}</span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {activeTab === "details" && (
+            <>
             {/* Pipeline tabs */}
             <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 overflow-x-auto">
               {PIPELINE_STAGES.map((stage, i) => {
@@ -224,23 +369,6 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
               })}
             </div>
 
-            {/* Pipeline actions */}
-            {!edit && linked.status !== "Deal_Closed" && linked.status !== "Lead_Created" && (
-              <div className="space-y-2">
-                {showCancel ? (
-                  <div className="flex items-center gap-2">
-                    <input value={cancelNote} onChange={e => setCancelNote(e.target.value)} placeholder="Причина отмены" className="flex-1 px-3 py-2 border border-red-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-red-200" />
-                    <button onClick={async () => { try { const r = await fetch('/api/deals/' + linked.id + '/cancel', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ note: cancelNote }) }); if (r.ok) { onClose(); } else { const e = await r.json(); alert(e.error || 'Ошибка'); } } catch {} }} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">Отменить лиду</button>
-                    <button onClick={() => setShowCancel(false)} className="px-2 py-2 text-gray-500 text-xs">✕</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowCancel(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-all">
-                    <AlertTriangle className="w-3 h-3" /> Отменить лиду
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Document generation */}
             <div className="space-y-2">
               <button
@@ -253,277 +381,433 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
               </button>
             </div>
 
-            {/* ===== Procurement Zayavka Panel ===== */}
+            {/* ===== Orders / Заявки Panel ===== */}
             {!edit && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setShowZayavka(!showZayavka)} className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-800">
+                  <button
+                    onClick={() => setOrdersOpen(!ordersOpen)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-800"
+                  >
                     <Package className="w-3.5 h-3.5" />
-                    Заявка на поставку
-                    <span className="text-[10px] text-gray-400 font-normal">({zayavkaList.length})</span>
-                    <ChevronRight className={`w-3 h-3 transition-transform ${showZayavka ? "rotate-90" : ""}`} />
+                    Заявки на товары
+                    <span className="text-[10px] text-gray-400 font-normal">({ordersList.length})</span>
+                    <ChevronRight className={`w-3 h-3 transition-transform ${ordersOpen ? "rotate-90" : ""}`} />
                   </button>
-                  {!showZayavka && (
-                    <button onClick={() => setShowZayavka(true)} className="text-[10px] text-primary-600 hover:underline">Создать заявку</button>
+                  {!ordersOpen && (
+                    <button onClick={() => { setCurrentOrder(null); setOrdersError(""); loadOrders(); setOrderModalOpen(true); }} className="text-[10px] text-primary-600 hover:underline">Создать заявку</button>
                   )}
                 </div>
 
-                {showZayavka && (
+                {ordersOpen && (
                   <div className="space-y-2">
-                    {/* Create form */}
-                    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-2">
-                          <select value={zayavkaProductId} onChange={e => setZayavkaProductId(e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500">
-                            <option value="">Выберите товар</option>
-                            {productsList.map(p => (
-                              <option key={p.id} value={p.id}>{p.name}{p.stock > 0 ? ` (${p.stock} шт)` : ''}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <input type="number" min={1} value={zayavkaQty} onChange={e => setZayavkaQty(Math.max(1, +e.target.value))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select value={zayavkaPayment} onChange={e => setZayavkaPayment(e.target.value)} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none">
-                          <option value="наличный">Наличный</option>
-                          <option value="безналичный">Безналичный</option>
-                        </select>
-                        <input value={zayavkaNote} onChange={e => setZayavkaNote(e.target.value)} placeholder="Примечание" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs outline-none" />
-                      </div>
-                      {zayavkaError && <p className="text-[10px] text-red-500">{zayavkaError}</p>}
-                      <button onClick={createZayavka} disabled={zayavkaLoading}
-                        className="w-full py-1.5 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50">
-                        {zayavkaLoading ? "Создание..." : "Создать заявку"}
-                      </button>
-                    </div>
 
-                    {/* Zayavka list */}
-                    {zayavkaList.length > 0 ? (
+                    {/* Orders list */}
+                    {ordersList.length > 0 ? (
                       <div className="space-y-1.5">
-                        {zayavkaList.map((z: any) => {
-                          const statusLabel: Record<string, string> = {
-                            "processing": "Принято в работу",
-                            "ready_for_pickup": "На складе",
-                            "shipped": "Отгружено",
-                            "cancelled": "Отменено",
-                            // legacy fallbacks
-                            "new": "Новая", "payment_pending": "Ожидает оплаты",
-                            "in_progress": "В работе", "for_production": "Под производство", "awaiting_production": "Ожидание производства"
-                          };
-                          const statusColor: Record<string, string> = {
-                            "processing": "bg-blue-100 text-blue-700",
-                            "ready_for_pickup": "bg-amber-100 text-amber-700",
-                            "shipped": "bg-emerald-100 text-emerald-700",
-                            "cancelled": "bg-red-100 text-red-700",
-                            "new": "bg-gray-100 text-gray-600", "payment_pending": "bg-amber-100 text-amber-700",
-                            "in_progress": "bg-purple-100 text-purple-700", "for_production": "bg-orange-100 text-orange-700",
-                            "awaiting_production": "bg-yellow-100 text-yellow-700"
-                          };
-                          const actions: Record<string, {label: string; action: string; color: string}[]> = {
-                            "processing": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"}],
-                            "ready_for_pickup": [{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
-                            "in_progress": [{label:"На склад",action:"ready",color:"bg-amber-600 hover:bg-amber-700"},{label:"Отгрузить",action:"ship",color:"bg-emerald-600 hover:bg-emerald-700"}],
-                          };
-                          const canCancel = ["processing", "in_progress", "ready_for_pickup"].includes(z.status);
-                          return (
-                            <div key={z.id} className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 hover:border-gray-200 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-gray-800">{z.productName}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor[z.status] || "bg-gray-100 text-gray-500"}`}>
-                                  {statusLabel[z.status] || z.status}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 text-[10px] text-gray-400">
-                                <span>{z.quantity} шт.</span>
-                                <span>Оплата: {z.paymentType === "наличный" ? "нал" : z.paymentType === "безналичный" ? "безнал" : "—"}</span>
-                                {z.reserved && <span className="text-green-500">Зарезервировано</span>}
-                              </div>
-                              {/* Pipeline stages mini bar — 3 stages */}
-                              {!["cancelled","shipped"].includes(z.status) && (
-                                <div className="flex items-center gap-1 mt-1">
-                                  {["Принято в работу","На складе","Отгружено"].map((s,i) => {
-                                    const keys = ["processing","ready_for_pickup","shipped"];
-                                    const zi = keys.indexOf(z.status);
-                                    return (
-                                      <React.Fragment key={s}>
-                                        {i > 0 && <div className={`flex-1 h-0.5 rounded ${i <= zi ? "bg-green-400" : "bg-gray-200"}`} />}
-                                        <div className="flex flex-col items-center">
-                                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${i < zi ? "bg-green-100 text-green-600" : i === zi ? "bg-primary-500 text-white ring-2 ring-primary-200" : "bg-gray-100 text-gray-300"}`}>
-                                            {i + 1}
-                                          </div>
-                                          <span className={`text-[8px] mt-0.5 ${i <= zi ? "text-gray-500 font-medium" : "text-gray-300"}`}>{s}</span>
-                                        </div>
-                                      </React.Fragment>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {/* Action buttons */}
-                              {actions[z.status] && actions[z.status].length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {actions[z.status].map(a => (
-                                    <button key={a.action} onClick={() => doZayavkaAction(z.id, a.action)}
-                                      className={`px-2 py-1 text-[10px] font-medium text-white rounded transition-all ${a.color}`}>
-                                      {a.label}
+                        {ordersList.map((o: any) => (
+                          <div key={o.id}>
+                            {currentOrder?.id === o.id ? (
+                              /* Expanded order detail */
+                              <div className="bg-white border border-primary-200 rounded-lg p-2.5 space-y-2">
+                                {/* Order header */}
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-xs font-semibold text-gray-800">{o.orderNumber}</span>
+                                    <span className="ml-2 text-[10px] text-gray-400">{o.items?.length || 0} поз.</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                      o.status === "draft" ? "bg-gray-100 text-gray-600" :
+                                      o.status === "confirmed" ? "bg-blue-100 text-blue-700" :
+                                      o.status === "assembly" ? "bg-amber-100 text-amber-700" :
+                                      o.status === "ready" ? "bg-purple-100 text-purple-700" :
+                                      o.status === "shipped" ? "bg-emerald-100 text-emerald-700" :
+                                      "bg-gray-100 text-gray-500"
+                                    }`}>
+                                      {o.status === "draft" ? "Черновик" :
+                                       o.status === "confirmed" ? "Подтверждён" :
+                                       o.status === "assembly" ? "В сборке" :
+                                       o.status === "ready" ? "Готов к отгрузке" :
+                                       o.status === "shipped" ? "Отгружено" : o.status}
+                                    </span>
+                                    <button onClick={() => { setCurrentOrder(null); loadOrders(); }} className="text-[10px] text-gray-400 hover:text-gray-600 p-0.5">
+                                      <X className="w-3 h-3" />
                                     </button>
+                                  </div>
+                                </div>
+
+                                {/* Status controls */}
+                                <div className="flex flex-wrap gap-1">
+                                  {o.status === "draft" && (
+                                    <button onClick={() => updateOrderStatus(o.id, "confirmed")}
+                                      className="px-2 py-1 text-[10px] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded">Подтвердить</button>
+                                  )}
+                                  {o.status === "confirmed" && (
+                                    <button onClick={() => updateOrderStatus(o.id, "assembly")}
+                                      className="px-2 py-1 text-[10px] font-medium text-white bg-amber-600 hover:bg-amber-700 rounded">Начать сборку</button>
+                                  )}
+                                  {o.status === "assembly" && (
+                                    <button onClick={() => updateOrderStatus(o.id, "ready")}
+                                      className="px-2 py-1 text-[10px] font-medium text-white bg-purple-600 hover:bg-purple-700 rounded">Готов к отгрузке</button>
+                                  )}
+                                  {o.status === "ready" && (
+                                    <button onClick={() => updateOrderStatus(o.id, "shipped")}
+                                      className="px-2 py-1 text-[10px] font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded">Отгрузить</button>
+                                  )}
+                                  {o.status !== "shipped" && o.status !== "draft" && (
+                                    <button onClick={() => updateOrderStatus(o.id, "draft")}
+                                      className="px-2 py-1 text-[10px] font-medium text-gray-500 border border-gray-200 rounded hover:bg-gray-50">В черновик</button>
+                                  )}
+                                  <button onClick={() => { if (confirm("Удалить заявку?")) deleteOrder(o.id); }}
+                                    className="px-2 py-1 text-[10px] font-medium text-red-500 border border-red-200 rounded hover:bg-red-50">Удалить</button>
+                                </div>
+
+                                {/* Items table */}
+                                <div className="space-y-1">
+                                  {(o.items || []).map((item: any, idx: number) => (
+                                    <div key={item.id} className="flex items-center gap-1.5 text-[11px]">
+                                      <span className="text-gray-400 w-4">{idx + 1}.</span>
+                                      {editingItemId === item.id ? (
+                                        <>
+                                          <input value={editItemName} onChange={e => setEditItemName(e.target.value)}
+                                            className="flex-1 px-1.5 py-0.5 border border-gray-200 rounded text-[11px] outline-none" />
+                                          <input type="number" value={editItemQty} onChange={e => setEditItemQty(Math.max(1, +e.target.value))}
+                                            className="w-14 px-1.5 py-0.5 border border-gray-200 rounded text-[11px] outline-none text-center" />
+                                          <input type="number" value={editItemPrice} onChange={e => setEditItemPrice(+e.target.value)}
+                                            className="w-20 px-1.5 py-0.5 border border-gray-200 rounded text-[11px] outline-none text-center" />
+                                          <button onClick={saveEditItem} className="text-green-600 hover:text-green-700 p-0.5"><Save className="w-3 h-3" /></button>
+                                          <button onClick={() => setEditingItemId(null)} className="text-gray-400 hover:text-gray-600 p-0.5"><X className="w-3 h-3" /></button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="flex-1 text-gray-800">{item.productName}</span>
+                                          <span className="text-gray-500 w-12 text-right">{item.quantity} шт.</span>
+                                          <span className="text-gray-500 w-20 text-right">{item.price ? item.price.toLocaleString() + " ₽" : "—"}</span>
+                                          <span className="text-gray-700 w-20 text-right font-medium">{item.total ? item.total.toLocaleString() + " ₽" : (item.price ? (item.price * item.quantity).toLocaleString() + " ₽" : "—")}</span>
+                                          <button onClick={() => startEditItem(item)} className="text-blue-500 hover:text-blue-700 p-0.5"><Edit3 className="w-3 h-3" /></button>
+                                          <button onClick={() => { removeOrderItem(o.id, item.id); }} className="text-red-400 hover:text-red-600 p-0.5"><X className="w-3 h-3" /></button>
+                                        </>
+                                      )}
+                                    </div>
                                   ))}
-                                  {canCancel && (
-                                    <button onClick={() => cancelZayavka(z.id, "Отменена")}
-                                      className="px-2 py-1 text-[10px] font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 transition-all">
-                                      Отменить
+                                </div>
+
+                                {/* Add item form */}
+                                <div className="flex items-center gap-1.5">
+                                  <select value={newWhItemId} onChange={e => { setNewWhItemId(e.target.value); const sel = whItems.find((w: any) => w.id === e.target.value); if (sel) { setNewItemPrice(sel.salePrice || ""); setNewItemName(""); } }}
+                                    className="px-2 py-1 border border-gray-200 rounded text-[11px] outline-none focus:ring-1 focus:ring-primary-500" style={{minWidth:'130px'}}>
+                                    <option value="">Товар со склада</option>
+                                    {whItems.map((w: any) => (
+                                      <option key={w.id} value={w.id}>{w.productName} ({w.quantity} {w.unit})</option>
+                                    ))}
+                                  </select>
+                                  <input type="number" min={1} value={newItemQty} onChange={e => setNewItemQty(Math.max(1, +e.target.value))}
+                                    className="w-16 px-2 py-1 border border-gray-200 rounded text-[11px] outline-none text-center" />
+                                  <input type="number" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value === "" ? "" : +e.target.value)}
+                                    placeholder="Цена"
+                                    className="w-20 px-2 py-1 border border-gray-200 rounded text-[11px] outline-none text-center" />
+                                  <input value={newItemName} onChange={e => setNewItemName(e.target.value)}
+                                    placeholder="Примечание"
+                                    className="w-24 px-2 py-1 border border-gray-200 rounded text-[11px] outline-none focus:ring-1 focus:ring-primary-500" />
+                                  <button onClick={() => addOrderItem(o.id)}
+                                    disabled={!newWhItemId}
+                                    className="px-2 py-1 bg-primary-600 text-white rounded text-[10px] font-medium hover:bg-primary-700 disabled:opacity-50">+</button>
+                                </div>
+
+                                {/* Actions: Checklist & Print */}
+                                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-gray-100">
+                                  <button onClick={() => toggleChecklist(o)}
+                                    className="px-2 py-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100">
+                                    {checklistData?.[o.id] ? "Чек-лист сборки" : "Сформировать чек-лист"}
+                                  </button>
+                                  <button onClick={() => window.open("/api/orders/" + o.id + "/invoice", "_blank")}
+                                    className="px-2 py-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
+                                    <FileText className="w-3 h-3 inline mr-1" />Накладная
+                                  </button>
+                                  {checklistData?.[o.id] && (
+                                    <button onClick={() => window.open("/api/orders/" + o.id + "/checklist/print", "_blank")}
+                                      className="px-2 py-1 text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100">
+                                      <FileText className="w-3 h-3 inline mr-1" />Чек-лист (печать)
                                     </button>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+
+                                {/* Checklist display */}
+                                {checklistData?.[o.id] && (
+                                  <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-2.5 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-wider">
+                                        {checklistData[o.id].title}
+                                      </span>
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                        checklistData[o.id].status === "completed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                                      }`}>
+                                        {checklistData[o.id].status === "completed" ? "✓ Выполнен" : "В работе"}
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {(checklistData[o.id].items || []).map((ci: any) => (
+                                        <label key={ci.id} className="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-amber-50/50 rounded px-1 py-0.5">
+                                          <input type="checkbox" checked={ci.checked} onChange={() => toggleChecklistItem(ci.id, !ci.checked)}
+                                            className="w-3 h-3 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                                          <span className={`flex-1 ${ci.checked ? "line-through text-gray-400" : "text-gray-700"}`}>
+                                            {ci.productName}
+                                          </span>
+                                          <span className="text-gray-400">{ci.quantity} шт.</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                    {checklistData[o.id].status !== "completed" && (
+                                      <button onClick={() => completeChecklist(checklistData[o.id].id)}
+                                        className="w-full py-1 text-[10px] font-medium text-white bg-amber-600 hover:bg-amber-700 rounded">
+                                        Завершить сборку
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              /* Collapsed order card */
+                              <div
+                                onClick={() => setCurrentOrder(o)}
+                                className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center justify-between hover:border-gray-200 transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xs font-medium text-gray-800 truncate">{o.orderNumber}</span>
+                                  <span className="text-[10px] text-gray-400 whitespace-nowrap">({o.items?.length || 0} поз.)</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                    o.status === "draft" ? "bg-gray-100 text-gray-600" :
+                                    o.status === "confirmed" ? "bg-blue-100 text-blue-700" :
+                                    o.status === "assembly" ? "bg-amber-100 text-amber-700" :
+                                    o.status === "ready" ? "bg-purple-100 text-purple-700" :
+                                    o.status === "shipped" ? "bg-emerald-100 text-emerald-700" :
+                                    "bg-gray-100 text-gray-500"
+                                  }`}>
+                                    {o.status === "draft" ? "Черновик" :
+                                     o.status === "confirmed" ? "Подтверждён" :
+                                     o.status === "assembly" ? "В сборке" :
+                                     o.status === "ready" ? "Готов" :
+                                     o.status === "shipped" ? "Отгружено" : o.status}
+                                  </span>
+                                  <ChevronRight className="w-3 h-3 text-gray-300" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     ) : (
-                      <p className="text-[10px] text-gray-400 text-center py-2">Нет заявок. Создайте первую заявку на поставку.</p>
+                      <div className="text-center py-3">
+                      <p className="text-[10px] text-gray-400 mb-2">Нет заявок.</p>
+                      <button onClick={() => { setCurrentOrder(null); setOrdersError(""); loadOrders(); setOrderModalOpen(true); }} className="px-3 py-1.5 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700">+ Создать заявку</button>
+                    </div>
                     )}
                   </div>
                 )}
               </div>
             )}
 
-{/* Deal info cards */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Сумма</span><p className="font-semibold text-gray-800">{(linked.expectedAmount || 0).toLocaleString()} ₽</p></div>
-              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Тип</span><p className="font-semibold text-gray-800">{linked.dealType}</p></div>
-              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Оплата</span><p className="font-semibold text-gray-800">{linked.paymentType || "—"}</p></div>
-              <div className="bg-gray-50 rounded-lg p-2.5"><span className="text-gray-400">Менеджер</span><p className="font-semibold text-gray-800 truncate">{agent || "—"}</p></div>
-            </div>
+
+            {/* ===== Files ===== */}
+            {!edit && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <button onClick={() => { setFilesOpen(!filesOpen); if (!filesOpen) loadFiles(); }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-800">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    Файлы
+                    <span className="text-[10px] text-gray-400 font-normal">({dealFiles.length})</span>
+                    <ChevronRight className={`w-3 h-3 transition-transform ${filesOpen ? "rotate-90" : ""}`} />
+                  </button>
+                </div>
+                {filesOpen && (
+                  <div className="space-y-2">
+                    {/* Drop zone */}
+                    <label
+                      className={`flex flex-col items-center justify-center gap-1 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-all text-center ${
+                        dragOver ? "border-primary-400 bg-primary-50/50" : "border-gray-200 hover:border-primary-300 hover:bg-gray-50"
+                      }`}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={handleDrop}
+                    >
+                      <Upload className="w-5 h-5 text-gray-400" />
+                      <span className="text-[10px] text-gray-500">Перетащите файлы сюда или кликните</span>
+                      <span className="text-[9px] text-gray-400">до 100 МБ</span>
+                      <input type="file" multiple onChange={handleFileUpload} className="hidden" />
+                    </label>
+
+                    {/* File list */}
+                    {filesLoading ? (
+                      <p className="text-[10px] text-gray-400 text-center py-2">Загрузка...</p>
+                    ) : dealFiles.length > 0 ? (
+                      <div className="space-y-1">
+                        {dealFiles.map((f: any) => (
+                          <div key={f.id} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg p-2 hover:border-gray-200 transition-colors group">
+                            <div className="w-7 h-7 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
+                              <FileText className="w-3.5 h-3.5 text-blue-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] text-gray-700 truncate font-medium">{f.originalName}</p>
+                              <p className="text-[9px] text-gray-400">{fmtSize(f.sizeBytes)} • {new Date(f.createdAt).toLocaleDateString("ru-RU")}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setPreviewFile({ id: f.id, fileName: f.originalName, downloadUrl: "/api/deals/" + deal.id + "/files/" + f.id + "/download?token=" + _token() })} 
+                                className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded" title="Просмотр">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <a href={"/api/deals/" + deal.id + "/files/" + f.id + "/download?token=" + _token()} target="_blank" rel="noopener"
+                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Скачать">
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                              <button onClick={() => { if (confirm("Удалить файл?")) deleteFile(f.id); }}
+                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Удалить">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-400 text-center py-2">Нет файлов</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {edit ? (
               <div className="space-y-3">
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Номер лиды</label>
-                  <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
-                
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Тип</label>
-                    <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="Sale">Продажа</option></select></div>
-                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Оплата</label>
-                    <select value={edit.paymentType || ""} onChange={(e) => setEdit({ ...edit, paymentType: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="">Не указан</option><option value="безналичный">Безналичный</option><option value="наличный">Наличный</option></select></div>
-                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Сумма</label>
-                    <input type="number" value={edit.expectedAmount || 0} onChange={(e) => setEdit({ ...edit, expectedAmount: +e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Номер лиды</label>
+                    <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Тип</label>
+                    <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30"><option value="Sale">Продажа</option></select></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Сумма</label>
+                    <input type="number" value={edit.expectedAmount || 0} onChange={(e) => setEdit({ ...edit, expectedAmount: +e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Оплата</label>
+                    <select value={edit.paymentType || ""} onChange={(e) => setEdit({ ...edit, paymentType: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30"><option value="">Не указан</option><option value="безналичный">Безналичный</option><option value="наличный">Наличный</option></select></div>
                 </div>
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Агент</label>
-                  <select value={edit.responsibleAgentId || ""} onChange={(e) => setEdit({ ...edit, responsibleAgentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20"><option value="">Не назначен</option>{users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select></div>
-                
-                <div><label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">Описание</label>
-                  <textarea value={edit.description || ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20 resize-none" rows={2} /></div>
+                <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Агент</label>
+                  <select value={edit.responsibleAgentId || ""} onChange={(e) => setEdit({ ...edit, responsibleAgentId: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30"><option value="">Не назначен</option>{users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select></div>
+                <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Описание</label>
+                  <textarea value={edit.description || ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} onInput={(e) => { e.currentTarget.style.height = "auto"; e.currentTarget.style.height = e.currentTarget.scrollHeight + "px"; }} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 resize-none overflow-hidden" rows={2} /></div>
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => onSaveEdit({ ...edit })} disabled={isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"><Save className="w-3.5 h-3.5" />{isPending ? "Сохранение..." : "Сохранить"}</button>
-                  <button onClick={onCancelEdit} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm"><Save className="w-3.5 h-3.5" />{isPending ? "Сохранение..." : "Сохранить"}</button>
+                  <button onClick={onCancelEdit} className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Отмена</button>
                 </div>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-400 uppercase mb-0.5">Сумма</label>
-                    <p className="text-sm font-semibold text-gray-900">{linked.expectedAmount?.toLocaleString() || 0} ₽</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Сумма</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{(linked.expectedAmount?.toLocaleString() || 0)} ₽</p>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-400 uppercase mb-0.5">Тип</label>
-                    <p className="text-sm text-gray-700">{linked.dealType || "Не указан"}</p>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Тип</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-1">{linked.dealType || "Не указан"}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Оплата</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-1">{linked.paymentType || "—"}</p>
                   </div>
                 </div>
 
-                
-
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4 text-gray-400 shrink-0" />
-                  {linked.responsibleAgentId ? (
-              <button onClick={() => setViewAgentId(linked.responsibleAgentId)} className="text-gray-600 hover:text-primary-600 hover:underline transition-colors">{agent || "Агент не назначен"}</button>
-            ) : (
-              <span className="text-gray-600">{agent || "Агент не назначен"}</span>
-            )}
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
-                  <span className="text-gray-600">Создана: {fmtDate(linked.createdAt)}</span>
+                <div className="flex items-center gap-4 text-sm text-gray-500 border-t border-gray-100 pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    {linked.responsibleAgentId ? (
+                      <button onClick={() => setViewAgentId(linked.responsibleAgentId)} className="text-gray-600 hover:text-primary-600 hover:underline">{agent || "Агент не назначен"}</button>
+                    ) : (
+                      <span className="text-gray-600">{agent || "Агент не назначен"}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{fmtDate(linked.createdAt)}</span>
+                  </div>
                 </div>
 
                 {linked.description && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 uppercase mb-1">Описание</p>
-                    <p className="text-sm text-gray-700">{linked.description}</p>
+                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 border border-gray-100">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Описание</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{linked.description}</p>
                   </div>
                 )}
 
                 {hasAnyLinked && (
                   <div className="border-t border-gray-100 pt-3">
-                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Связанные данные</p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Связанные данные</p>
                     <div className="grid grid-cols-2 gap-2">
                       {hasProduction && (
                         <button onClick={() => { onClose(); navigate("/production#" + encodeURIComponent(linked.dealNumber)); }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 group-hover:bg-amber-200 transition-colors">
-                            <Briefcase className="w-3.5 h-3.5 text-amber-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Производство</p><p className="text-[10px] text-gray-400">{(linked.productionOrders || []).length} заказов</p></div>
-                          <ArrowRight className="w-3 h-3 text-gray-300 ml-auto shrink-0" />
+                          className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-amber-200 hover:bg-amber-50/50 transition-all text-left group shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Briefcase className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Производство</p><p className="text-[10px] text-gray-400">{(linked.productionOrders || []).length} заказов</p></div>
+                          <ArrowRight className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
                         </button>
                       )}
                       {hasInstallation && (
                         <button onClick={() => { onClose(); navigate("/installation#" + encodeURIComponent(linked.dealNumber)); }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
-                            <Briefcase className="w-3.5 h-3.5 text-blue-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Монтаж</p><p className="text-[10px] text-gray-400">{(linked.installationTasks || []).length} задач</p></div>
-                          <ArrowRight className="w-3 h-3 text-gray-300 ml-auto shrink-0" />
+                          className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all text-left group shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Briefcase className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Монтаж</p><p className="text-[10px] text-gray-400">{(linked.installationTasks || []).length} задач</p></div>
+                          <ArrowRight className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
                         </button>
                       )}
                       {hasService && (
                         <button onClick={() => { onClose(); navigate("/service"); }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center shrink-0 group-hover:bg-green-200 transition-colors">
-                            <Briefcase className="w-3.5 h-3.5 text-green-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Сервис</p><p className="text-[10px] text-gray-400">{(linked.serviceCases || []).length} обращений</p></div>
-                          <ArrowRight className="w-3 h-3 text-gray-300 ml-auto shrink-0" />
+                          className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-green-200 hover:bg-green-50/50 transition-all text-left group shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Briefcase className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Сервис</p><p className="text-[10px] text-gray-400">{(linked.serviceCases || []).length} обращений</p></div>
+                          <ArrowRight className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
                         </button>
                       )}
                       {hasLegal && (
                         <button onClick={() => { onClose(); navigate("/legal"); }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-200 transition-colors">
-                            <Briefcase className="w-3.5 h-3.5 text-purple-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Документы</p><p className="text-[10px] text-gray-400">{(linked.legalDocuments || []).length} док.</p></div>
-                          <ArrowRight className="w-3 h-3 text-gray-300 ml-auto shrink-0" />
+                          className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/50 transition-all text-left group shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <FileText className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Документы</p><p className="text-[10px] text-gray-400">{(linked.legalDocuments || []).length} док.</p></div>
+                          <ArrowRight className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
                         </button>
                       )}
                       {hasRent && (
                         <button onClick={() => { onClose(); navigate("/rent"); }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
-                            <DollarSign className="w-3.5 h-3.5 text-teal-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Аренда</p><p className="text-[10px] text-gray-400">Договор</p></div>
-                          <ArrowRight className="w-3 h-3 text-gray-300 ml-auto shrink-0" />
+                          className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/50 transition-all text-left group shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <Briefcase className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Аренда</p><p className="text-[10px] text-gray-400">Договор</p></div>
+                          <ArrowRight className="w-3.5 h-3.5 text-gray-300 ml-auto shrink-0" />
                         </button>
                       )}
                       {hasCommissions && (
-                        <button className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-pink-100 flex items-center justify-center shrink-0 group-hover:bg-pink-200 transition-colors">
-                            <DollarSign className="w-3.5 h-3.5 text-pink-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Комиссии</p><p className="text-[10px] text-gray-400">{(linked.commissions || []).length} записей</p></div>
+                        <button className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-pink-200 hover:bg-pink-50/50 transition-all text-left shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <DollarSign className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Комиссии</p><p className="text-[10px] text-gray-400">{(linked.commissions || []).length} записей</p></div>
                         </button>
                       )}
                       {hasInvoices && (
-                        <button className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center shrink-0 group-hover:bg-orange-200 transition-colors">
-                            <DollarSign className="w-3.5 h-3.5 text-orange-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Счета</p><p className="text-[10px] text-gray-400">{(linked.invoices || []).length} шт.</p></div>
+                        <button className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/50 transition-all text-left shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <FileText className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Счета</p><p className="text-[10px] text-gray-400">{(linked.invoices || []).length} шт.</p></div>
                         </button>
                       )}
                       {hasPayments && (
-                        <button className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 transition-colors">
-                            <DollarSign className="w-3.5 h-3.5 text-emerald-600" /></div>
-                          <div className="min-w-0"><p className="text-xs font-medium text-gray-900">Платежи</p><p className="text-[10px] text-gray-400">{(linked.payments || []).length} шт.</p></div>
+                        <button className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all text-left shadow-sm hover:shadow">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <DollarSign className="w-4 h-4 text-white" /></div>
+                          <div className="min-w-0"><p className="text-xs font-semibold text-gray-900">Платежи</p><p className="text-[10px] text-gray-400">{(linked.payments || []).length} шт.</p></div>
                         </button>
                       )}
                     </div>
@@ -531,7 +815,94 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                 )}
               </>
             )}
+            </>
+            )}
+
+            {activeTab === "tasks" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between"><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Прикреплённые задачи ({linkedTasks.length})</p><button onClick={() => setShowTaskForm(true)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-400 hover:text-primary-600 hover:bg-primary-50/50 rounded-lg transition-all border border-gray-200 border-dashed hover:border-primary-300 bg-white/60 hover:bg-white"><Plus className="w-3 h-3" />Добавить</button></div>
+                {linkedTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-300">
+                    <FileText className="w-10 h-10 mb-2" />
+                    <p className="text-xs">Нет прикреплённых задач</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {linkedTasks.map((t: any) => (
+                      <div key={t.id} onClick={() => { onClose(); navigate("/tasks?id=" + t.id); }} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all bg-white cursor-pointer">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                          t.status === "Completed" ? "bg-emerald-500" :
+                          t.status === "InProgress" ? "bg-amber-500" :
+                          t.status === "Cancelled" ? "bg-gray-300" :
+                          "bg-primary-500"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{t.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-400 mt-0.5">
+                            {t.assignee && <span><User className="w-2.5 h-2.5 inline mr-0.5" />{t.assignee.firstName} {t.assignee.lastName}</span>}
+                            {t.dueDate && <span><Calendar className="w-2.5 h-2.5 inline mr-0.5" />{fmtDate(t.dueDate)}</span>}
+                            <span className={`px-1.5 py-0.5 rounded-full ${
+                              t.priority === "Critical" ? "bg-red-50 text-red-600" :
+                              t.priority === "High" ? "bg-amber-50 text-amber-600" :
+                              t.priority === "Low" ? "bg-gray-50 text-gray-500" :
+                              "bg-blue-50 text-blue-600"
+                            }`}>{t.priority}</span>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
+                          t.status === "Completed" ? "bg-emerald-50 text-emerald-600" :
+                          t.status === "InProgress" ? "bg-amber-50 text-amber-600" :
+                          t.status === "Cancelled" ? "bg-red-50 text-red-600" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>{t.status === "Completed" ? "Выполнена" : t.status === "InProgress" ? "В работе" : t.status === "Cancelled" ? "Отменена" : "Новая"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">История взаимодействия</p>
+                {!auditLogs || auditLogs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-300">
+                    <Clock className="w-10 h-10 mb-2" />
+                    <p className="text-xs">История пуста</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {auditLogs.map((log: any, i: number) => (
+                      <div key={log.id || i} className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <User className="w-3 h-3 text-gray-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="font-medium text-gray-800">{log.user?.firstName || log.user?.lastName ? `${log.user.firstName || ""} ${log.user.lastName || ""}` : "Система"}</span>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-gray-400">{fmtDate(log.createdAt)}</span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-0.5">{log.action?.toLowerCase().includes("create") ? "Создал(а) лид" : log.action?.toLowerCase().includes("update") ? "Обновил(а) данные" : log.action?.toLowerCase().includes("status") ? `Изменил(а) статус: ${(()=>{ try { const p=JSON.parse(log.newValue||"{}"); const s=STATUS_META[p.status]; return s?.label||p.status||log.newValue; } catch { return log.newValue||""; }})()}` : log.action === "cancel" ? `Отменил(а): ${log.newValue || ""}` : log.action}</p>
+                          {log.oldValue && log.newValue && log.action.toLowerCase().includes("update") && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">Было: {log.oldValue} → Стало: {log.newValue}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
+
+          {/* Workflow feed */}
+          {!edit && deal && deal.id && (
+            <div className="border-t border-gray-100 pt-4 mt-4">
+              <ActionsWorkflow dealId={deal.id} />
+            </div>
+          )}
 
           {/* Edit/Delete bar */}
           {!edit && (
@@ -563,6 +934,18 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
         {/* ===== RIGHT COLUMN: Chat discussion ===== */}
         <div className="w-[380px] flex flex-col shrink-0 bg-gray-50/20">
           <DealChatPanel dealId={deal.id} dealNumber={linked.dealNumber} />
+
+      {/* Task Creation Modal */}
+      {showTaskForm && (
+        <TaskFormModal
+          onClose={() => setShowTaskForm(false)}
+          users={users}
+          deals={[deal]}
+          presetDealId={deal.id}
+          onSubmit={(d: any) => createTaskMut.mutate(d)}
+          isPending={createTaskMut.isPending}
+        />
+      )}
         </div>
       </div>
 
@@ -590,7 +973,7 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
                     { key: "dogovor", label: "Договор поставки", desc: "Договор с автоподстановкой данных", color: "purple" },
                     { key: "schet", label: "Счёт на оплату", desc: "Платёжный документ", color: "green" },
                     { key: "commercial_offer", label: "КП (расширенное)", desc: "Детальное предложение", color: "orange" },
-                    { key: "1_спецификация", label: "Спецификация", desc: "Перечень товаров и услуг", color: "teal" },
+                    { key: "1_специф��кация", label: "Спецификация", desc: "Перечень товаров и услуг", color: "teal" },
                     { key: "10_журнал", label: "Журнал", desc: "Журнал учёта", color: "cyan" },
                     { key: "2_-_акт_осмотра_кровли", label: "Акт осмотра кровли", desc: "Технический акт", color: "amber" },
                     { key: "2_схема_установки", label: "Схема установки", desc: "Монтажная схема", color: "indigo" },
@@ -661,13 +1044,158 @@ export default function DealDetailPanel({ deal, client, agent, canEdit, canDelet
           dealId={linked.id}
           template={docPreview.template}
           label={docPreview.label}
-          clientName={linked.client?.name || client || ""}
-          clientInn={linked.client?.inn || linked.clientInn || ""}
-          clientPhone={linked.client?.phone || ""}
-          clientEmail={linked.client?.email || ""}
+          clientName={linked.clientName || ""}
+          clientInn={linked.clientInn || ""}
+          clientPhone={linked.clientPhone || ""}
+          clientEmail={""}
           dealNumber={linked.dealNumber}
           amount={linked.expectedAmount || 0}
           onClose={() => setDocPreview(null)}
+        />
+      )}
+
+      {/* Order creation modal */}
+      {orderModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setOrderModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800">Создание заявки</h3>
+              <button onClick={() => setOrderModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {!currentOrder ? (
+                <div className="text-center py-10">
+                  <button onClick={createOrder} disabled={ordersLoading}
+                    className="px-6 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
+                    {ordersLoading ? "..." : "Создать заявку"}
+                  </button>
+                  {ordersError && <p className="text-xs text-red-500 mt-2">{ordersError}</p>}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-semibold text-gray-800">{currentOrder.orderNumber}</span>
+                      <span className="ml-2 text-xs text-gray-400">{currentOrder.items?.length || 0} поз.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        currentOrder.status === "draft" ? "bg-gray-100 text-gray-600" :
+                        currentOrder.status === "confirmed" ? "bg-blue-100 text-blue-700" :
+                        currentOrder.status === "assembly" ? "bg-amber-100 text-amber-700" :
+                        currentOrder.status === "ready" ? "bg-purple-100 text-purple-700" :
+                        currentOrder.status === "shipped" ? "bg-emerald-100 text-emerald-700" :
+                        "bg-gray-100 text-gray-500"
+                      }`}>
+                        {currentOrder.status === "draft" ? "Черновик" :
+                         currentOrder.status === "confirmed" ? "Подтверждён" :
+                         currentOrder.status === "assembly" ? "В сборке" :
+                         currentOrder.status === "ready" ? "Готов к отгрузке" :
+                         currentOrder.status === "shipped" ? "Отгружено" : currentOrder.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentOrder.status === "draft" && (
+                      <button onClick={() => updateOrderStatus(currentOrder.id, "confirmed")}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded">Подтвердить</button>
+                    )}
+                    {currentOrder.status === "confirmed" && (
+                      <button onClick={() => updateOrderStatus(currentOrder.id, "assembly")}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded">Начать сборку</button>
+                    )}
+                    {currentOrder.status === "assembly" && (
+                      <button onClick={() => updateOrderStatus(currentOrder.id, "ready")}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded">Готов к отгрузке</button>
+                    )}
+                    {currentOrder.status === "ready" && (
+                      <button onClick={() => updateOrderStatus(currentOrder.id, "shipped")}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded">Отгрузить</button>
+                    )}
+                    {currentOrder.status !== "shipped" && currentOrder.status !== "draft" && (
+                      <button onClick={() => updateOrderStatus(currentOrder.id, "draft")}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded hover:bg-gray-50">В черновик</button>
+                    )}
+                    <button onClick={() => { if (confirm("Удалить заявку?")) { deleteOrder(currentOrder.id); setOrderModalOpen(false); } }}
+                      className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded hover:bg-red-50">Удалить</button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {(currentOrder.items || []).map((item: any, idx: number) => (
+                      <div key={item.id} className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400 w-4">{idx + 1}.</span>
+                        {editingItemId === item.id ? (
+                          <>
+                            <input value={editItemName} onChange={e => setEditItemName(e.target.value)}
+                              className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs outline-none" />
+                            <input type="number" value={editItemQty} onChange={e => setEditItemQty(Math.max(1, +e.target.value))}
+                              className="w-16 px-2 py-1 border border-gray-200 rounded text-xs outline-none text-center" />
+                            <input type="number" value={editItemPrice} onChange={e => setEditItemPrice(+e.target.value)}
+                              className="w-24 px-2 py-1 border border-gray-200 rounded text-xs outline-none text-center" />
+                            <button onClick={saveEditItem} className="text-green-600 hover:text-green-700 p-1"><Save className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setEditingItemId(null)} className="text-gray-400 hover:text-gray-600 p-1"><X className="w-3.5 h-3.5" /></button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-gray-800">{item.productName}</span>
+                            <span className="text-gray-500 w-14 text-right">{item.quantity} шт.</span>
+                            <span className="text-gray-500 w-24 text-right">{item.price ? item.price.toLocaleString() + " ₽" : "—"}</span>
+                            <span className="text-gray-700 w-24 text-right font-medium">{item.total ? item.total.toLocaleString() + " ₽" : (item.price ? (item.price * item.quantity).toLocaleString() + " ₽" : "—")}</span>
+                            <button onClick={() => startEditItem(item)} className="text-blue-500 hover:text-blue-700 p-1"><Edit3 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { removeOrderItem(currentOrder.id, item.id); }} className="text-red-400 hover:text-red-600 p-1"><X className="w-3.5 h-3.5" /></button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select value={newWhItemId} onChange={e => { setNewWhItemId(e.target.value); const sel = whItems.find((w: any) => w.id === e.target.value); if (sel) { setNewItemPrice(sel.salePrice || ""); setNewItemName(""); } }}
+                      className="px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500 flex-1">
+                      <option value="">Товар со склада</option>
+                      {whItems.map((w: any) => (
+                        <option key={w.id} value={w.id}>{w.productName} ({w.quantity} {w.unit})</option>
+                      ))}
+                    </select>
+                    <input type="number" min={1} value={newItemQty} onChange={e => setNewItemQty(Math.max(1, +e.target.value))}
+                      className="w-16 px-2 py-1.5 border border-gray-200 rounded text-xs outline-none text-center" />
+                    <input type="number" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value === "" ? "" : +e.target.value)}
+                      placeholder="Цена"
+                      className="w-24 px-2 py-1.5 border border-gray-200 rounded text-xs outline-none text-center" />
+                    <input value={newItemName} onChange={e => setNewItemName(e.target.value)}
+                      placeholder="Примечание"
+                      className="w-28 px-2 py-1.5 border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-primary-500" />
+                    <button onClick={() => addOrderItem(currentOrder.id)}
+                      disabled={!newWhItemId}
+                      className="px-3 py-1.5 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50">+</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button onClick={() => toggleChecklist(currentOrder)}
+                      className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50">
+                      {checklistData[currentOrder.id] ? "✓ Чек-лист" : "□ Чек-лист"}
+                    </button>
+                    <button onClick={() => printOrder(currentOrder)}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded hover:bg-gray-50">
+                      Печать
+                    </button>
+                  </div>
+                  {checklistData[currentOrder.id] && (
+                    <div className="text-xs text-gray-600 bg-blue-50 rounded-lg p-3">
+                      {JSON.stringify(checklistData[currentOrder.id], null, 2)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          token={_token()}
         />
       )}
     </div>

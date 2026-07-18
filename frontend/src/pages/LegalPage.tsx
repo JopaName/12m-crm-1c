@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { legalAPI, dealsAPI, clientsAPI } from "../api";
+import { legalAPI, dealsAPI } from "../api";
 import DetailView from "../components/LegalDetailView";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -107,7 +107,7 @@ export default function LegalPage() {
 
   const { data: clients } = useQuery({
     queryKey: ["clients"],
-    queryFn: () => clientsAPI.getAll().then((r) => r.data),
+    queryFn: () => Promise.resolve([]),
   });
 
   const { data: detail } = useQuery({

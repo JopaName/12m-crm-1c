@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI, dealsAPI, authAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
-import { Plus, Search, LayoutDashboard, List, User, Building2, Calendar, AlertCircle, Edit3, Trash2, X, Check, ArrowUp, ArrowLeft, ArrowRight, Inbox, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, Save, CheckSquare, Square, Smartphone, Copy, CalendarDays } from "lucide-react";
+import { Plus, Search, LayoutDashboard, List, User, Calendar, AlertCircle, Edit3, Trash2, X, Check, ArrowUp, ArrowLeft, ArrowRight, Inbox, Clock, FileText, ChevronLeft, ChevronRight, Save, CheckSquare, Square, Smartphone, Copy, CalendarDays } from "lucide-react";
+import ProfileModal from "../components/ProfileModal";
 
 const STATUSES = ["New", "InProgress", "Completed", "Cancelled"];
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];
@@ -64,11 +65,20 @@ export default function TasksPage() {
   }, []);
 
   const { data: tasks, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: () => tasksAPI.getAll().then(r => r.data) });
+
+  // Auto-open task detail from URL param ?id=
+  useEffect(() => {
+    const taskId = searchParams.get("id");
+    if (taskId && tasks && tasks.length > 0) {
+      const found = tasks.find((t: any) => t.id === taskId);
+      if (found) setDetailTask(found);
+    }
+  }, [searchParams, tasks]);
+
   const { data: deals } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then(r => r.data) });
   const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => authAPI.getUsers().then(r => r.data) });
 
   const userMap = useMemo(() => { const m: Record<string, string> = {}; users?.forEach((u: any) => { m[u.id] = `${u.firstName} ${u.lastName}`; }); return m; }, [users]);
-  const dealMap = useMemo(() => { const m: Record<string, string> = {}; deals?.forEach((d: any) => { m[d.id] = d.dealNumber; }); return m; }, [deals]);
 
   const allTasks = tasks || [];
   const active = useMemo(() => {
@@ -243,7 +253,6 @@ export default function TasksPage() {
                             {t.dueDate && <span className={overdue ? "text-red-600 ml-2" : "text-gray-400"}>— {fmtDate(t.dueDate)}</span>}</div>
                           {t.assigneeId && <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5"><User className="w-3 h-3" /><button onClick={e => { e.stopPropagation(); setViewUserId(t.assigneeId); }} className="hover:text-primary-600 hover:underline transition-colors">{userMap[t.assigneeId] || "—"}</button></div>}
                           {t.type && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mt-1.5 inline-block">{TYPE_LABELS[t.type] || t.type}</span>}
-                          {t.dealId && dealMap[t.dealId] && <span className="text-[10px] text-primary-500 cursor-pointer hover:text-primary-700 ml-1 bg-primary-50 px-1.5 py-0.5 rounded inline-block" onClick={e => { e.stopPropagation(); navigate("/deals#" + encodeURIComponent(dealMap[t.dealId])); }}>{dealMap[t.dealId]}</span>}
                         </div>
                         {(prev || next) && (
                           <div className="flex border-t border-gray-100" onClick={e => e.stopPropagation()}>
@@ -277,7 +286,6 @@ export default function TasksPage() {
                   {t.priority && <span className={cn("text-[10px] font-bold px-1 py-0.5 rounded", PRIORITY_META[t.priority]?.lightBg, PRIORITY_META[t.priority]?.color)}>{PRIORITY_META[t.priority]?.label}</span>}</div>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                     {t.type && <span>{TYPE_LABELS[t.type]}</span>}
-                    {t.dealId && dealMap[t.dealId] && <span className="text-primary-500 cursor-pointer hover:text-primary-700" onClick={e => { e.stopPropagation(); navigate("/deals#" + encodeURIComponent(dealMap[t.dealId])); }}>{dealMap[t.dealId]}</span>}
                     {t.assigneeId && <button onClick={e => { e.stopPropagation(); setViewUserId(t.assigneeId); }} className="hover:text-primary-600 hover:underline"><User className="w-3 h-3 inline mr-1" />{userMap[t.assigneeId]}</button>}
                     <span><Calendar className="w-3 h-3 inline mr-1" />{fmtDate(t.createdAt)}</span>
                     {t.dueDate && <span className={overdue ? "text-red-600" : ""}>{fmtDate(t.dueDate)}</span>}</div></div>
@@ -370,25 +378,13 @@ export default function TasksPage() {
                     <User className="w-3.5 h-3.5 inline" />{userMap[t.assigneeId]}
                   </div>
                 )}
-                {t.dealId && dealMap[t.dealId] && (
-                  <div className="flex items-center gap-1.5 text-xs text-primary-500 cursor-pointer hover:text-primary-700" onClick={() => { setDetailTask(null); navigate("/deals#" + encodeURIComponent(dealMap[t.dealId])); }}>
-                    <Briefcase className="w-3.5 h-3.5 inline" />Сделка: {dealMap[t.dealId]}
-                  </div>
-                )}
-                {(() => {
-                  if (!t.dealId) return null;
-                  const linkedDeal = deals?.find((d: any) => d.id === t.dealId);
-                  const clientName = linkedDeal?.client?.name;
-                  const clientId = linkedDeal?.clientId;
-                  if (!clientName) return null;
-                  return (
-                    <div className="flex items-center gap-1.5 text-xs text-primary-500 cursor-pointer hover:text-primary-700" onClick={() => { setDetailTask(null); navigate("/clients#" + encodeURIComponent(clientName)); }}>
-                      <Building2 className="w-3.5 h-3.5 inline" />Клиент: {clientName}
-                    </div>
-                  );
-                })()}
               </div>
               {/* Edit/Delete bar — same style as client modal */}
+              {t.createdBy && (
+                <div className="px-5 py-2 border-t border-gray-100 flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50/50">
+                  <User className="w-3.5 h-3.5 inline" />Создал: <strong>{t.createdBy.firstName} {t.createdBy.lastName}</strong>
+                </div>
+              )}
               <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50">
                 <button onClick={() => { setDetailTask(null); setEditingTask(t); setShowForm(true); }} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors">
                   <Edit3 className="w-3.5 h-3.5" />Редактировать</button>
@@ -418,7 +414,6 @@ export default function TasksPage() {
 
       {/* Form Modal */}
       {showForm && <TaskFormModal task={editingTask} onClose={() => { setShowForm(false); setEditingTask(null); }} users={users} deals={deals}
-        quickDate={quickDate}
         onSubmit={(d) => editingTask ? updateMutation.mutate({ id: editingTask.id, data: d }) : createMutation.mutate(d)}
         isPending={createMutation.isPending || updateMutation.isPending} />}
       {viewUserId && <ProfileModal user={null} profileUserId={viewUserId} onClose={() => setViewUserId(null)} />}
@@ -499,35 +494,143 @@ export default function TasksPage() {
   );
 }
 
-function TaskFormModal({ task, onClose, users, deals, onSubmit, isPending, quickDate }: any) {
+function TaskFormModal({ task, onClose, users, deals, onSubmit, isPending }: any) {
   const [f, setF] = useState(task ? {
-    title: task.title || "", description: task.description || "", type: task.type || "General", priority: task.priority || "Medium",
+    title: task.title || "", description: task.description || "", priority: task.priority || "Medium",
     assigneeId: task.assigneeId || "", dealId: task.dealId || "", dueDate: task.dueDate ? task.dueDate.split("T")[0] : ""
-  } : { title: "", description: "", type: "General", priority: "Medium", assigneeId: "", dealId: "", dueDate: quickDate || "" });
+  } : { title: "", description: "", priority: "Medium", assigneeId: "", dealId: "", dueDate: "" });
 
   const handleSubmit = () => {
     if (!f.title.trim()) { toast.error("Введите название"); return; }
-    onSubmit({ title: f.title, description: f.description, type: f.type, assigneeId: f.assigneeId || undefined, priority: f.priority, dueDate: f.dueDate || undefined, dealId: f.dealId || undefined });
+    onSubmit({ title: f.title, description: f.description, assigneeId: f.assigneeId || undefined, dealId: f.dealId || undefined, priority: f.priority, dueDate: f.dueDate || undefined });
   };
 
+  const createdByName = task?.createdBy
+    ? `${task.createdBy.firstName} ${task.createdBy.lastName}`
+    : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2"><FileText className="w-4 h-4 text-primary-500" />{task ? "Редактировать" : "Новая"} задача</h3>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button></div>
-        <div className="px-5 py-4 space-y-3">
-          <input placeholder="Название *" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500/20" autoFocus />
-          <div className="grid grid-cols-2 gap-3">
-            <select value={f.type} onChange={e => setF({ ...f, type: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">{TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}</select>
-            <select value={f.priority} onChange={e => setF({ ...f, priority: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">{PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_META[p].label}</option>)}</select></div>
-          <select value={f.assigneeId} onChange={e => setF({ ...f, assigneeId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="">Не назначен</option>{users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select>
-          <select value={f.dealId} onChange={e => setF({ ...f, dealId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="">Не привязана</option>{deals?.map((d: any) => <option key={d.id} value={d.id}>{d.dealNumber}</option>)}</select>
-          <input type="date" value={f.dueDate} onChange={e => setF({ ...f, dueDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
-          <textarea placeholder="Описание" value={f.description} onChange={e => setF({ ...f, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none resize-none" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div className="relative bg-gradient-to-br from-primary-600 to-primary-800 px-6 py-5 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-base">{task ? "Редактирование задачи" : "Новая задача"}</h3>
+                <p className="text-xs text-white/60">{task ? "Измените параметры" : "Заполните основные поля"}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          {createdByName && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-white/70 bg-white/10 rounded-xl px-3 py-2">
+              <User className="w-3.5 h-3.5 shrink-0" />
+              <span>Создал: <strong className="text-white/90">{createdByName}</strong></span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2 px-5 py-3.5 border-t border-gray-100 bg-gray-50/50">
-          <div className="flex-1" /><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600">Отмена</button>
-          <button onClick={handleSubmit} disabled={isPending} className="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm"><Save className="w-3.5 h-3.5 mr-1 inline" />{task ? "Сохранить" : "Создать"}</button></div>
-      </div></div>);
+
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Название задачи</label>
+            <input
+              placeholder="Что нужно сделать?"
+              value={f.title}
+              onChange={e => setF({ ...f, title: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 focus:bg-white transition-all placeholder:text-gray-400"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <svg className="w-3 h-3 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Лид
+            </label>
+            <select value={f.dealId} onChange={e => setF({ ...f, dealId: e.target.value })}
+              className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer">
+              <option value="">Без лида</option>
+              {deals?.filter((d: any) => !d.isArchived).map((d: any) => (
+                <option key={d.id} value={d.id}>#{d.dealNumber} &mdash; {d.clientName || d.expectedAmount?.toLocaleString() + " ₽" || "&mdash;"}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <AlertCircle className="w-3 h-3 inline mr-1" />Приоритет
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {PRIORITIES.map(p => (
+                <button key={p} type="button"
+                  onClick={() => setF({ ...f, priority: p })}
+                  className={`flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-[11px] font-medium transition-all ${f.priority === p ? `${PRIORITY_META[p].lightBg} ${PRIORITY_META[p].color} ring-2 ring-current/30` : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
+                  <span>{PRIORITY_META[p].icon}</span>
+                  <span>{PRIORITY_META[p].label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <User className="w-3 h-3 inline mr-1" />Ответственный
+              </label>
+              <select value={f.assigneeId} onChange={e => setF({ ...f, assigneeId: e.target.value })}
+                className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer">
+                <option value="">Не назначен</option>
+                {users?.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                <Calendar className="w-3 h-3 inline mr-1" />Срок
+              </label>
+              <div className="relative">
+                <input type="date" value={f.dueDate} onChange={e => setF({ ...f, dueDate: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer" />
+                {f.dueDate && (
+                  <button onClick={() => setF({ ...f, dueDate: "" })} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-red-400">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Описание</label>
+            <textarea
+              placeholder="Детали, заметки, ссылки..."
+              value={f.description}
+              onChange={e => setF({ ...f, description: e.target.value })}
+              rows={3}
+              className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30 focus:bg-white transition-all resize-none placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/80">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all">
+            Отмена
+          </button>
+          <button onClick={handleSubmit} disabled={isPending || !f.title.trim()}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-500/20 active:scale-95">
+            {isPending ? (
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            )}
+            {task ? "Сохранить" : "Создать задачу"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

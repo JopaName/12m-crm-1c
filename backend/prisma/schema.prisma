@@ -92,8 +92,17 @@ model User {
   legalDocumentComments LegalDocumentComment[]
   notifications Notification[]
   wallPosts     WallPost[]
+  createdArticles KnowledgeArticle[] @relation("KnowledgeArticleCreator")
+  updatedArticles KnowledgeArticle[] @relation("KnowledgeArticleUpdater")
+  assemblyChecklists AssemblyChecklist[]
   chatRooms      ChatRoom[]
   chatRoomMemberships ChatRoomMember[]
+  warehouseReceipts WarehouseReceipt[]
+  invites     Invite[] @relation("InviteCreator")
+  usedInvites Invite[] @relation("InviteUser")
+    dealActions        DealAction[]
+  dealActionMessages DealActionMessage[]
+  dealActionFiles    DealActionFile[]
   @@index([isArchived, isActive])
 }
 
@@ -173,9 +182,11 @@ model Deal {
   cancelledById       String?
   cancelNote          String?
   cancelledAt         DateTime?
-  clientId            String
-  client              Client       @relation(fields: [clientId], references: [id])
+  clientId            String?
+  client              Client?      @relation(fields: [clientId], references: [id])
   clientInn           String?
+  clientName        String?
+  clientPhone       String?
   responsibleAgentId  String
   responsibleAgent    User         @relation("ResponsibleAgent", fields: [responsibleAgentId], references: [id])
   expectedAmount      Float
@@ -197,6 +208,7 @@ model Deal {
   warehouseMovements WarehouseMovement[]
   reserves          Reserve[]
   purchaseRequests  PurchaseRequest[]
+  orders            DealOrder[]
   cashOrders        CashOrder[]
   tasks             Task[]
 
@@ -315,8 +327,26 @@ model WarehouseStockItem {
   salePrice     Float?
   categoryTag   String?
   note          String?
+  orderItems    DealOrderItem[]
+  receipts      WarehouseReceipt[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model WarehouseReceipt {
+  id          String             @id @default(cuid())
+  itemId      String
+  item        WarehouseStockItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  quantity    Float
+  comment     String?
+  fileUrl     String?
+  fileName    String?
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id])
+  createdAt   DateTime           @default(now())
+
+  @@index([itemId])
+  @@index([createdAt])
 }
 
 model WarehouseTransfer {
@@ -994,6 +1024,7 @@ model ChatMessage {
   entityId    String?
   entityTitle String?
   reactions    String?
+  isPinned   Boolean  @default(false)
 
   createdAt DateTime @default(now())
 
@@ -1107,4 +1138,209 @@ model PipelineConfig {
   configJson String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model File {
+  id           String    @id @default(cuid())
+  originalName String
+  storageName  String
+  mimeType     String
+  sizeBytes    Int
+  checksum     String?
+  entityType   String
+  entityId     String
+  fieldName    String    @default("attachments")
+  version      Int       @default(1)
+  uploadedById String?
+  deletedAt    DateTime?
+  deletedById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([storageName])
+  @@index([deletedAt])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  firstName   String
+  lastName    String
+  roleId      String
+  createdById String
+  createdBy   User      @relation("InviteCreator", fields: [createdById], references: [id])
+  usedById    String?
+  usedBy      User?     @relation("InviteUser", fields: [usedById], references: [id])
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([token])
+  @@index([createdById])
+
+}
+
+
+model KnowledgeCategory {
+  id          String               @id @default(cuid())
+  name        String
+  slug        String               @unique
+  description String?
+  icon        String?
+  color       String?
+  sortOrder   Int                  @default(0)
+  parentId    String?
+  parent      KnowledgeCategory?   @relation("KnowledgeCategoryHierarchy", fields: [parentId], references: [id])
+  children    KnowledgeCategory[]  @relation("KnowledgeCategoryHierarchy")
+  articles    KnowledgeArticle[]
+  isArchived  Boolean              @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([parentId])
+  @@index([sortOrder])
+  @@index([isArchived])
+}
+
+model KnowledgeArticle {
+  id          String             @id @default(cuid())
+  title       String
+  content     String
+  excerpt     String?
+  categoryId  String
+  category    KnowledgeCategory  @relation(fields: [categoryId], references: [id])
+  tags        String?
+  isPublished Boolean            @default(true)
+  viewCount   Int                @default(0)
+  createdById String
+  createdBy   User               @relation("KnowledgeArticleCreator", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?              @relation("KnowledgeArticleUpdater", fields: [updatedById], references: [id])
+  isArchived  Boolean            @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isPublished])
+  @@index([isArchived])
+  @@index([viewCount])
+  @@index([createdAt])
+}
+
+
+model DealOrder {
+  id          String         @id @default(cuid())
+  dealId      String
+  deal        Deal           @relation(fields: [dealId], references: [id])
+  orderNumber String         @unique
+  status      String         @default("draft")
+  note        String?
+  isArchived  Boolean      @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  items        DealOrderItem[]
+  checklists   AssemblyChecklist[]
+
+  @@index([dealId])
+  @@index([status])
+}
+
+model DealOrderItem {
+  id               String          @id @default(cuid())
+  orderId          String
+  order            DealOrder       @relation(fields: [orderId], references: [id])
+  productId        String?
+  warehouseItemId  String?
+  warehouseItem    WarehouseStockItem? @relation(fields: [warehouseItemId], references: [id])
+  productName      String
+  quantity         Int
+  price            Float?
+  total            Float?
+  note             String?
+
+  @@index([orderId])
+  @@index([warehouseItemId])
+}
+
+model AssemblyChecklist {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       DealOrder @relation(fields: [orderId], references: [id])
+  title       String    @default("Чек-лист сборки")
+  status      String    @default("pending")
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignedToId String?
+  assignedTo   User?    @relation(fields: [assignedToId], references: [id])
+  completedAt  DateTime?
+
+  items AssemblyChecklistItem[]
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model AssemblyChecklistItem {
+  id          String           @id @default(cuid())
+  checklistId String
+  checklist   AssemblyChecklist @relation(fields: [checklistId], references: [id])
+  productName String
+  quantity    Int
+  checked     Boolean          @default(false)
+  note        String?
+
+  @@index([checklistId])
+}
+
+
+model DealAction {
+  id          String    @id @default(cuid())
+  dealId      String
+  type        String
+  title       String
+  description String?
+  status      String    @default("PLAN")
+  orderIndex  Int       @default(0)
+  completedAt DateTime?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  messages DealActionMessage[]
+  files    DealActionFile[]
+
+  @@index([dealId])
+}
+
+model DealActionMessage {
+  id        String      @id @default(cuid())
+  actionId  String
+  action    DealAction  @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User        @relation(fields: [senderId], references: [id])
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@index([actionId])
+}
+
+model DealActionFile {
+  id           String      @id @default(cuid())
+  actionId     String
+  action       DealAction  @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileUrl      String
+  uploadedById String
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@index([actionId])
 }

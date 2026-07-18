@@ -2,7 +2,8 @@ import { Router, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db";
-import { AuthRequest, authMiddleware } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { UserService } from "../services/UserService";
 import { loginSchema, createUserSchema, updateUserSchema } from "../validators";
 import { authLimiter } from "../middleware/rateLimiter";
@@ -21,7 +22,7 @@ router.post("/login", authLimiter, async (req, res: Response) => {
   }
 });
 
-router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/me", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
@@ -38,16 +39,40 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get("/users", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/users", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
   try {
-    const users = await service.getAll(req.user!.id, req.user!.roleName);
+    const q = req.query.q as string;
+    const additionalWhere: any = {};
+    if (q && q.trim()) {
+      const query = q.trim();
+      additionalWhere.OR = [
+        { firstName: { contains: query } },
+        { lastName: { contains: query } },
+        { email: { contains: query } },
+      ];
+    }
+    const users = await service.getAll(req.user!.id, req.user!.roleName, additionalWhere);
     res.json(users);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
-router.get("/roles", authMiddleware, async (_req: AuthRequest, res: Response) => {
+router.get("/users/:id", authMiddleware, requirePermission("users:view"), async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { role: { include: { permissions: true } } },
+    });
+    if (!user || user.isArchived) return res.status(404).json({ error: "User not found" });
+    const { passwordHash, apiKey, ...safe } = user;
+    res.json(safe);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+router.get("/roles", authMiddleware, requirePermission("users:view"), async (_req: AuthRequest, res: Response) => {
   try {
     const roles = await prisma.role.findMany({ where: { isArchived: false } });
     res.json(roles);
@@ -56,7 +81,7 @@ router.get("/roles", authMiddleware, async (_req: AuthRequest, res: Response) =>
   }
 });
 
-router.post("/register", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/register", authMiddleware, requirePermission("users:create"), async (req: AuthRequest, res: Response) => {
   try {
     const data = createUserSchema.parse(req.body);
     const user = await service.register(data);
@@ -67,7 +92,7 @@ router.post("/register", authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
-router.put("/users/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put("/users/:id", authMiddleware, requirePermission("users:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const data = updateUserSchema.parse(req.body);
     const user = await service.updateUser(req.params.id, data);
@@ -78,7 +103,7 @@ router.put("/users/:id", authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
-router.delete("/users/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete("/users/:id", authMiddleware, requirePermission("users:delete"), async (req: AuthRequest, res: Response) => {
   try {
     await prisma.user.update({
       where: { id: req.params.id },

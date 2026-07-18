@@ -1,44 +1,30 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { DashboardService } from "../services/DashboardService";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 const service = new DashboardService();
 
-router.get("/summary", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/summary", requirePermission("dashboard:view"), asyncHandler(async (_req, res) => {
     const data = await service.getSummary();
     res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch dashboard data" });
-  }
-});
+}));
 
-router.get("/pipeline", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/pipeline", requirePermission("dashboard:view"), asyncHandler(async (_req, res) => {
     const data = await service.getPipeline();
     res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch pipeline" });
-  }
-});
+}));
 
-router.get("/finance", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/finance", requirePermission("dashboard:view"), asyncHandler(async (_req, res) => {
     const data = await service.getFinance();
     res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch finance data" });
-  }
-});
+}));
 
-router.get("/pulse", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/pulse", requirePermission("dashboard:view"), asyncHandler(async (_req, res) => {
     const data = await service.getPulse();
     res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch pulse data" });
-  }
-});
+}));
 
 export default router;

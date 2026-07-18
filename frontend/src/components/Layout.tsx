@@ -16,8 +16,8 @@ const ALL_MENU_ITEMS = [
   { path: "/tasks", label: "Задачи", icon: "✅", permission: "tasks:view" },
   { path: "/referrals", label: "Рефералы", icon: "🤝" },
   { path: "/calculator", label: "Калькулятор", icon: "🧮" },
-  { path: "/users", label: "Пользователи", icon: "👤", permission: "users:view" },
-  { path: "/roles", label: "Роли", icon: "🔐", permission: "roles:view" },
+  { path: "/company", label: "Моя Компания", icon: "🏢", permission: "users:view" },
+  { path: "/knowledge", label: "База знаний", icon: "📚" },
 ];
 
 function getStorageKey(userId: string) { return `menu_prefs_${userId}`; }
@@ -34,10 +34,13 @@ export default function Layout() {
   const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [dark, setDark] = useState(() => { try { return localStorage.getItem("theme") === "dark"; } catch { return false; } });
   const [pinned, setPinned] = useState<string[]>([]);
   const [order, setOrder] = useState<string[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  useEffect(() => { document.documentElement.classList.toggle("dark", dark); localStorage.setItem("theme", dark ? "dark" : "light"); }, [dark]);
 
   const userId = user?.id || "anon";
 
@@ -154,6 +157,7 @@ export default function Layout() {
                 <p className="text-[10px] text-gray-500">{user?.role?.name}</p>
               </button>
             )}
+            <button onClick={() => setDark(!dark)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors" title={dark ? "Светлая тема" : "Тёмная тема"}>{dark ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}</button>
             <button onClick={handleLogout} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400 transition-colors" title="Выйти">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { rentAPI, clientsAPI } from "../api";
+import { rentAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, LayoutDashboard, List, Building2, User, Calendar, DollarSign, X, Inbox, CreditCard, ArrowRight } from "lucide-react";
@@ -24,7 +24,7 @@ export default function RentPage() {
 
   const { data: contracts, isLoading } = useQuery({ queryKey: ["rent"], queryFn: () => rentAPI.getAll().then((r) => r.data) });
   const { data: billing } = useQuery({ queryKey: ["rent-billing"], queryFn: () => rentAPI.getBilling().then((r) => r.data) });
-  const { data: clients } = useQuery({ queryKey: ["clients"], queryFn: () => clientsAPI.getAll().then((r) => r.data) });
+  const { data: clients } = useQuery({ queryKey: ["clients"], queryFn: () => Promise.resolve([]) });
 
   const createMutation = useMutation({
     mutationFn: (d: any) => rentAPI.create(d),

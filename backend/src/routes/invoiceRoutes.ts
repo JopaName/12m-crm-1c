@@ -1,29 +1,22 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { InvoiceService } from "../services/InvoiceService";
 import { createInvoiceSchema } from "../validators";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 const service = new InvoiceService();
 
-router.get("/", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/", requirePermission("finance:view"), asyncHandler(async (_req, res) => {
     const invoices = await service.getAll("", "");
     res.json(invoices);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch invoices" });
-  }
-});
+}));
 
-router.post("/", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/", requirePermission("finance:create"), asyncHandler(async (req, res) => {
     const data = createInvoiceSchema.parse(req.body);
     const invoice = await service.create(data, req.user!.id);
     res.status(201).json(invoice);
-  } catch (e: any) {
-    if (e.issues) return res.status(400).json({ error: "Validation failed", details: e.issues });
-    res.status(500).json({ error: "Failed to create invoice" });
-  }
-});
+}));
 
 export default router;

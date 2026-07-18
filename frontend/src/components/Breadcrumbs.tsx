@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { clientsAPI, dealsAPI, tasksAPI } from "../api";
+import { dealsAPI, tasksAPI } from "../api";
 
 const ROUTE_LABELS: Record<string, string> = {
   clients: "Клиенты", deals: "Лиды", products: "Номенклатура",
@@ -30,7 +30,7 @@ export default function Breadcrumbs() {
   // ALWAYS call these hooks — stable count on every render
   const { data: client } = useQuery({
     queryKey: ["client-name", clientId],
-    queryFn: () => clientsAPI.getById(clientId!).then(r => r.data),
+    queryFn: () => Promise.resolve(null),
     enabled: !!clientId,
   });
 

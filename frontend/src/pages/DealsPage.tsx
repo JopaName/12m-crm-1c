@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { dealsAPI, clientsAPI, authAPI, tasksAPI } from "../api";
+import { dealsAPI, authAPI, tasksAPI } from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { STATUSES, STATUS_META } from "../constants/deals";
@@ -78,11 +78,12 @@ export default function DealsPage() {
   const canDelete = user?.permissions?.includes("deals.delete") ?? true;
   const [filterStatus, setFilterStatus] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
-  const [filterClient, setFilterClient] = useState("");
   const [searchParams] = useSearchParams();
   const [newDealClientId, setNewDealClientId] = useState("");
   const [editDealData, setEditDealData] = useState<any | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dragDealId, setDragDealId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get("openCreate") === "1") {
@@ -96,10 +97,7 @@ export default function DealsPage() {
     queryKey: ["deals"],
     queryFn: () => dealsAPI.getAll().then((r) => r.data),
   });
-  const { data: clients } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => clientsAPI.getAll().then((r) => r.data),
-  });
+
   const { data: users } = useQuery({
     queryKey: ["users"],
     queryFn: () => authAPI.getUsers().then((r) => r.data),
@@ -158,11 +156,7 @@ export default function DealsPage() {
     return m;
   }, [users]);
 
-  const clientMap = useMemo(() => {
-    const m: Record<string, any> = {};
-    clients?.forEach((c: any) => { m[c.id] = c; });
-    return m;
-  }, [clients]);
+
 
   const active = useMemo(() => {
     let items = deals || [];
@@ -170,15 +164,14 @@ export default function DealsPage() {
       const q = searchQuery.toLowerCase();
       items = items.filter((d: any) =>
         (d.dealNumber || "").toLowerCase().includes(q) ||
-        (clientMap[d.clientId]?.name || "").toLowerCase().includes(q) ||
+        
         (d.description || "").toLowerCase().includes(q)
       );
     }
     if (filterStatus) items = items.filter((d: any) => d.status === filterStatus);
     if (filterAgent) items = items.filter((d: any) => d.responsibleAgentId === filterAgent);
-    if (filterClient) items = items.filter((d: any) => d.clientId === filterClient);
-    return items;
-  }, [deals, searchQuery, filterStatus, filterAgent, filterClient, clientMap]);
+       return items;
+  }, [deals, searchQuery, filterStatus, filterAgent]);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -264,15 +257,7 @@ export default function DealsPage() {
           <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
         </div>
-        <div className="relative">
-          <select value={filterClient} onChange={(e) => setFilterClient(e.target.value)}
-            className="appearance-none pl-8 pr-7 py-1.5 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer max-w-[200px]">
-            <option value="">Все клиенты</option>
-            {clients?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
-        </div>
+
         <div className="flex-1" />
         <div className="flex bg-gray-100 rounded-lg p-0.5">
           <button onClick={() => setView("kanban")} className={cn("p-1.5 rounded-md transition-all", view === "kanban" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700")} title="Канбан"><LayoutDashboard className="w-4 h-4" /></button>
@@ -293,7 +278,12 @@ export default function DealsPage() {
           {kanbanColumns.filter((col) => !filterStatus || col.status === filterStatus).map((col) => {
             const Icon = col.meta.icon;
             return (
-              <div key={col.status} className="rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col" onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragDealId) { statusMutation.mutate({ id: dragDealId, status: col.status }); setDragDealId(null); } }}>
+              <div key={col.status}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.status); }}
+                onDragEnter={(e) => { e.preventDefault(); setDragOverColumn(col.status); }}
+                onDragLeave={() => setDragOverColumn((prev) => prev === col.status ? null : prev)}
+                onDrop={() => { if (dragDealId) { statusMutation.mutate({ id: dragDealId, status: col.status }); setDragDealId(null); setDragOverColumn(null); } }}
+                className={cn("rounded-xl border bg-white shadow-sm flex flex-col transition-all duration-200", dragOverColumn === col.status ? "border-primary-400 bg-primary-50/30 shadow-lg ring-2 ring-primary-200 scale-[1.02]" : "border-gray-200")}>
                 <div className={cn("flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 rounded-t-xl", col.meta.lightBg)}>
                   <Icon className={cn("w-4 h-4", col.meta.color)} />
                   <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex-1 truncate">{col.meta.label}</h3>
@@ -306,16 +296,19 @@ export default function DealsPage() {
                     </div>
                   )}
                   {col.items.map((d: any) => {
-                    const client = clientMap[d.clientId];
-                    const agent = userMap[d.responsibleAgentId];
+                                       const agent = userMap[d.responsibleAgentId];
                     const nextStatuses = getNextStatuses(d.status);
                     const prevStatus = getPrevStatus(d.status);
                     const linkedTasks = dealTasks[d.id] || [];
                     return (
-                      <div key={d.id} draggable onDragStart={() => setDragDealId(d.id)} className="bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary-200 cursor-pointer active:scale-[0.98] group" onClick={() => setDetailDeal(d)}>
+                      <div key={d.id} draggable
+                        onDragStart={() => { setDragDealId(d.id); }}
+                        onDragEnd={() => { setDragDealId(null); setDragOverColumn(null); }}
+                        className={cn("bg-white rounded-xl border shadow-sm transition-all duration-200 cursor-pointer group", dragDealId === d.id ? "opacity-50 scale-95 rotate-[2deg] shadow-inner border-dashed border-gray-300" : "border-gray-200 hover:shadow-lg hover:border-primary-200 active:scale-[0.98]")}
+                        onClick={() => setDetailDeal(d)}>
                         <div className="p-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-2 flex-1 italic">{(client?.name || d.client?.name || d.dealNumber)}</p>
+                            <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-2 flex-1 italic">{(d.clientName || d.description || d.dealNumber)}</p>
                             <div className={cn("w-2.5 h-2.5 rounded-full shrink-0 mt-1", col.meta.bg)} />
                           </div>
                           <p className="text-sm font-semibold text-gray-900">{d.expectedAmount?.toLocaleString() || 0} ₽</p>
@@ -376,6 +369,23 @@ export default function DealsPage() {
         </div>
       )}
 
+      {/* Delete drop zone - appears when dragging a card */}
+      {dragDealId && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+          onDrop={(e) => { e.preventDefault(); if (dragDealId && window.confirm("Удалить лид?")) { deleteMutation.mutate(dragDealId); setDragDealId(null); setDragOverColumn(null); } else { setDragDealId(null); setDragOverColumn(null); } }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 bg-red-50 border-2 border-dashed border-red-300 rounded-2xl shadow-xl cursor-pointer transition-all duration-200 hover:bg-red-100 hover:border-red-400 hover:shadow-red-200/50 hover:scale-105 active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <Trash2 className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-red-700">Удалить лид</p>
+            <p className="text-[11px] text-red-500">Перетащите сюда для удаления</p>
+          </div>
+        </div>
+      )}
+
       {/* List View */}
       {view === "list" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -386,16 +396,15 @@ export default function DealsPage() {
           )}
           <div className="divide-y divide-gray-100">
             {active.map((d: any) => {
-              const client = clientMap[d.clientId];
-              const agent = userMap[d.responsibleAgentId];
+                           const agent = userMap[d.responsibleAgentId];
               return (
                 <div key={d.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group">
                   <div className={cn("w-2 h-2 rounded-full shrink-0", (dynamicStatusMeta[d.status]?.bg || "bg-gray-400"))} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{d.dealNumber}</p>
+                    <p className="font-medium text-gray-900 text-sm">{d.clientName || d.description || d.dealNumber}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                       <span className="font-medium text-gray-500">{d.expectedAmount?.toLocaleString()} ₽</span>
-                      {client && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{client.name}</span>}
+                      <span className="flex items-center gap-1 text-gray-400"><Building2 className="w-3 h-3" />{d.dealNumber}</span>
                       {agent && <button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="flex items-center gap-1 hover:text-primary-600 hover:underline"><User className="w-3 h-3" />{agent}</button>}
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(d.createdAt)}</span>
                     </div>
@@ -425,15 +434,14 @@ export default function DealsPage() {
       {detailDeal && (
         <DealDetailPanel
           deal={detailDeal}
-          client={clientMap[detailDeal.clientId]}
-          agent={userMap[detailDeal.responsibleAgentId]}
+                   agent={userMap[detailDeal.responsibleAgentId]}
           canEdit={canEdit}
           canDelete={canDelete}
           editDealData={editDealData}
           confirmDelete={confirmDelete}
           onClose={() => { setDetailDeal(null); setEditDealData(null); setConfirmDelete(false); }}
-          onEdit={() => setEditDealData({ ...detailDeal, clientInn: clientMap[detailDeal.clientId]?.inn || "" })}
-          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data: { dealNumber: data.dealNumber, dealType: data.dealType, clientId: data.clientId || undefined, clientInn: data.clientInn, expectedAmount: data.expectedAmount, responsibleAgentId: data.responsibleAgentId || undefined, description: data.description } })}
+          onEdit={() => setEditDealData({ ...detailDeal })}
+          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data: { dealNumber: data.dealNumber, dealType: data.dealType, clientInn: data.clientInn, expectedAmount: data.expectedAmount, responsibleAgentId: data.responsibleAgentId || undefined, description: data.description } })}
           onDelete={() => { if (confirmDelete) deleteMutation.mutate(detailDeal.id); else setConfirmDelete(true); }}
           onCancelEdit={() => setEditDealData(null)}
           onCancelDelete={() => setConfirmDelete(false)}
@@ -442,8 +450,7 @@ export default function DealsPage() {
           prevStatus={getPrevStatus(detailDeal.status)}
           onStatusChange={(s: string) => { statusMutation.mutate({ id: detailDeal.id, status: s }); setDetailDeal((prev: any) => prev ? { ...prev, status: s } : prev); }}
           users={users}
-          clients={clients}
-        />
+                 />
       )}
 
       {showForm && <DealFormModal onClose={() => { setShowForm(false); setNewDealClientId(""); }} currentUser={user} />}
@@ -456,6 +463,7 @@ export default function DealsPage() {
         <TaskFormModal
           onClose={() => setShowTaskModal(false)}
           users={users}
+          deals={deals}
           presetDealId={taskDealId || ""}
           onSubmit={(data: any) => taskCreateMutation.mutate(data)}
           isPending={taskCreateMutation.isPending}

@@ -18,6 +18,7 @@ import { setupChatSocket } from "./chat/chatSocket";
 import { setChatIO } from "./services/ChatService";
 import clientRoutes from "./routes/clientRoutes";
 import clientActionRoutes from "./routes/clientActionRoutes";
+import dealActionRoutes from "./routes/dealActionRoutes";
 import dealRoutes from "./routes/dealRoutes";
 import userRoutes from "./routes/userRoutes";
 import productRoutes from "./routes/productRoutes";
@@ -43,7 +44,12 @@ import roleRoutes from "./routes/roleRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import fileRoutes from "./routes/fileRoutes";
+import wallRoutes from "./routes/wallRoutes";
 import crudRoutes from "./routes/crudRoutes";
+import pipelineRoutes from "./routes/pipelineRoutes";
+import orderRoutes from "./routes/orderRoutes";
+import knowledgeRoutes from "./routes/knowledgeRoutes";
+import inviteRoutes from "./routes/inviteRoutes";
 import { FILE_LIMITS } from "./utils/fileUtils";
 dotenv.config();
 async function ensureAdminUser() {
@@ -58,7 +64,6 @@ const app = express();
 const httpServer = http.createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: { origin: config.cors.origin },
-  path: "/ws",
 });
 const PORT = config.port;
 app.use(helmet({
@@ -103,6 +108,7 @@ app.use("/api/auth", userRoutes);
 app.use("/api/clients", authMiddleware, clientRoutes);
 app.use("/api/clients", authMiddleware, clientActionRoutes);
 app.use("/api/deals", authMiddleware, dealRoutes);
+app.use("/api/deals", authMiddleware, dealActionRoutes);
 app.use("/api/products", authMiddleware, productRoutes);
 app.use("/api/warehouse", authMiddleware, warehouseRoutes);
 app.use("/api/ai", authMiddleware, aiCoordinatorRoutes);
@@ -124,6 +130,7 @@ app.use("/api/audit", authMiddleware, auditRoutes);
 app.use("/api/roles", authMiddleware, roleRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
 app.use("/api/files", authMiddleware, fileRoutes);
+app.use("/api/wall", authMiddleware, wallRoutes);
 app.get("/api/reference", (_req, res) => {
   const fs = require("fs");
   const docs = JSON.parse(fs.readFileSync(__dirname + "/docs.json", "utf-8"));
@@ -133,8 +140,12 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+app.use("/api/auth", inviteRoutes);
 app.use("/api", authMiddleware, crudRoutes);
 app.use("/api/chat", authMiddleware, chatRoutes);
+app.use("/api/pipeline", pipelineRoutes);
+app.use("/api/orders", authMiddleware, orderRoutes);
+app.use("/api/knowledge", authMiddleware, knowledgeRoutes);
 // Log unhandled errors globally
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);

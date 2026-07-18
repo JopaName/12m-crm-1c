@@ -1,6 +1,18 @@
-import { prisma } from "../db";
+import fs from "fs";
+import path from "path";
 
-export async function logError(message: any, opts?: {
+const logsDir = path.join(__dirname, "../../logs");
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
+function logFilePath(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return path.join(logsDir, `error-${y}-${m}-${day}.log`);
+}
+
+export function logError(message: any, opts?: {
   level?: string;
   source?: string;
   stack?: string;
@@ -8,25 +20,37 @@ export async function logError(message: any, opts?: {
   url?: string;
   userId?: string;
 }) {
+  const level = opts?.level || "error";
+  const source = opts?.source || "app";
+  const msg = typeof message === "string" ? message : message?.message || JSON.stringify(message);
+  const timestamp = new Date().toISOString();
+  const entry = { timestamp, level, message: msg, source, stack: opts?.stack || null, url: opts?.url || null, userId: opts?.userId || null, metadata: opts?.metadata || null };
+  const line = JSON.stringify(entry);
+
+  console.error(line);
+
   try {
-    const msg = typeof message === "string" ? message : message?.message || JSON.stringify(message);
-    await prisma.log.create({
-      data: {
-        level: opts?.level || "error",
-        message: msg,
-        source: opts?.source || "app",
-        stack: opts?.stack || null,
-        metadata: opts?.metadata ? JSON.stringify(opts.metadata) : null,
-        url: opts?.url || null,
-        userId: opts?.userId || null,
-      },
-    });
-  } catch (e) {
-    console.error("Logger failed:", e);
-  }
+    fs.appendFileSync(logFilePath(), line + "\n");
+  } catch {}
 }
 
-export function errorHandler(err: any, req: any, res: any, next: any) {
+export function errorHandler(err: any, req: any, res: any, _next: any) {
+  if (err?.issues) {
+    return res.status(400).json({ error: "Validation failed", details: err.issues });
+  }
+
+  if (err?.code === "P2002") {
+    return res.status(409).json({ error: "Duplicate entry", field: err.meta?.target });
+  }
+
+  if (err?.code === "P2025") {
+    return res.status(404).json({ error: "Record not found" });
+  }
+
+  if (err?.code === "NOT_FOUND" || err?.statusCode === 404) {
+    return res.status(404).json({ error: err.message || "Not found" });
+  }
+
   const message = err?.message || "Unknown error";
   logError(message, {
     stack: err?.stack,
@@ -35,5 +59,9 @@ export function errorHandler(err: any, req: any, res: any, next: any) {
     source: "express",
     metadata: { method: req?.method, body: req?.body },
   });
-  res.status(500).json({ error: "Internal server error" });
+
+  res.status(err?.statusCode || err?.status || 500).json({
+    error: message,
+    ...(process.env.NODE_ENV === "development" && { stack: err?.stack }),
+  });
 }

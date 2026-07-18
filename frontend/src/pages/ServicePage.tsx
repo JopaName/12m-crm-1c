@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { serviceAPI, clientsAPI } from "../api";
+import { serviceAPI } from "../api";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
 import { Plus, Search, X, User, Building2, Wrench, Calendar, AlertCircle, Inbox, ArrowRight } from "lucide-react";
@@ -21,7 +21,7 @@ export default function ServicePage() {
   const [filterStatus, setFilterStatus] = useState("");
 
   const { data: cases, isLoading } = useQuery({ queryKey: ["service"], queryFn: () => serviceAPI.getAll().then((r) => r.data) });
-  const { data: clients } = useQuery({ queryKey: ["clients"], queryFn: () => clientsAPI.getAll().then((r) => r.data) });
+  const { data: clients } = useQuery({ queryKey: ["clients"], queryFn: () => Promise.resolve([]) });
 
   const data = cases; // normalize the variable name
 

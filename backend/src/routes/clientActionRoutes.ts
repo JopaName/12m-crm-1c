@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { prisma } from "../db";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { createAuditLog } from "../utils/helpers";
 import multer from "multer";
 import path from "path";
@@ -24,7 +25,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Get all actions for a client
-router.get("/:clientId/actions", async (req: AuthRequest, res: Response) => {
+router.get("/:clientId/actions", requirePermission("clients:view"), async (req: AuthRequest, res: Response) => {
   try {
     const actions = await prisma.clientAction.findMany({
       where: { clientId: req.params.clientId },
@@ -38,7 +39,7 @@ router.get("/:clientId/actions", async (req: AuthRequest, res: Response) => {
 });
 
 // Create a new action
-router.post("/:clientId/actions", async (req: AuthRequest, res: Response) => {
+router.post("/:clientId/actions", requirePermission("clients:create"), async (req: AuthRequest, res: Response) => {
   try {
     const { type, title, description, status } = req.body;
     const clientId = req.params.clientId;
@@ -79,7 +80,7 @@ router.post("/:clientId/actions", async (req: AuthRequest, res: Response) => {
 });
 
 // Update an action
-router.put("/:clientId/actions/:actionId", async (req: AuthRequest, res: Response) => {
+router.put("/:clientId/actions/:actionId", requirePermission("clients:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const old = await prisma.clientAction.findUnique({ where: { id: req.params.actionId } });
     if (!old) return res.status(404).json({ error: "Action not found" });
@@ -116,7 +117,7 @@ router.put("/:clientId/actions/:actionId", async (req: AuthRequest, res: Respons
 });
 
 // Delete an action
-router.delete("/:clientId/actions/:actionId", async (req: AuthRequest, res: Response) => {
+router.delete("/:clientId/actions/:actionId", requirePermission("clients:delete"), async (req: AuthRequest, res: Response) => {
   try {
     const old = await prisma.clientAction.findUnique({ where: { id: req.params.actionId } });
     if (!old) return res.status(404).json({ error: "Action not found" });
@@ -141,7 +142,7 @@ router.delete("/:clientId/actions/:actionId", async (req: AuthRequest, res: Resp
 });
 
 // Reorder actions
-router.put("/:clientId/actions/reorder", async (req: AuthRequest, res: Response) => {
+router.put("/:clientId/actions/reorder", requirePermission("clients:edit"), async (req: AuthRequest, res: Response) => {
   try {
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) {
@@ -170,7 +171,7 @@ router.put("/:clientId/actions/reorder", async (req: AuthRequest, res: Response)
 });
 
 // === Action Messages ===
-router.get("/:clientId/actions/:actionId/messages", async (req: AuthRequest, res: Response) => {
+router.get("/:clientId/actions/:actionId/messages", requirePermission("clients:view"), async (req: AuthRequest, res: Response) => {
   try {
     const messages = await prisma.actionMessage.findMany({
       where: { actionId: req.params.actionId },
@@ -183,7 +184,7 @@ router.get("/:clientId/actions/:actionId/messages", async (req: AuthRequest, res
   }
 });
 
-router.post("/:clientId/actions/:actionId/messages", async (req: AuthRequest, res: Response) => {
+router.post("/:clientId/actions/:actionId/messages", requirePermission("clients:create"), async (req: AuthRequest, res: Response) => {
   try {
     const { content } = req.body;
     if (!content || !content.trim()) {
@@ -204,7 +205,7 @@ router.post("/:clientId/actions/:actionId/messages", async (req: AuthRequest, re
 });
 
 // === Action Files ===
-router.get("/:clientId/actions/:actionId/files", async (req: AuthRequest, res: Response) => {
+router.get("/:clientId/actions/:actionId/files", requirePermission("clients:view"), async (req: AuthRequest, res: Response) => {
   try {
     const files = await prisma.actionFile.findMany({
       where: { actionId: req.params.actionId },
@@ -223,7 +224,7 @@ router.get("/:clientId/actions/:actionId/files", async (req: AuthRequest, res: R
 });
 
 // Download a file with the original filename
-router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: AuthRequest, res: Response) => {
+router.get("/:clientId/actions/:actionId/files/:fileId/download", requirePermission("clients:view"), async (req: AuthRequest, res: Response) => {
   try {
     const file = await prisma.actionFile.findUnique({ where: { id: req.params.fileId } });
     if (!file) return res.status(404).json({ error: "File not found" });
@@ -279,7 +280,7 @@ router.get("/:clientId/actions/:actionId/files/:fileId/download", async (req: Au
   }
 });
 
-router.post("/:clientId/actions/:actionId/files", upload.single("file"), async (req: AuthRequest, res: Response) => {
+router.post("/:clientId/actions/:actionId/files", requirePermission("clients:create"), upload.single("file"), async (req: AuthRequest, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file provided" });
@@ -309,7 +310,7 @@ router.post("/:clientId/actions/:actionId/files", upload.single("file"), async (
   }
 });
 
-router.delete("/:clientId/actions/:actionId/files/:fileId", async (req: AuthRequest, res: Response) => {
+router.delete("/:clientId/actions/:actionId/files/:fileId", requirePermission("clients:delete"), async (req: AuthRequest, res: Response) => {
   try {
     const file = await prisma.actionFile.findUnique({ where: { id: req.params.fileId } });
     if (!file) return res.status(404).json({ error: "File not found" });

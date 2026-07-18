@@ -23,7 +23,8 @@ export const config = {
   nodeEnv: optional('NODE_ENV', 'development'),
   isProd: optional('NODE_ENV', 'development') === 'production',
 
-  jwt: {
+  frontendUrl: optional("FRONTEND_URL", "http://95.81.114.106"),
+ jwt: {
     secret: required('JWT_SECRET'),
     expiresIn: optional('JWT_EXPIRES_IN', '24h'),
   },
@@ -53,7 +54,7 @@ export const config = {
 
   upload: {
     dir: optional('UPLOAD_DIR', 'uploads'),
-    maxSize: optionalInt('UPLOAD_MAX_SIZE', 50 * 1024 * 1024),
+    maxSize: optionalInt('UPLOAD_MAX_SIZE', 200 * 1024 * 1024),
     maxFilesPerEntity: optionalInt('UPLOAD_MAX_FILES_PER_ENTITY', 20),
     allowedExtensions: optional('UPLOAD_ALLOWED_EXTENSIONS', '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.7z'),
     unsafePreviewMime: [

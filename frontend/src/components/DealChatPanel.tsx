@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatAPI, authAPI } from "../api";
+import FilePreviewModal from "./FilePreviewModal";
 import ProfileModal from "./ProfileModal";
 import { Send, MessageCircle, AtSign, Paperclip } from "lucide-react";
 
@@ -49,6 +50,7 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
   const [text, setText] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
   const [mentionIdx, setMentionIdx] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -201,9 +203,24 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
                   <button onClick={() => setViewProfileId(m.sender?.id || null)} className="text-[10px] font-semibold text-gray-600 hover:text-primary-600 hover:underline transition-colors">{m.sender?.firstName} {m.sender?.lastName}</button>
                   <span className="text-[9px] text-gray-400">{formatTime(m.createdAt)}</span>
                 </div>
-                <p className="text-sm text-gray-800 bg-white rounded-lg px-2.5 py-1.5 border border-gray-100 shadow-sm">
-                  {highlightMentions(m.content)}
-                </p>
+                {m.fileUrl ? (
+                  <button
+                    onClick={() => setPreviewFile({
+                      id: m.id,
+                      fileName: m.fileName || m.content,
+                      fileUrl: m.fileUrl,
+                      downloadUrl: m.fileUrl.startsWith('/') ? '/api/chat/file' + m.fileUrl : m.fileUrl
+                    })}
+                    className="text-sm text-blue-600 bg-white rounded-lg px-2.5 py-1.5 border border-blue-100 shadow-sm hover:bg-blue-50 cursor-pointer transition-colors text-left w-full"
+                  >
+                    <span className="mr-1">📎</span>
+                    <span className="underline">{m.fileName || m.content}</span>
+                  </button>
+                ) : m.content ? (
+                  <p className="text-sm text-gray-800 bg-white rounded-lg px-2.5 py-1.5 border border-gray-100 shadow-sm">
+                    {highlightMentions(m.content)}
+                  </p>
+                ) : null}
               </div>
             </div>
           ))
@@ -251,6 +268,13 @@ export default function DealChatPanel({ dealId, dealNumber }: { dealId: string; 
         </div>
       </div>
     
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          token={typeof window !== 'undefined' ? localStorage.getItem('token') : null}
+        />
+      )}
       {viewProfileId && <ProfileModal user={null} profileUserId={viewProfileId} onClose={() => setViewProfileId(null)} />}
     </div>
   );

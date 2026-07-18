@@ -70,6 +70,7 @@ async function seed() {
     "integrations:create",
     "integrations:edit",
     "integrations:delete",
+    "chat:view",
   ];
 
   const rolePermissions: Record<string, string[]> = {

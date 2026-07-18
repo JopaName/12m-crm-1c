@@ -1,289 +1,594 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatAPI } from "../api";
-import toast from "react-hot-toast";
+import { useChatSocket } from "../hooks/useChatSocket";
 import { useAuth } from "../context/AuthContext";
-import { formatTime, formatFullTime, formatFileSize, getInitials, COLORS, Avatar, formatMessageDateSeparator, FilePreview, usePrevious } from "../utils/chat";
+import toast from "react-hot-toast";
 
-interface ChatUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  role?: { name: string };
-}
+function Avatar({ user, size = "md" }: { user: any; size?: "sm" | "md" | "lg" }) {
+  const sz = size === "sm" ? "w-8 h-8 text-xs" : size === "md" ? "w-10 h-10 text-sm" : "w-12 h-12 text-base";
+  const initials = ((user?.firstName?.[0] || "") + (user?.lastName?.[0] || "")).toUpperCase() || "?";
 
-interface ChatMessage {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  content: string;
-  fileUrl?: string | null;
-  fileName?: string | null;
-  fileSize?: number | null;
-  mimeType?: string | null;
-  readAt?: string | null;
-  createdAt: string;
-  sender: { id: string; firstName: string; lastName: string };
-}
-
-interface Conversation {
-  user: ChatUser;
-  lastMessage: ChatMessage;
-  unreadCount: number;
+  const name = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+  const colors = ["bg-blue-500","bg-emerald-500","bg-violet-500","bg-amber-500","bg-rose-500","bg-cyan-500","bg-orange-500","bg-teal-500"];
+  const idx = (user?.id || 0) % colors.length;
+  return <div className={`${sz} ${colors[idx]} rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-sm`}>
+    {user?.avatarUrl ? <img src={user.avatarUrl} alt="" className="w-full h-full rounded-xl object-cover" /> : initials}
+  </div>;
 }
 
 export default function ChatPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const { connected, onlineUsers, on, emit, joinRoom, leaveRoom, sendTyping, sendStopTyping } = useChatSocket(token);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const typingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [search, setSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [editingMsg, setEditingMsg] = useState<any>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: any } | null>(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<any>(null);
+  const [forwardSearch, setForwardSearch] = useState("");
+  const [forwardUserIds, setForwardUserIds] = useState<number[]>([]);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
-  const [newMessage, setNewMessage] = useState("");
-  const [search, setSearch] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [typing, setTyping] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: ChatMessage } | null>(null);
-  const [showForwardModal, setShowForwardModal] = useState(false);
-  const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
-  const [forwardUserIds, setForwardUserIds] = useState<string[]>([]);
-  const [forwardSearch, setForwardSearch] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newGroupMembers, setNewGroupMembers] = useState<any[]>([]);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupDetail, setGroupDetail] = useState<any>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [groupNameEdit, setGroupNameEdit] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberResults, setMemberResults] = useState<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [searchUsers, setSearchUsers] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [showPinned, setShowPinned] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: conversationsData, isLoading: convLoading, isError: convError, error: convErrObj } = useQuery({
+  const { data: conversations = [], isLoading: convLoading, error: convError } = useQuery({
     queryKey: ["chat-conversations"],
-    queryFn: () => chatAPI.getConversations().then((r) => r.data as Conversation[]),
-    refetchInterval: 5000,
+    queryFn: () => chatAPI.getConversations().then(r => r.data || []),
+    refetchInterval: 15000,
   });
 
-  const conversations = conversationsData || [];
+  // ---- Socket real-time listeners ----
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
 
-  const { data: messages, refetch: refetchMessages } = useQuery({
-    queryKey: ["chat-messages", selectedUserId],
-    queryFn: () => (selectedUserId ? chatAPI.getMessages(selectedUserId).then((r) => r.data as ChatMessage[]) : Promise.resolve([])),
+    unsubs.push(on("new-message", (msg: any) => {
+      const uid = selectedUserId;
+      if (uid && ((msg.senderId === user?.id && msg.receiverId === uid) || (msg.senderId === uid && msg.receiverId === user?.id))) {
+        queryClient.setQueryData(["chat-messages", uid], (old: any) => {
+          if (!old) return [msg];
+          if (old.some((m: any) => m.id === msg.id)) return old;
+          return [...old, msg];
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+    }));
+
+    unsubs.push(on("new-room-message", (msg: any) => {
+      const rid = selectedRoomId;
+      if (rid && msg.roomId === rid) {
+        queryClient.setQueryData(["chat-messages", rid], (old: any) => {
+          if (!old) return [msg];
+          if (old.some((m: any) => m.id === msg.id)) return old;
+          return [...old, msg];
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+    }));
+
+    unsubs.push(on("reaction-updated", (data: any) => {
+      const uid = selectedUserId;
+      const rid = selectedRoomId;
+      const key = uid || rid;
+      if (key) {
+        queryClient.setQueryData(["chat-messages", key], (old: any) => {
+          if (!old) return old;
+          return old.map((m: any) => m.id === data.messageId ? { ...m, reactions: data.reactions } : m);
+        });
+      }
+    }));
+
+    unsubs.push(on("typing", (data: any) => {
+      if (!data.userId || data.userId === user?.id) return;
+      if (selectedUserId && data.userId === selectedUserId) {
+        setTypingUsers(prev => ({ ...prev, [data.userId]: data.userName || "Пользователь" }));
+        if (typingTimersRef.current[data.userId]) clearTimeout(typingTimersRef.current[data.userId]);
+        typingTimersRef.current[data.userId] = setTimeout(() => {
+          setTypingUsers(prev => { const n = { ...prev }; delete n[data.userId]; return n; });
+          delete typingTimersRef.current[data.userId];
+        }, 4000);
+      }
+    }));
+
+    unsubs.push(on("stop-typing", (data: any) => {
+      if (data.userId) {
+        setTypingUsers(prev => { const n = { ...prev }; delete n[data.userId]; return n; });
+        if (typingTimersRef.current[data.userId]) { clearTimeout(typingTimersRef.current[data.userId]); delete typingTimersRef.current[data.userId]; }
+      }
+    }));
+
+    return () => unsubs.forEach(fn => fn());
+  }, [selectedUserId, selectedRoomId, user?.id, queryClient, on]);
+
+  // Join/leave room when selected room changes
+  useEffect(() => {
+    if (selectedRoomId) {
+      joinRoom(selectedRoomId);
+      return () => leaveRoom(selectedRoomId);
+    }
+  }, [selectedRoomId, joinRoom, leaveRoom]);
+
+  // Auto mark as read when user switches to a conversation
+  useEffect(() => {
+    if (selectedUserId && user?.id) {
+      chatAPI.markRead(selectedUserId).catch(() => {});
+    }
+  }, [selectedUserId, user?.id]);
+
+  // Emit typing
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const handleTyping = useCallback(() => {
+    if (selectedUserId) sendTyping({ receiverId: selectedUserId });
+    else if (selectedRoomId) sendTyping({ roomId: selectedRoomId });
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      if (selectedUserId) sendStopTyping({ receiverId: selectedUserId });
+      else if (selectedRoomId) sendStopTyping({ roomId: selectedRoomId });
+    }, 2000);
+  }, [selectedUserId, selectedRoomId, sendTyping, sendStopTyping]);
+
+  const { data: selectedUser, refetch: refetchUser } = useQuery({
+    queryKey: ["chat-user", selectedUserId],
+    queryFn: () => chatAPI.getUser(selectedUserId!),
     enabled: !!selectedUserId,
-    refetchInterval: 3000,
   });
 
-  const { data: roomMessages, refetch: refetchRoomMessages } = useQuery({
-    queryKey: ["chat-room-messages", selectedRoomId],
-    queryFn: () => (selectedRoomId ? chatAPI.getRoomMessages(selectedRoomId).then((r) => r.data as ChatMessage[]) : Promise.resolve([])),
+  const { data: roomData, refetch: refetchRoom } = useQuery({
+    queryKey: ["chat-room", selectedRoomId],
+    queryFn: () => chatAPI.getRoom(selectedRoomId!),
     enabled: !!selectedRoomId,
-    refetchInterval: 3000,
+  });
+  useEffect(() => { if (roomData && selectedRoomId) { setGroupDetail(roomData); setGroupNameEdit(roomData.name || ""); } }, [roomData, selectedRoomId]);
+
+  const displayUser = selectedUserId ? selectedUser : roomData;
+  const { data: messages = [], refetch: refetchMessages } = useQuery({
+    queryKey: ["chat-messages", selectedUserId || selectedRoomId],
+    queryFn: () => {
+      if (selectedUserId) return chatAPI.getMessages(selectedUserId).then(r => r.data || []);
+      if (selectedRoomId) return chatAPI.getRoomMessages(selectedRoomId).then(r => r.data || []);
+      return [];
+    },
+    enabled: !!selectedUserId || !!selectedRoomId,
+    refetchInterval: false,
   });
 
-  const prevMessagesLength = usePrevious(messages?.length || 0);
+  const { data: pinnedMessages = [] } = useQuery({
+    queryKey: ["chat-pinned", selectedUserId || selectedRoomId],
+    queryFn: () => {
+      if (selectedUserId) return chatAPI.getPinned(selectedUserId).then(r => r.data || []);
+      if (selectedRoomId) return chatAPI.getRoomPinned(selectedRoomId).then(r => r.data || []);
+      return [];
+    },
+    enabled: (!!selectedUserId || !!selectedRoomId) && showPinned,
+  });
 
   const sendMutation = useMutation({
-    mutationFn: (data: any) => data.isRoom ? chatAPI.sendRoomMessage(data.roomId, data.content) : chatAPI.send(data),
+    mutationFn: async (data: { content: string; replyToId?: number; editMsgId?: number; file?: File }) => {
+      if (selectedUserId) {
+        if (data.editMsgId) return chatAPI.editMessage(data.editMsgId, data.content).then(r => r.data);
+        return chatAPI.sendMessage(selectedUserId, { content: data.content, replyToId: data.replyToId, file: data.file }).then(r => r.data);
+      }
+      if (selectedRoomId) {
+        if (data.editMsgId) return chatAPI.editRoomMessage(data.editMsgId, data.content).then(r => r.data);
+        return chatAPI.sendRoomMessage(selectedRoomId, { content: data.content, replyToId: data.replyToId, file: data.file }).then(r => r.data);
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
       refetchMessages();
+      if (selectedUserId) refetchUser();
+      if (selectedRoomId) refetchRoom();
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
     },
   });
 
-  const editMutation = useMutation({
-    mutationFn: (data: { id: string; content: string }) => chatAPI.editMessage(data.id, data.content),
-    onSuccess: () => { setEditingMsg(null); refetchMessages(); refetchRoomMessages(); },
-  });
-
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => chatAPI.deleteMessage(id),
-    onSuccess: () => { refetchMessages(); refetchRoomMessages(); },
+    mutationFn: (msgId: number) => chatAPI.deleteMessage(msgId),
+    onSuccess: () => { refetchMessages(); queryClient.invalidateQueries({ queryKey: ["chat-conversations"] }); },
   });
 
-  const forwardMutation = useMutation({
-    mutationFn: (data: { messageId: string; toUserId: string }) => chatAPI.forwardMessage(data.messageId, data.toUserId),
-    onSuccess: () => { toast.success("Переслано"); },
+  const pinMutation = useMutation({
+    mutationFn: (msgId: number) => chatAPI.togglePin(msgId),
+    onSuccess: () => { refetchMessages(); if (showPinned) refetchRoom(); },
   });
 
   const markReadMutation = useMutation({
-    mutationFn: (userId: string) => chatAPI.markRead(userId),
+    mutationFn: (userId: number) => chatAPI.markRead(userId),
   });
+
+  const handleSend = async () => {
+    if (editingMsg) {
+      sendMutation.mutate({ content: newMessage, editMsgId: editingMsg.id });
+      setEditingMsg(null);
+      setNewMessage("");
+      return;
+    }
+    if (selectedFile) {
+      sendMutation.mutate({ content: newMessage, replyToId: replyTo?.id, file: selectedFile });
+    } else {
+      if (!newMessage.trim()) return;
+      sendMutation.mutate({ content: newMessage, replyToId: replyTo?.id });
+    }
+    setNewMessage("");
+    setReplyTo(null);
+    setSelectedFile(null);
+    setFilePreview(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
 
   const handleForward = async () => {
     if (!forwardMsg || forwardUserIds.length === 0) return;
     try {
-      for (const uid of forwardUserIds) {
-        await chatAPI.send({ receiverId: uid, content: forwardMsg.content, fileUrl: forwardMsg.fileUrl, fileName: forwardMsg.fileName });
-      }
-      toast.success(`Переслано ${forwardUserIds.length} пользователям`);
+      await Promise.all(forwardUserIds.map(uid => chatAPI.forwardMessage(forwardMsg.id, uid)));
+      toast.success("Сообщение переслано");
       setShowForwardModal(false);
       setForwardMsg(null);
       setForwardUserIds([]);
-      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
-    } catch { toast.error("Ошибка пересылки"); }
+    } catch { toast.error("Ошибка"); }
   };
 
-  const scrollToBottom = useCallback((smooth = true) => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
-    }, 50);
+  const handleSearchUsers = useCallback(async (q: string) => {
+    setUserSearch(q);
+    if (q.length < 2) { setSearchUsers([]); setSearchingUsers(false); return; }
+    setSearchingUsers(true);
+    try {
+      const { authAPI } = await import("../api");
+      const res = await authAPI.searchUsers(q);
+      setSearchUsers(res?.data || res || []);
+    } catch { setSearchUsers([]); }
+    setSearchingUsers(false);
   }, []);
 
+  const handleMemberSearch = async (q: string) => {
+    setMemberSearch(q);
+    if (q.length < 2) { setMemberResults([]); return; }
+    try {
+      const { authAPI } = await import("../api");
+      const res = await authAPI.searchUsers(q);
+      const users = res?.data || res || [];
+      const existingIds = new Set((groupDetail?.members || []).map((m: any) => m.userId || m.user?.id));
+      const lowerQ = q.toLowerCase();
+      setMemberResults(users.filter((u: any) => {
+        if (u.id === user?.id) return false;
+        if (existingIds.has(u.id)) return false;
+        const firstName = (u.firstName || "").toLowerCase();
+        const lastName = (u.lastName || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const login = (u.login || "").toLowerCase();
+        return firstName.includes(lowerQ) || lastName.includes(lowerQ) || email.includes(lowerQ) || login.includes(lowerQ);
+      }));
+    } catch { setMemberResults([]); }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setFilePreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else { setFilePreview(null); }
+    e.target.value = "";
+  };
+
+  const renderContent = (text: string) => {
+    const parts = text.split(/(@\S+)/g);
+    return parts.map((part, i) =>
+      part.startsWith('@') && part.length > 1
+        ? <span key={i} className="font-semibold text-blue-600 bg-blue-100/80 px-1 rounded">{part}</span>
+        : part
+    );
+  };
+
+  const filteredConversations = useMemo(() => {
+    if (!search.trim()) return conversations;
+    const q = search.toLowerCase();
+
+  return (conversations || []).filter((c: any) => {
+      if (c.isRoom) return (c.user.name || "").toLowerCase().includes(q);
+      return `${c.user.firstName} ${c.user.lastName}`.toLowerCase().includes(q);
+    });
+  }, [conversations, search]);
+
+  const groupedMessages = useMemo(() => {
+    if (!messages || messages.length === 0) return [];
+    const groups: { date: string; messages: any[] }[] = [];
+    let currentDate = "";
+    const CHUNK_GAP_MS = 5 * 60 * 1000;
+    (messages as any[]).forEach((msg) => {
+      const d = new Date(msg.createdAt);
+      const ds = d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const label = d.toDateString() === today.toDateString() ? "Сегодня"
+        : d.toDateString() === yesterday.toDateString() ? "Вчера"
+        : ds;
+      if (label !== currentDate) { currentDate = label; groups.push({ date: label, messages: [] }); }
+      groups[groups.length - 1].messages.push(msg);
+    });
+    groups.forEach(group => {
+      const msgs = group.messages;
+      msgs.forEach((msg: any, i: number) => {
+        const prev = msgs[i - 1] as any | undefined;
+        const nxt  = msgs[i + 1] as any | undefined;
+        const thisTime = new Date(msg.createdAt).getTime();
+        const prevSame = prev && prev.senderId === msg.senderId && (thisTime - new Date(prev.createdAt).getTime()) < CHUNK_GAP_MS;
+        const nextSame = nxt  && nxt.senderId  === msg.senderId && (new Date(nxt.createdAt).getTime() - thisTime) < CHUNK_GAP_MS;
+        msg._isFirst  = !prevSame;
+        msg._isMiddle = prevSame && nextSame;
+        msg._isLast   = !nextSame;
+      });
+    });
+    return groups;
+  }, [messages]);
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
   useEffect(() => {
-    if (selectedUserId) {
-      markReadMutation.mutate(selectedUserId);
-      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
-    }
+    if (selectedUserId) markReadMutation.mutate(selectedUserId);
   }, [selectedUserId]);
 
-  // Tab title badge — unread count
   useEffect(() => {
-    const total = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
-    document.title = total > 0 ? `(${total}) Чат — 12M CRM` : "12M CRM / ERP";
-  }, [conversations]);
+    const handler = () => { if (contextMenu) setContextMenu(null); };
+    window.addEventListener("scroll", handler, true);
+    return () => window.removeEventListener("scroll", handler, true);
+  }, [contextMenu]);
 
-  useEffect(() => {
-    if (messages && messages.length > prevMessagesLength) {
-      scrollToBottom(true);
-    }
-  }, [messages, prevMessagesLength, scrollToBottom]);
+  // ===== Utility functions (inline) =====
+  function formatTime(dateStr: string) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    if (diff < 60000) return "только что";
+    const h = d.getHours().toString().padStart(2, "0");
+    const m = d.getMinutes().toString().padStart(2, "0");
+    if (d.toDateString() === now.toDateString()) return `${h}:${m}`;
+    if (d.getDate() === now.getDate() - 1 && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) return "вчера";
+    return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+  }
 
-  useEffect(() => {
-    if (messages && messages.length > 0) {
-      scrollToBottom(false);
-    }
-  }, []);
+  function formatFullTime(dateStr: string) {
+    const d = new Date(dateStr);
+    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  }
 
-  const handleSend = () => {
-    if (!newMessage.trim() || (!selectedUserId && !selectedRoomId)) return;
-    if (selectedRoomId) {
-      sendMutation.mutate({ roomId: selectedRoomId, content: newMessage.trim(), isRoom: true, replyToId: replyTo?.id });
-    } else {
-      sendMutation.mutate({ receiverId: selectedUserId, content: newMessage.trim(), replyToId: replyTo?.id });
-    }
-    setNewMessage("");
-    setReplyTo(null);
-  };
+  function formatFileSize(bytes: number) {
+    if (bytes < 1024) return bytes + " Б";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " КБ";
+    return (bytes / 1048576).toFixed(1) + " МБ";
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedUserId) return;
-    setUploading(true);
-    try {
-      await chatAPI.sendFile(selectedUserId, file);
-      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
-      refetchMessages();
-    } catch (err) {
-      console.error("File upload failed:", err);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const selectedUser = selectedRoomId
-    ? (conversations.find((c) => c.isRoom && c.user.id === selectedRoomId)?.user || null)
-    : (conversations.find((c) => c.user.id === selectedUserId)?.user || null);
-  const effectiveId = selectedRoomId || selectedUserId;
-  const displayMessages = selectedRoomId ? (roomMessages || []) : (messages || []);
-
-  const filteredConversations = conversations.filter((c) => {
-    const name = (c.isRoom ? (c.user.name || "") : `${c.user.firstName} ${c.user.lastName}`).toLowerCase();
-    return name.includes(search.toLowerCase());
-  });
-
-  // Group messages by date
-  const groupedMessages: { date: string; messages: ChatMessage[] }[] = [];
-  if (displayMessages.length > 0) {
-    let currentDate = "";
-    for (const msg of displayMessages) {
-      const dateLabel = formatMessageDateSeparator(msg.createdAt);
-      if (dateLabel !== currentDate) {
-        currentDate = dateLabel;
-        groupedMessages.push({ date: dateLabel, messages: [msg] });
-      } else {
-        groupedMessages[groupedMessages.length - 1].messages.push(msg);
-      }
-    }
+  function getInitials(firstName?: string, lastName?: string) {
+    return ((firstName?.[0] || "") + (lastName?.[0] || "")).toUpperCase() || "?";
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex bg-gray-50">
-      {/* Left sidebar */}
-      <div className={`w-80 lg:w-96 border-r border-gray-200 bg-white flex flex-col ${selectedUserId ? "hidden sm:flex" : "flex"}`}>
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-800">Сообщения</h2><button onClick={() => setShowCreateRoom(true)} className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded hover:bg-primary-200">+</button></div>
-            <span className="text-xs text-gray-400">{conversations.length} чатов</span>
+    <div className="h-[calc(100vh-4rem)] flex bg-slate-50/60">
+      {/* Sidebar */}
+      <div className={`w-80 lg:w-88 border-r border-slate-200/70 bg-white flex flex-col ${selectedUserId || selectedRoomId ? "hidden sm:flex" : "flex"}`}>
+        {/* Sidebar header */}
+        <div className="px-5 pt-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-slate-800 tracking-tight">Чаты</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { setShowUserSearch(!showUserSearch); setUserSearch(""); setSearchUsers([]); }}
+                className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all active:scale-95 ${showUserSearch ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700"}`}
+                title="Новый чат"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowCreateRoom(true)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-all active:scale-95"
+                title="Создать группу"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="Поиск..."
+              placeholder="Поиск чатов..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full pl-9 pr-3 py-2 bg-slate-100/80 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
             />
           </div>
         </div>
 
+        {/* User search */}
+        {showUserSearch && (
+          <div className="border-b border-slate-100 bg-blue-50/40">
+            <div className="px-4 py-3">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Поиск сотрудников..."
+                  value={userSearch}
+                  onChange={(e) => handleSearchUsers(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-blue-200 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  autoFocus
+                />
+              </div>
+              {searchingUsers && (
+                <div className="flex items-center justify-center py-4">
+                  <svg className="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+              )}
+              {!searchingUsers && userSearch.length >= 2 && searchUsers.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-3">Ничего не найдено</p>
+              )}
+              {searchUsers.length > 0 && (
+                <div className="mt-2 max-h-60 overflow-y-auto space-y-0.5">
+                  {searchUsers.map((su: any) => (
+                    <button
+                      key={su.id}
+                      onClick={() => {
+                        setSelectedUserId(su.id);
+                        setSelectedRoomId(null);
+                        setShowUserSearch(false);
+                        setUserSearch("");
+                        setSearchUsers([]);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-100/60 transition-all text-left"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {((su.firstName?.[0] || "") + (su.lastName?.[0] || "")) || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-800 truncate">{su.firstName} {su.lastName}</div>
+                        <div className="text-xs text-slate-500 truncate">{su.email || su.role?.name || ""}</div>
+                      </div>
+                      <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {userSearch.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-3">Введите имя или email сотрудника</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Conversation list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto py-1">
           {convError ? (
             <div className="p-8 text-center">
-              <svg className="w-10 h-10 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-              <p className="text-sm font-medium text-gray-600 mb-1">Ошибка загрузки</p>
-              <p className="text-xs text-gray-400 mb-3">{(convErrObj as any)?.message || "Не удалось загрузить чаты"}</p>
+              <div className="w-14 h-14 mx-auto mb-3 bg-amber-50 rounded-2xl flex items-center justify-center">
+                <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-slate-600 mb-1">Ошибка загрузки</p>
+              <p className="text-xs text-slate-400 mb-4">{(convError as any)?.message || "Не удалось загрузить чаты"}</p>
               <button onClick={() => queryClient.invalidateQueries({ queryKey: ["chat-conversations"] })}
-                className="px-4 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700">Повторить</button>
+                className="px-5 py-2 text-xs font-medium bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors">Повторить</button>
             </div>
           ) : convLoading ? (
             <div className="p-4 space-y-3">
-              {[1,2,3].map(i => <div key={i} className="flex items-center gap-3 animate-pulse"><div className="w-10 h-10 bg-gray-200 rounded-full" /><div className="flex-1 space-y-1.5"><div className="h-3 bg-gray-200 rounded w-3/4" /><div className="h-2 bg-gray-100 rounded w-1/2" /></div></div>)}
+              {[1,2,3,4].map(i => (
+                <div key={i} className="flex items-center gap-3 animate-pulse px-2">
+                  <div className="w-10 h-10 bg-slate-200 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-3/4" />
+                    <div className="h-2 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 text-sm">{search ? "Ничего не найдено" : "Нет чатов"}</div>
+            <div className="p-10 text-center">
+              <div className="w-14 h-14 mx-auto mb-3 bg-slate-50 rounded-2xl flex items-center justify-center">
+                <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-sm text-slate-400">{search ? "Ничего не найдено" : "Нет чатов"}</p>
+            </div>
           ) : (
-            filteredConversations.map((conv) => {
+            filteredConversations.map((conv: any) => {
               const isActive = conv.isRoom ? selectedRoomId === conv.user.id : selectedUserId === conv.user.id;
               return (
                 <button
                   key={conv.isRoom ? "room_" + conv.user.id : conv.user.id}
-                  onClick={() => { if (conv.isRoom) { setSelectedRoomId(conv.user.id); setSelectedUserId(null); } else { setSelectedUserId(conv.user.id); setSelectedRoomId(null); } }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 ${
-                    isActive ? "bg-blue-50 hover:bg-blue-50" : ""
+                  onClick={() => {
+                    if (conv.isRoom) { setSelectedRoomId(conv.user.id); setSelectedUserId(null); }
+                    else { setSelectedUserId(conv.user.id); setSelectedRoomId(null); }
+                    setShowPinned(false); setShowSearchResults(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 transition-all text-left border-b border-slate-50/80 ${
+                    isActive ? "bg-blue-50/80 shadow-sm" : "hover:bg-slate-50/60"
                   }`}
                 >
                   {conv.isRoom ? (
-                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{"\u2660"}</div>
+                    conv.memberCount != null ? (
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm">{conv.memberCount}</span>
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      </div>
+                    )
                   ) : (
-                    <div className="relative shrink-0"><Avatar user={conv.user} size="md" />
-                    {conv.user.isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />}</div>
+                    <div className="relative shrink-0">
+                      <Avatar user={conv.user} size="md" />
+                      {((conv.user as any).isOnline || onlineUsers.includes(conv.user.id)) && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                      )}
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm text-gray-900 truncate">
+                      <span className="font-medium text-sm text-slate-800 truncate">
                         {conv.isRoom ? (conv.user.name || "Группа") : `${conv.user.firstName} ${conv.user.lastName}`}
                       </span>
-                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                      <span className="text-[11px] text-slate-400 flex-shrink-0 ml-2 font-medium">
                         {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ""}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
-                      <span className="text-xs text-gray-500 truncate">
-                        {conv.lastMessage?.fileUrl ? "📎 " : ""}
-                        {conv.lastMessage?.content || "Нет сообщений"}
+                      <span className="text-[12px] text-slate-500 truncate">
+                        {conv.lastMessage?.fileUrl ? (
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            Файл
+                          </span>
+                        ) : conv.lastMessage?.content || "Нет сообщений"}
                       </span>
                       {conv.unreadCount > 0 && (
-                        <span className="bg-blue-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ml-2 flex-shrink-0">
+                        <span className="bg-blue-500 text-white text-[11px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 ml-2 flex-shrink-0 shadow-sm">
                           {conv.unreadCount}
                         </span>
                       )}
@@ -296,204 +601,393 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Right panel - Chat area */}
-      {(selectedUserId || selectedRoomId) && selectedUser ? (
-        <div className="flex-1 flex flex-col bg-gray-50">
+      {/* Main area */}
+      {(selectedUserId || selectedRoomId) && displayUser ? (
+        <div className="flex-1 flex flex-col bg-white relative">
           {/* Chat header */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-3 bg-white/80 backdrop-blur-sm border-b border-slate-200/70 sticky top-0 z-10">
             <button
-              onClick={() => setSelectedUserId(null)}
-              className="sm:hidden p-1 hover:bg-gray-100 rounded-lg"
+              onClick={() => { setSelectedUserId(null); setSelectedRoomId(null); }}
+              className="sm:hidden p-1.5 hover:bg-slate-100 rounded-xl transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <Avatar user={selectedUser} size="md" />
-            <div>
-              <div className="font-semibold text-sm text-gray-900">
-                {selectedUser.isGroup ? (selectedUser.name || "Группа") : `${selectedUser.firstName} ${selectedUser.lastName}`}
+            <button onClick={() => { if (selectedRoomId) { setShowGroupInfo(true); } }}
+              className={`flex items-center gap-3 flex-1 min-w-0 text-left ${selectedRoomId ? "cursor-pointer hover:bg-slate-50 rounded-xl -mx-1.5 px-1.5 py-0.5 transition-colors" : "cursor-default"}`}>
+              <Avatar user={displayUser} size="md" />
+              <div className="min-w-0">
+                <div className="font-medium text-sm text-slate-800">
+                  {displayUser?.firstName ? `${displayUser.firstName} ${displayUser.lastName}` : displayUser?.name || "Пользователь"}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {selectedRoomId ? `${groupDetail?.members?.length || "?"} участников` : (displayUser as any)?.isOnline || onlineUsers.includes(displayUser?.id) ? "В сети" : "Не в сети"}
+                </div>
               </div>
-              <div className="text-xs text-gray-400">{typing ? <span className="text-green-500 animate-pulse">печатает...</span> : (selectedUser.isGroup ? "Group" : (selectedUser.role?.name || "Пользователь"))}</div>
-            </div>
+            </button>
+            <button
+              onClick={() => setShowPinned(!showPinned)}
+              className={`p-2 rounded-xl transition-all ${showPinned ? "bg-yellow-100 text-yellow-600" : "hover:bg-slate-100 text-slate-400"}`}
+              title="Закреплённые"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
+            {selectedRoomId && (
+              <button onClick={() => setShowGroupInfo(true)}
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all" title="Информация о группе">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </button>
+            )}
+            <button
+              onClick={() => setShowSearchResults(!showSearchResults)}
+              className={`p-2 rounded-xl transition-all ${showSearchResults ? "bg-blue-100 text-blue-600" : "hover:bg-slate-100 text-slate-400"}`}
+              title="Поиск сообщений"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
           </div>
 
-          {/* Messages area */}
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
-            {groupedMessages.length === 0 && (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                Нет сообщений. Отправьте первое!
+          {/* Typing indicator */}
+          {selectedUserId && typingUsers[selectedUserId] && (
+            <div className="px-5 py-1.5 text-xs text-slate-400 italic flex items-center gap-2 border-b border-slate-100 bg-slate-50/50">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              {typingUsers[selectedUserId]} печатает...
+            </div>
+          )}
+          {/* Pinned panel */}
+          {showPinned && (
+            <div className="border-b border-slate-100 bg-yellow-50/60">
+              <div className="px-5 py-2 flex items-center justify-between">
+                <span className="text-xs font-semibold text-yellow-700 uppercase tracking-wider">Закреплённые</span>
+                <button onClick={() => setShowPinned(false)} className="text-xs text-slate-400 hover:text-slate-600">Скрыть</button>
               </div>
-            )}
-            {groupedMessages.map((group, gi) => (
-              <div key={gi}>
-                <div className="flex justify-center my-3">
-                  <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">{group.date}</span>
+              {pinnedMessages.length === 0 ? (
+                <div className="px-5 pb-3 text-xs text-slate-400">Нет закреплённых сообщений</div>
+              ) : (
+                <div className="px-5 pb-3 space-y-1 max-h-40 overflow-y-auto">
+                  {(pinnedMessages as any[]).map((msg: any) => (
+                    <div key={msg.id} className="flex items-start gap-2 p-2 bg-white rounded-xl border border-yellow-200/50 shadow-sm">
+                      <div className="w-6 h-6 rounded-full bg-yellow-200 flex items-center justify-center shrink-0 mt-0.5">
+                        <svg className="w-3 h-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-700 truncate">{msg.content || "Файл"}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{formatFullTime(msg.createdAt)}</p>
+                      </div>
+                      <button onClick={() => pinMutation.mutate(msg.id)} className="text-[10px] text-slate-400 hover:text-red-400 shrink-0">✕</button>
+                    </div>
+                  ))}
                 </div>
-                {group.messages.map((msg) => {
-                  const isMine = msg.senderId === user?.id;
-                  const showRead = isMine && msg.readAt;
-                  return (
-                    <div key={msg.id} className={`flex mb-1.5 ${isMine ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] ${isMine ? "order-1" : "order-1"}`}>
-                        <div
-                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, msg }); }}
-                          className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words relative group ${
-                            isMine
-                              ? "bg-blue-500 text-white rounded-br-md"
-                              : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100"
-                          }`}
-                        >
-                          {msg.fileUrl ? (
-                            <div>
-                              {msg.mimeType?.startsWith("image/") ? (
-                                <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                                  <img src={msg.fileUrl} alt={msg.fileName || "image"} className="max-w-[240px] max-h-[200px] rounded-lg object-cover hover:opacity-90 transition-opacity" />
-                                </a>
-                              ) : (
-                                <div className={`flex items-center gap-2 px-3 py-2 ${isMine ? "bg-blue-400/30" : "bg-gray-100"} rounded-lg`}>
-                                  <span className="text-xl">📎</span>
-                                  <div>
-                                    <p className="text-xs font-medium truncate max-w-[180px]">{msg.fileName || "Файл"}</p>
-                                    {msg.fileSize && <p className="text-[10px] opacity-60">{formatFileSize(msg.fileSize)}</p>}
-                                  </div>
+              )}
+            </div>
+          )}
+
+          {/* Search messages panel */}
+          {showSearchResults && (
+            <SearchMessagesPanel
+              userId={selectedUserId}
+              roomId={selectedRoomId}
+              onSelect={() => setShowSearchResults(false)}
+            />
+          )}
+
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1 bg-gradient-to-b from-slate-50/30 to-white" id="chat-messages">
+            {groupedMessages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 rounded-3xl flex items-center justify-center">
+                    <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-600 mb-1">Начните общение</h3>
+                  <p className="text-sm text-slate-400">Напишите что-нибудь, чтобы начать диалог</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {groupedMessages.map((group, gi) => (
+                  <div key={gi}>
+                    <div className="flex justify-center my-4">
+                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100/80 px-3 py-1 rounded-full backdrop-blur-sm">{group.date}</span>
+                    </div>
+                    {group.messages.map((msg: any) => {
+                      const isMine = msg.senderId === user?.id;
+                      const showRead = isMine && msg.readAt;
+                      const showSender = !isMine && selectedRoomId && msg._isFirst;
+                      const bubbleBottom = msg._isMiddle ? "mb-0" : msg._isLast ? "mb-1.5" : "mb-0.5";
+                      let bubbleRounded = "";
+                      if (msg._isFirst && msg._isLast) { bubbleRounded = isMine ? "rounded-2xl rounded-br-md" : "rounded-2xl rounded-bl-md"; }
+                      else if (msg._isFirst) { bubbleRounded = "rounded-t-2xl"; }
+                      else if (msg._isMiddle) { bubbleRounded = ""; }
+                      else if (msg._isLast) { bubbleRounded = isMine ? "rounded-b-2xl rounded-br-md" : "rounded-b-2xl rounded-bl-md"; }
+                      else { bubbleRounded = "rounded-2xl"; }
+                      return (
+                        <div key={msg.id} className={`flex ${bubbleBottom} ${isMine ? "justify-end" : "justify-start"} animate-fade-in`}>
+                          <div className={`max-w-[78%] ${isMine ? "order-1" : "order-1"}`}>
+                            {showSender && (
+                              <div className="text-[11px] font-medium text-slate-400 mb-0.5 px-1">{msg.sender.firstName} {msg.sender.lastName}</div>
+                            )}
+                            <div
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({ x: e.clientX, y: e.clientY, msg });
+                              }}
+                              className={`px-3.5 pt-1 pb-1.5 text-sm leading-relaxed break-words relative group cursor-pointer ${bubbleRounded} ${
+                                isMine
+                                  ? "bg-blue-500 text-white shadow-sm"
+                                  : "bg-white text-slate-800 shadow-sm border border-slate-100"
+                              }`}
+                            >
+                              {/* File content */}
+                              {msg.fileUrl && !msg.fileUrl.startsWith("blob:") && (
+                                <div className="mb-1.5">
+                                  {msg.mimeType?.startsWith("image/") ? (
+                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                      <img src={msg.fileUrl} alt={msg.fileName || ""} className="max-w-[280px] max-h-[220px] rounded-xl object-cover hover:opacity-90 transition-opacity" loading="lazy" />
+                                    </a>
+                                  ) : (
+                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer"
+                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                                        isMine ? "bg-blue-400/30 hover:bg-blue-400/40" : "bg-slate-100 hover:bg-slate-200"
+                                      }`}>
+                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isMine ? "bg-white/20" : "bg-white shadow-sm"}`}>
+                                        <svg className={`w-5 h-5 ${isMine ? "text-white" : "text-slate-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className={`text-xs font-medium truncate max-w-[160px] ${isMine ? "text-white" : "text-slate-700"}`}>
+                                          {msg.fileName || "Файл"}
+                                        </p>
+                                        <p className={`text-[10px] mt-0.5 ${isMine ? "text-white/70" : "text-slate-400"}`}>
+                                          {formatFileSize(msg.fileSize || 0)}
+                                        </p>
+                                      </div>
+                                    </a>
+                                  )}
                                 </div>
                               )}
-                              {!msg.mimeType?.startsWith("image/") && msg.content && (
-                                <p className={`mt-1 ${isMine ? "text-white/80" : "text-gray-600"}`}>{msg.content}</p>
+                              {/* Forwarded banner */}
+                              {msg.content?.startsWith("📨 Переслано: ") && (
+                                <div className={`flex items-center gap-1 mb-1 opacity-70`}>
+                                  <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                  <span className="text-[11px] font-medium">Переслано</span>
+                                </div>
                               )}
-                            </div>
-                          ) : (
-                            msg.content && msg.content.includes('@') ? (
-                              <span dangerouslySetInnerHTML={{
-                                __html: msg.content.replace(/@(\w+)/g, '<span class="font-bold text-blue-600 bg-blue-100/30 px-1 rounded">@$1</span>')
-                              }} />
-                            ) : msg.content
-                          )}
-                          {/* Hover action toolbar */}
-                          <div className={`absolute -top-8 ${isMine ? "left-2" : "right-2"} hidden group-hover:flex items-center gap-0.5 bg-white border border-gray-200 rounded-xl shadow-lg px-1.5 py-1`}>
-                            <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }} className="flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded-lg text-gray-500 hover:text-blue-600 transition-colors text-[11px] font-medium" title="Ответить">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>Ответить
-                            </button>
-                            {isMine && (<>
-                              <button onClick={(e) => { e.stopPropagation(); setEditingMsg(msg); setNewMessage(msg.content); }} className="flex items-center gap-1 px-2 py-1 hover:bg-amber-50 rounded-lg text-gray-500 hover:text-amber-600 transition-colors text-[11px] font-medium" title="Редактировать">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>Изменить
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить сообщение?")) deleteMutation.mutate(msg.id); }} className="flex items-center gap-1 px-2 py-1 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-500 transition-colors text-[11px] font-medium" title="Удалить">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Удалить
-                              </button>
-                            </>)}
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-1 mt-0.5 ${isMine ? "justify-end" : "justify-start"} px-1`}>
-                          <span className={`text-[10px] ${isMine ? "text-gray-400" : "text-gray-400"}`}>
-                            {formatFullTime(msg.createdAt)}
-                          </span>
-{showRead && (
-                            <svg className="w-3 h-3 text-blue-400" viewBox="0 0 16 11" fill="currentColor">
-                              <path d="M11.071.653a.457.457 0 00-.304-.102.493.493 0 00-.381.178l-6.19 7.636-2.011-2.095a.463.463 0 00-.336-.153.457.457 0 00-.337.14.538.538 0 00-.14.349c0 .133.047.26.14.356l2.405 2.509a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.533.533 0 00.127-.343.506.506 0 00-.142-.321zm-2.26 0a.458.458 0 00-.305-.102.494.494 0 00-.38.178l-6.19 7.636-1.084-1.13a.46.46 0 00-.337-.146.456.456 0 00-.337.14.538.538 0 00-.14.349c0 .134.047.26.14.356l1.478 1.54a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.534.534 0 00.127-.343.506.506 0 00-.142-.32z" />
-                            </svg>
-                          )}
-                          {/* Reaction badges */}
-                          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              {Object.entries(msg.reactions).map(([emoji, count]: [string, any]) => (
-                                <span key={emoji} onClick={() => { chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); refetchRoomMessages(); }); }}
-                                  className="text-xs bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border border-gray-200 rounded-full px-2 py-0.5 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-sm">
-                                  {emoji} <span className="text-[10px] text-gray-500 font-medium ml-0.5">{count as number}</span>
+                              {/* Reply reference */}
+                              {msg.replyToId && (() => {
+                                const replied = (messages as any[]).find((m: any) => m.id === msg.replyToId);
+                                if (!replied) return null;
+                                return (
+                                  <div className={`mb-1.5 border-l-2 border-blue-400 pl-2 py-0.5 rounded-r text-[11px] ${isMine ? "bg-white/10" : "bg-slate-50"}`}>
+                                    <div className={`font-medium leading-tight ${isMine ? "text-white/70" : "text-slate-500"}`}>{replied.sender?.firstName || "Пользователь"}</div>
+                                    <div className={`truncate max-w-[200px] leading-tight ${isMine ? "text-white/50" : "text-slate-400"}`}>{replied.content?.substring(0, 80) || (replied.fileUrl ? "📎 Файл" : "")}</div>
+                                  </div>
+                                );
+                              })()}
+                              {/* Text content */}
+                              {msg.content && !msg.content.startsWith("📨 Переслано: ") && (
+                                <div className={isMine ? "text-white/95" : "text-slate-800"}>
+                                  {renderContent(msg.content)}
+                                </div>
+                              )}
+                              {msg.content?.startsWith("📨 Переслано: ") && (
+                                <div className={isMine ? "text-white/95" : "text-slate-800"}>
+                                  {renderContent(msg.content.replace("📨 Переслано: ", ""))}
+                                </div>
+                              )}
+
+                              {/* Time + read status */}
+                              {!(msg._isMiddle) && (<div className={`flex items-center gap-1 mt-1 -mb-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                                <span className={`text-[10px] ${isMine ? "text-white/60" : "text-slate-400"}`}>
+                                  {formatFullTime(msg.createdAt)}{msg.editedAt && <span className="ml-1 opacity-70">изм.</span>}
                                 </span>
-                              ))}
+                                {showRead && (
+                                  <svg className="w-3 h-3 text-blue-300" viewBox="0 0 16 11" fill="currentColor">
+                                    <path d="M11.071.653a.457.457 0 00-.304-.102.493.493 0 00-.381.178l-6.19 7.636-2.011-2.095a.463.463 0 00-.336-.153.457.457 0 00-.337.14.538.538 0 00-.14.349c0 .133.047.26.14.356l2.405 2.509a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.533.533 0 00.127-.343.506.506 0 00-.142-.321zm-2.26 0a.458.458 0 00-.305-.102.494.494 0 00-.38.178l-6.19 7.636-1.084-1.13a.46.46 0 00-.337-.146.456.456 0 00-.337.14.538.538 0 00-.14.349c0 .134.047.26.14.356l1.478 1.54a.468.468 0 00.332.14c.14 0 .267-.058.368-.165l6.569-8.129a.534.534 0 00.127-.343.506.506 0 00-.142-.32z" />
+                                  </svg>
+                                )}
+                              </div>)}
+
+                              {/* Hover actions toolbar */}
+                              <div className={`absolute -top-8 ${isMine ? "right-0" : "left-0"} hidden group-hover:flex items-center gap-0.5 bg-white border border-slate-200 rounded-xl shadow-lg px-1 py-0.5 animate-scale-in`}>
+                                <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
+                                  className="p-1.5 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-500 transition-colors" title="Ответить">
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setForwardMsg(msg); setShowForwardModal(true); }}
+                                  className="p-1.5 hover:bg-purple-50 rounded-lg text-slate-400 hover:text-purple-500 transition-colors" title="Переслать">
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                  </svg>
+                                </button>
+                                {isMine && (
+                                  <>
+                                    <button onClick={(e) => { e.stopPropagation(); setEditingMsg(msg); setNewMessage(msg.content); }}
+                                      className="p-1.5 hover:bg-amber-50 rounded-lg text-slate-400 hover:text-amber-500 transition-colors" title="Редактировать">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-200 mx-0.5" />
+                                    <button onClick={(e) => { e.stopPropagation(); if (confirm("Удалить?")) deleteMutation.mutate(msg.id); }}
+                                      className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors" title="Удалить">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                          )}
-                          {/* Quick emoji picker */}
-                          <div className="flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {["👍","❤️","😂","😮","😢","😡","🔥","👏"].map(emoji => (
-                              <button key={emoji} onClick={(e) => { e.stopPropagation(); chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); refetchRoomMessages(); }); }}
-                                className="text-sm w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 hover:scale-125 transition-all active:scale-90">{emoji}</button>
-                            ))}
-                            <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }} className="ml-1 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-colors" title="Ответить">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-                            </button>
+
+                            {/* Reactions */}
+                            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                              <div className={`flex items-center gap-1 mt-0.5 ${isMine ? "justify-end" : "justify-start"} px-1`}>
+                                {Object.entries(msg.reactions).map(([emoji, count]: [string, any]) => (
+                                  <button key={emoji}
+                                    onClick={() => { chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); }); }}
+                                    className="text-xs bg-white hover:bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5 cursor-pointer transition-all hover:scale-110 active:scale-95 shadow-sm">
+                                    {emoji} <span className="text-[10px] text-slate-500 font-medium ml-0.5">{count as number}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Quick reactions */}
+                            <div className={`flex items-center gap-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isMine ? "justify-end" : "justify-start"} px-1`}>
+                              {["👍","❤️","😂","😮","😢","🔥"].map(emoji => (
+                                <button key={emoji}
+                                  onClick={(e) => { e.stopPropagation(); chatAPI.addReaction(msg.id, emoji).then(() => { refetchMessages(); }); }}
+                                  className="text-sm w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 hover:scale-125 transition-all active:scale-90 opacity-60 hover:opacity-100">{emoji}</button>
+                              ))}
+                              <button onClick={(e) => { e.stopPropagation(); setReplyTo(msg); }}
+                                className="ml-0.5 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all opacity-60 hover:opacity-100" title="Ответить">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
-            ))}
-            <div ref={messagesEndRef} />
+            )}
           </div>
 
           {/* Reply preview */}
           {replyTo && (
-            <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200 flex items-center gap-3">
-              <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+            <div className="px-5 py-2.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 backdrop-blur-sm border-t border-blue-100 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Ответ {replyTo.sender?.firstName || "пользователю"}</p>
                 <div className="border-l-2 border-blue-300 pl-2 mt-0.5">
-                  <p className="text-xs text-gray-600 truncate">{replyTo.content?.substring(0, 120)}</p>
+                  <p className="text-xs text-slate-500 truncate">{replyTo.content?.substring(0, 120)}</p>
                 </div>
               </div>
-              <button onClick={() => setReplyTo(null)} className="p-1.5 hover:bg-white rounded-lg text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => setReplyTo(null)} className="p-1.5 hover:bg-white/60 rounded-lg text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}
 
           {/* Editing preview */}
           {editingMsg && (
-            <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t-2 border-amber-200 flex items-center gap-3">
-              <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            <div className="px-5 py-2.5 bg-gradient-to-r from-amber-50/90 to-yellow-50/90 backdrop-blur-sm border-t border-amber-100 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">Редактирование</span>
-                <p className="text-xs text-gray-600 truncate mt-0.5">{editingMsg.content?.substring(0, 80)}</p>
+                <p className="text-xs text-slate-500 truncate mt-0.5">{editingMsg.content?.substring(0, 80)}</p>
               </div>
-              <button onClick={() => { setEditingMsg(null); setNewMessage(""); }} className="p-1.5 hover:bg-white rounded-lg text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => { setEditingMsg(null); setNewMessage(""); }} className="p-1.5 hover:bg-white/60 rounded-lg text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}
 
           {/* Input area */}
-          <div className="px-4 py-3 bg-white border-t border-gray-200">
-            <div className="flex items-end gap-2 bg-gray-100 rounded-2xl px-3 py-2">
+          <div className="px-5 py-3 bg-white border-t border-slate-200/70">
+            {selectedFile && (
+              <div className="mb-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-3">
+                {filePreview ? (
+                  <img src={filePreview} alt="preview" className="w-12 h-12 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center shrink-0">
+                    <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{selectedFile.name}</p>
+                  <p className="text-xs text-slate-400">{formatFileSize(selectedFile.size)}</p>
+                </div>
+                <button onClick={() => { setSelectedFile(null); setFilePreview(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="flex items-end gap-2 bg-slate-100/80 rounded-2xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:bg-white transition-all">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500 disabled:opacity-50"
+                disabled={sendMutation.isPending}
+                className="p-1.5 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-600 disabled:opacity-50 shrink-0"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" onChange={handleFileSelect} className="hidden" />
               <textarea
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
                 onKeyDown={handleKeyDown}
-                placeholder={editingMsg ? "Редактировать..." : "Сообщение..."}
+                placeholder={editingMsg ? "Редактировать..." : selectedFile ? "Добавить комментарий..." : "Сообщение..."}
                 rows={1}
-                className="flex-1 bg-transparent outline-none resize-none text-sm max-h-28 py-1"
+                className="flex-1 bg-transparent outline-none resize-none text-sm max-h-32 py-1 placeholder-slate-400"
                 style={{ scrollbarWidth: "none" }}
               />
               <button
                 onClick={handleSend}
-                disabled={!newMessage.trim() || sendMutation.isPending}
-                className="p-1.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 rounded-full transition-colors text-white flex-shrink-0"
+                disabled={(!newMessage.trim() && !selectedFile) || sendMutation.isPending}
+                className="p-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-300 rounded-xl transition-all text-white shrink-0 active:scale-95 disabled:active:scale-100 shadow-sm hover:shadow-md disabled:shadow-none"
               >
                 {sendMutation.isPending ? (
-                  <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                 ) : (
-                  <svg className="w-5 h-5 rotate-45" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 rotate-45 translate-x-px -translate-y-px" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                   </svg>
                 )}
@@ -503,73 +997,228 @@ export default function ChatPage() {
         </div>
       ) : (
         /* Empty state */
-        <div className="flex-1 hidden sm:flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex-1 hidden sm:flex items-center justify-center bg-gradient-to-br from-slate-50/60 to-white">
+          <div className="text-center max-w-sm">
+            <div className="w-28 h-28 mx-auto mb-5 bg-gradient-to-br from-slate-100 to-slate-50 rounded-3xl flex items-center justify-center shadow-inner">
+              <svg className="w-14 h-14 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-600 mb-1">Ваши сообщения</h3>
-            <p className="text-sm text-gray-400">Выберите чат чтобы начать общение</p>
+            <h3 className="text-xl font-semibold text-slate-700 mb-2 tracking-tight">Ваши сообщения</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">Выберите чат из списка или создайте новый, чтобы начать общение</p>
           </div>
         </div>
       )}
 
       {/* Create Room Modal */}
       {showCreateRoom && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setShowCreateRoom(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-gray-800 mb-3">Создать группу</h3>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in" onClick={() => setShowCreateRoom(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg text-slate-800 mb-4">Создать группу</h3>
             <input placeholder="Название группы" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-primary-500/20" />
-            <div className="flex gap-2">
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all" autoFocus />
+            {newGroupMembers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {newGroupMembers.map((m: any) => (
+                  <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-200">
+                    {m.firstName} {m.lastName}
+                    <button onClick={() => setNewGroupMembers(prev => prev.filter(x => x.id !== m.id))} className="ml-0.5 hover:text-red-500">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1 border-t border-slate-100">
+              <button onClick={() => { setShowCreateRoom(false); setNewRoomName(""); setNewGroupMembers([]); }} className="flex-1 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Отмена</button>
               <button
                 onClick={async () => {
                   if (!newRoomName.trim()) return;
                   try {
-                    await chatAPI.createRoom(newRoomName, []);
-                    setShowCreateRoom(false);
-                    setNewRoomName("");
+                    await chatAPI.createRoom(newRoomName.trim(), newGroupMembers.map(m => m.id));
+                    setShowCreateRoom(false); setNewRoomName(""); setNewGroupMembers([]);
                     queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
-                  } catch (err) { console.error("Failed to create room:", err); }
+                    toast.success("Группа создана");
+                  } catch { toast.error("Ошибка"); }
                 }}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
+                disabled={!newRoomName.trim()}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-medium hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 transition-all shadow-sm"
               >Создать</button>
-              <button onClick={() => setShowCreateRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Group info modal */}
+      {showGroupInfo && groupDetail && selectedRoomId && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in" onClick={() => { setShowGroupInfo(false); setEditingName(false); }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg text-slate-800">О группе</h3>
+              <button onClick={() => { setShowGroupInfo(false); setEditingName(false); }} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            {/* Group name */}
+            <div className="mb-4">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1 block">Название</span>
+              {editingName ? (
+                <div className="flex gap-2">
+                  <input value={groupNameEdit} onChange={e => setGroupNameEdit(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                    onKeyDown={e => { if(e.key==="Enter"){chatAPI.updateRoom(selectedRoomId,groupNameEdit).then(()=>{setEditingName(false);refetchRoom();queryClient.invalidateQueries({queryKey:["chat-conversations"]})})} if(e.key==="Escape"){setEditingName(false);setGroupNameEdit(groupDetail.name||"")} }}
+                    autoFocus />
+                  <button onClick={()=>{chatAPI.updateRoom(selectedRoomId,groupNameEdit).then(()=>{setEditingName(false);refetchRoom();queryClient.invalidateQueries({queryKey:["chat-conversations"]})})}}
+                    className="px-3 py-2 bg-blue-500 text-white rounded-xl text-xs font-medium">OK</button>
+                </div>
+              ) : (
+                <button onClick={()=>{setEditingName(true);setGroupNameEdit(groupDetail.name||"")}} className="w-full text-left group p-2 -m-2 rounded-xl hover:bg-slate-50">
+                  <span className="text-sm font-medium text-slate-700">{groupDetail.name||"Группа"}</span>
+                  <span className="ml-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100">изменить</span>
+                </button>
+              )}
+            </div>
+            {/* Members */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Участники ({groupDetail.members?.length||0})</span>
+                {groupDetail.createdBy === user?.id && (
+                  <button onClick={() => setMemberSearch(memberSearch ? "" : " ")} className="text-xs text-blue-500 hover:text-blue-600 font-medium">
+                    {memberSearch ? "Скрыть" : "+ Добавить"}
+                  </button>
+                )}
+              </div>
+              {/* Add member search */}
+              {groupDetail.createdBy === user?.id && memberSearch && (
+                <div className="mb-3">
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input
+                      placeholder="Поиск людей..."
+                      value={memberSearch === " " ? "" : memberSearch}
+                      onChange={(e) => handleMemberSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      autoFocus
+                    />
+                  </div>
+                  {memberResults.length > 0 && (
+                    <div className="mt-1 max-h-32 overflow-y-auto space-y-0.5 border border-slate-100 rounded-xl p-1">
+                      {memberResults.slice(0, 5).map((u: any) => (
+                        <button
+                          key={u.id}
+                          onClick={() => {
+                            chatAPI.addRoomMembers(selectedRoomId, [u.id]).then(() => {
+                              refetchRoom();
+                              queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+                              setMemberSearch("");
+                              setMemberResults([]);
+                              toast.success(u.firstName + " добавлен(а)");
+                            }).catch(() => toast.error("Ошибка"));
+                          }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-left transition-colors text-xs"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-slate-400 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                            {((u.firstName?.[0]||"")+(u.lastName?.[0]||""))}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-slate-700 font-medium">{u.firstName} {u.lastName}</div>
+                            <div className="text-slate-400">{u.email||""}</div>
+                          </div>
+                          <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Member list */}
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {(groupDetail.members||[]).map((m: any) => (
+                  <div key={m.userId||m.user?.id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl group">
+                    <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white text-xs font-bold shrink-0">{((m.user?.firstName?.[0]||"")+(m.user?.lastName?.[0]||""))}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-slate-700 truncate">{m.user?.firstName} {m.user?.lastName}</div>
+                      {m.user?.id===groupDetail.createdBy&&<div className="text-[10px] text-amber-500">Создатель</div>}
+                    </div>
+                    {groupDetail.createdBy === user?.id && m.user?.id !== user?.id && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Удалить " + (m.user?.firstName||"") + " из группы?")) {
+                            chatAPI.removeRoomMember(selectedRoomId, m.userId || m.user?.id).then(() => {
+                              refetchRoom();
+                              queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
+                              toast.success(m.user?.firstName + " удалён(а)");
+                            }).catch(() => toast.error("Ошибка"));
+                          }
+                        }}
+                        className="text-xs text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-all shrink-0 font-medium px-1"
+                      >Удалить</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Leave */}
+            <div className="pt-3 border-t border-slate-100">
+              <button
+                onClick={()=>{if(confirm("Покинуть группу?")){chatAPI.removeRoomMember(selectedRoomId,user!.id).then(r=>{if(typeof r==="object"&&"deleted" in r&&r.deleted){setSelectedRoomId(null);setShowGroupInfo(false)}queryClient.invalidateQueries({queryKey:["chat-conversations"]});refetchRoom()}).catch(()=>toast.error("Ошибка"))}}}
+                className="w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium">Покинуть группу</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Context menu */}
       {contextMenu && (
-        <div className="fixed z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl py-2 min-w-[180px] animate-in fade-in zoom-in-95" style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 220) }} onClick={() => setContextMenu(null)}>
-          <div className="px-4 pb-1.5 mb-1 border-b border-gray-100">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Сообщение</p>
+        <div
+          className="fixed z-[60] bg-white border border-slate-200 rounded-2xl shadow-2xl py-1.5 min-w-[200px] animate-scale-in"
+          style={{ left: Math.min(contextMenu.x, window.innerWidth - 220), top: Math.min(contextMenu.y, window.innerHeight - 280) }}
+          onClick={() => setContextMenu(null)}
+        >
+          <div className="px-4 pb-1.5 mb-1 border-b border-slate-100">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Действия</p>
           </div>
-          <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.content); toast.success("Скопировано"); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-            <span className="font-medium">Копировать</span>
+          <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.content); toast.success("Скопировано"); setContextMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span className="font-medium text-slate-700">Копировать</span>
           </button>
-          <button onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-3 transition-colors">
-            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-            <span className="font-medium">Ответить</span>
+          <button onClick={() => { setReplyTo(contextMenu.msg); setContextMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span className="font-medium text-slate-700">Ответить</span>
           </button>
-          <button onClick={() => { setForwardMsg(contextMenu.msg); setForwardUserIds([]); setForwardSearch(""); setShowForwardModal(true); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center gap-3 transition-colors">
-            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-            <span className="font-medium">Переслать</span>
+          <button onClick={() => { setForwardMsg(contextMenu.msg); setForwardUserIds([]); setForwardSearch(""); setShowForwardModal(true); setContextMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+            <span className="font-medium text-slate-700">Переслать</span>
+          </button>
+          <div className="border-t border-slate-100 my-1" />
+          <button onClick={() => { pinMutation.mutate(contextMenu.msg.id); toast.success(contextMenu.msg.isPinned ? "Откреплено" : "Закреплено"); setContextMenu(null); }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-yellow-50 flex items-center gap-3 transition-colors">
+            <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            <span className="font-medium text-slate-700">{contextMenu.msg?.isPinned ? "Открепить" : "Закрепить"}</span>
           </button>
           {contextMenu.msg.senderId === user?.id && (
             <>
-              <div className="border-t border-gray-100 my-1" />
-              <button onClick={() => { setEditingMsg(contextMenu.msg); setNewMessage(contextMenu.msg.content); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center gap-3 transition-colors">
-                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                <span className="font-medium">Редактировать</span>
+              <button onClick={() => { setEditingMsg(contextMenu.msg); setNewMessage(contextMenu.msg.content); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center gap-3 transition-colors">
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span className="font-medium text-slate-700">Редактировать</span>
               </button>
-              <button onClick={() => { if (confirm("Удалить сообщение?")) { deleteMutation.mutate(contextMenu.msg.id); } setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-3 transition-colors">
-                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <button onClick={() => { if (confirm("Удалить сообщение?")) { deleteMutation.mutate(contextMenu.msg.id); } setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-3 transition-colors">
+                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
                 <span className="font-medium text-red-500">Удалить</span>
               </button>
             </>
@@ -579,34 +1228,34 @@ export default function ChatPage() {
 
       {/* Forward modal */}
       {showForwardModal && forwardMsg && (
-        <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center" onClick={() => setShowForwardModal(false)}>
-          <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-gray-800 mb-1">Переслать сообщение</h3>
-            <div className="bg-gray-50 rounded-lg p-3 mb-3 border-l-4 border-purple-400">
-              <p className="text-xs text-gray-600 truncate">{forwardMsg.content?.substring(0, 100)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{forwardMsg.sender?.firstName} {forwardMsg.sender?.lastName}</p>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center animate-fade-in" onClick={() => setShowForwardModal(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-800 mb-3">Переслать сообщение</h3>
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3 mb-3 border-l-4 border-purple-400">
+              <p className="text-xs text-slate-600 truncate">{forwardMsg.content?.substring(0, 100) || "Файл"}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{forwardMsg.sender?.firstName} {forwardMsg.sender?.lastName}</p>
             </div>
             <input placeholder="Поиск пользователей..." value={forwardSearch} onChange={e => setForwardSearch(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-purple-500/20" />
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm mb-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-300 transition-all" />
             <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
               {conversations
-                .filter(c => !c.isRoom && c.user.id !== user?.id && (forwardSearch ? `${c.user.firstName} ${c.user.lastName}`.toLowerCase().includes(forwardSearch.toLowerCase()) : true))
-                .map(c => (
-                  <label key={c.user.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${forwardUserIds.includes(c.user.id) ? "bg-purple-50 border border-purple-200" : "hover:bg-gray-50 border border-transparent"}`}>
+                .filter((c: any) => !c.isRoom && c.user.id !== user?.id && (forwardSearch ? `${c.user.firstName} ${c.user.lastName}`.toLowerCase().includes(forwardSearch.toLowerCase()) : true))
+                .map((c: any) => (
+                  <label key={c.user.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${forwardUserIds.includes(c.user.id) ? "bg-purple-50 border border-purple-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}>
                     <input type="checkbox" checked={forwardUserIds.includes(c.user.id)} onChange={() => setForwardUserIds(prev => prev.includes(c.user.id) ? prev.filter(id => id !== c.user.id) : [...prev, c.user.id])}
-                      className="rounded" />
+                      className="rounded accent-purple-500" />
                     <Avatar user={c.user} size="sm" />
-                    <span className="text-sm font-medium text-gray-700">{c.user.firstName} {c.user.lastName}</span>
+                    <span className="text-sm font-medium text-slate-700">{c.user.firstName} {c.user.lastName}</span>
                   </label>
                 ))}
-              {conversations.filter(c => !c.isRoom && c.user.id !== user?.id).length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">Нет доступных пользователей</p>
+              {(conversations as any[]).filter((c: any) => !c.isRoom && c.user.id !== user?.id).length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-4">Нет доступных пользователей</p>
               )}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowForwardModal(false)} className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Отмена</button>
+              <button onClick={() => setShowForwardModal(false)} className="flex-1 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Отмена</button>
               <button onClick={handleForward} disabled={forwardUserIds.length === 0}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all shadow-sm">
                 Переслать ({forwardUserIds.length})
               </button>
             </div>
@@ -615,14 +1264,14 @@ export default function ChatPage() {
       )}
 
       {/* Upload overlay */}
-      {uploading && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl px-8 py-6 shadow-xl flex items-center gap-3">
+      {sendMutation.isPending && selectedFile && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+          <div className="bg-white rounded-2xl px-8 py-6 shadow-2xl flex items-center gap-3">
             <svg className="w-6 h-6 animate-spin text-blue-500" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span className="text-sm text-gray-700">Загрузка файла...</span>
+            <span className="text-sm text-slate-700 font-medium">Загрузка файла...</span>
           </div>
         </div>
       )}

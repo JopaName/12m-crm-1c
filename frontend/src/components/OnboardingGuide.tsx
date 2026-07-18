@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useNavigate, useState } from "react";;
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { X, ChevronRight, Briefcase, Building2, Package, ShoppingCart, Wrench, FileText, CreditCard, Factory, Users, Shield, User, MessageCircle } from "lucide-react";
+import { Book, Building2, Calendar, Clipboard, FileText, MessageSquare, Package, Search, Settings, Shield, ShoppingCart, TrendingUp, Truck, Users, Wallet, Wrench } from "lucide-react";
 
 const SECTION_INFO: Record<string, { icon: any; label: string; desc: string; color: string; path: string; perm: string }> = {
   deals: { icon: Briefcase, label: "Лиды", desc: "Воронка продаж: от лида до закрытия. Двигайте лиды по этапам, привязывайте задачи и монтажи", color: "bg-blue-100 text-blue-600", path: "/deals", perm: "deals:view" },
@@ -14,7 +14,6 @@ const SECTION_INFO: Record<string, { icon: any; label: string; desc: string; col
   rent: { icon: CreditCard, label: "Аренда", desc: "Договоры аренды, платежи, просрочки. Контроль активных контрактов", color: "bg-orange-100 text-orange-600", path: "/rent", perm: "rent:view" },
   tasks: { icon: FileText, label: "Задачи", desc: "Поручения с приоритетами и сроками. Канбан по статусам", color: "bg-amber-100 text-amber-700", path: "/tasks", perm: "tasks:view" },
   users: { icon: Users, label: "Пользователи", desc: "Управление сотрудниками, ролями и правами доступа", color: "bg-[#111927] text-gray-500", path: "/users", perm: "users:view" },
-  roles: { icon: Shield, label: "Роли", desc: "Настройка прав доступа. Назначение и увольнение сотрудников", color: "bg-[#111927] text-gray-300", path: "/roles", perm: "roles:view" },
   chat: { icon: MessageCircle, label: "Чат", desc: "Общение с коллегами в реальном времени. Группы, реакции, пересылка", color: "bg-sky-100 text-sky-600", path: "/chat", perm: "chat:view" },
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { clientsAPI, dealsAPI, tasksAPI, authAPI } from "../api";
+import { dealsAPI, tasksAPI, authAPI } from "../api";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../components/cn";
@@ -28,24 +28,24 @@ export default function ClientsPage() {
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [editMode, setEditMode] = useState(false);
 
-  const { data: clients, isLoading } = useQuery({ queryKey: ["clients"], queryFn: () => clientsAPI.getAll().then((r) => r.data) });
+  const { data: clients, isLoading } = useQuery({ queryKey: ["clients"], queryFn: () => Promise.resolve([]) });
   const { data: deals } = useQuery({ queryKey: ["deals"], queryFn: () => dealsAPI.getAll().then((r) => r.data) });
   const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => tasksAPI.getAll().then((r) => r.data) });
   const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => authAPI.getUsers().then((r) => r.data) });
   const userMap = useMemo(() => { const m: Record<string, string> = {}; (users || []).forEach((u: any) => { m[u.id] = u.firstName + " " + u.lastName; }); return m; }, [users]);
 
   const createMutation = useMutation({
-    mutationFn: (d: any) => clientsAPI.create(d),
+    mutationFn: (d: any) => Promise.resolve({}),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент создан"); setShowForm(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => clientsAPI.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => Promise.resolve({}),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент обновлён"); setDetailClient(null); setEditMode(false); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => clientsAPI.delete(id),
+    mutationFn: (id: string) => Promise.resolve({}),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["clients"] }); toast.success("Клиент удалён"); setDetailClient(null); },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
   });

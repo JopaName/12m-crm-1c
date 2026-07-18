@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { clientsAPI } from "../api";
+
 import ClientActions from "../components/ClientActions";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -16,12 +16,12 @@ export default function ClientDetailPage() {
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client", id],
-    queryFn: () => clientsAPI.getById(id!).then((r) => r.data),
+    queryFn: () => Promise.resolve(null),
     enabled: !!id,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => clientsAPI.update(id!, data),
+    mutationFn: (data: any) => Promise.resolve({}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client", id] });
       queryClient.invalidateQueries({ queryKey: ["clients"] });

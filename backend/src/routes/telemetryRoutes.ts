@@ -1,35 +1,25 @@
 import { Router, Response } from "express";
-import { AuthRequest } from "../middleware/auth";
+import { AuthRequest, authMiddleware, requirePermission } from "../middleware/auth";
+
 import { TelemetryService } from "../services/TelemetryService";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 const service = new TelemetryService();
 
-router.get("/devices", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/devices", requirePermission("rent:view"), asyncHandler(async (_req, res) => {
     const devices = await service.getDevices();
     res.json(devices);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch telemetry devices" });
-  }
-});
+}));
 
-router.get("/readings", async (_req: AuthRequest, res: Response) => {
-  try {
+router.get("/readings", requirePermission("rent:view"), asyncHandler(async (_req, res) => {
     const readings = await service.getReadings();
     res.json(readings);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch telemetry readings" });
-  }
-});
+}));
 
-router.post("/readings", async (req: AuthRequest, res: Response) => {
-  try {
+router.post("/readings", requirePermission("rent:create"), asyncHandler(async (req, res) => {
     const reading = await service.createReading(req.body);
     res.status(201).json(reading);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to create telemetry reading" });
-  }
-});
+}));
 
 export default router;

@@ -11,12 +11,10 @@ export default function ProductsPage() {
   const [form, setForm] = useState({
     name: "",
     sku: "",
-    category: "",
     unit: "pcs",
     purchasePrice: 0,
     salePrice: 0,
     rentPrice: 0,
-    description: "",
   });
   const [itemForm, setItemForm] = useState({
     productId: "",
@@ -48,12 +46,10 @@ export default function ProductsPage() {
       setForm({
         name: "",
         sku: "",
-        category: "",
         unit: "pcs",
         purchasePrice: 0,
         salePrice: 0,
         rentPrice: 0,
-        description: "",
       });
     },
     onError: (err: any) => toast.error(err.response?.data?.error || "Ошибка"),
@@ -115,12 +111,6 @@ export default function ProductsPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
               required
             />
-            <input
-              placeholder="Категория"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
             <select
               value={form.unit}
               onChange={(e) => setForm({ ...form, unit: e.target.value })}
@@ -152,15 +142,6 @@ export default function ProductsPage() {
               value={form.rentPrice}
               onChange={(e) => setForm({ ...form, rentPrice: +e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-            <textarea
-              placeholder="Описание"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm col-span-2"
-              rows={2}
             />
           </div>
           <button
