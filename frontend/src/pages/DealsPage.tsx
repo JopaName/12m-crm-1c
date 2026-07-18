@@ -308,7 +308,10 @@ export default function DealsPage() {
                         onClick={() => setDetailDeal(d)}>
                         <div className="p-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-2 flex-1 italic">{(d.clientName || d.description || d.dealNumber)}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-800 text-sm leading-snug line-clamp-1">{d.clientName || d.description || "Без имени"}</p>
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{d.dealNumber}</p>
+                            </div>
                             <div className={cn("w-2.5 h-2.5 rounded-full shrink-0 mt-1", col.meta.bg)} />
                           </div>
                           <p className="text-sm font-semibold text-gray-900">{d.expectedAmount?.toLocaleString() || 0} ₽</p>
@@ -401,10 +404,12 @@ export default function DealsPage() {
                 <div key={d.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group">
                   <div className={cn("w-2 h-2 rounded-full shrink-0", (dynamicStatusMeta[d.status]?.bg || "bg-gray-400"))} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{d.clientName || d.description || d.dealNumber}</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="font-medium text-gray-900 text-sm">{d.clientName || d.description || "Без имени"}</p>
+                      <span className="text-[10px] text-gray-400 font-mono">{d.dealNumber}</span>
+                    </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400 mt-0.5">
                       <span className="font-medium text-gray-500">{d.expectedAmount?.toLocaleString()} ₽</span>
-                      <span className="flex items-center gap-1 text-gray-400"><Building2 className="w-3 h-3" />{d.dealNumber}</span>
                       {agent && <button onClick={(e) => { e.stopPropagation(); setViewUserId(d.responsibleAgentId); }} className="flex items-center gap-1 hover:text-primary-600 hover:underline"><User className="w-3 h-3" />{agent}</button>}
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(d.createdAt)}</span>
                     </div>
@@ -441,7 +446,7 @@ export default function DealsPage() {
           confirmDelete={confirmDelete}
           onClose={() => { setDetailDeal(null); setEditDealData(null); setConfirmDelete(false); }}
           onEdit={() => setEditDealData({ ...detailDeal })}
-          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data: { dealNumber: data.dealNumber, dealType: data.dealType, clientInn: data.clientInn, expectedAmount: data.expectedAmount, responsibleAgentId: data.responsibleAgentId || undefined, description: data.description } })}
+          onSaveEdit={(data: any) => updateMutation.mutate({ id: detailDeal.id, data: { dealNumber: data.dealNumber, dealType: data.dealType, clientName: data.clientName, clientPhone: data.clientPhone, clientInn: data.clientInn, expectedAmount: data.expectedAmount, paymentType: data.paymentType, responsibleAgentId: data.responsibleAgentId || undefined, description: data.description } })}
           onDelete={() => { if (confirmDelete) deleteMutation.mutate(detailDeal.id); else setConfirmDelete(true); }}
           onCancelEdit={() => setEditDealData(null)}
           onCancelDelete={() => setConfirmDelete(false)}

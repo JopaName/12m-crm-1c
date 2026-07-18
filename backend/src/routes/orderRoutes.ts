@@ -3,6 +3,7 @@ import { AuthRequest, authMiddleware, requirePermission } from "../middleware/au
 
 import { orderService } from "../services/OrderService";
 import { asyncHandler } from "../utils/asyncHandler";
+import { prisma } from "../db";
 
 const router = Router();
 
@@ -22,6 +23,19 @@ router.get("/:id", requirePermission("deals:view"), asyncHandler(async (req, res
 // Create order
 router.post("/", requirePermission("deals:create"), asyncHandler(async (req, res) => {
     const order = await orderService.createOrder(req.body, req.user!.id);
+    try {
+      await prisma.dealAction.create({
+        data: {
+          dealId: req.body.dealId,
+          type: "AUTO",
+          title: "Создание заявки",
+          description: "заявка создана: \"" + order.orderNumber + "\"",
+          status: "COMPLETED",
+          completedAt: new Date(),
+          createdById: req.user!.id,
+        },
+      });
+    } catch (_) {}
     res.status(201).json(order);
 }));
 
@@ -40,6 +54,22 @@ router.delete("/:id", requirePermission("deals:delete"), asyncHandler(async (req
 // Add item to order
 router.post("/:id/items", requirePermission("deals:create"), asyncHandler(async (req, res) => {
     const items = await orderService.addItem(req.params.id, req.body);
+    try {
+      const order = await prisma.dealOrder.findUnique({ where: { id: req.params.id } });
+      if (order) {
+        await prisma.dealAction.create({
+          data: {
+            dealId: order.dealId,
+            type: "AUTO",
+            title: "Добавление товара",
+            description: "товар: \"" + req.body.productName + "\" (" + req.body.quantity + " шт.)",
+            status: "COMPLETED",
+            completedAt: new Date(),
+            createdById: req.user!.id,
+          },
+        });
+      }
+    } catch (_) {}
     res.status(201).json(items);
 }));
 

@@ -73,6 +73,19 @@ router.post("/:id/files", requirePermission("deals:create"), dealUpload.single("
         uploadedById: req.user!.id,
       },
     });
+    try {
+      await prisma.dealAction.create({
+        data: {
+          dealId: req.params.id,
+          type: "AUTO",
+          title: "Загрузка файла",
+          description: `файл: "${origName}"`,
+          status: "COMPLETED",
+          completedAt: new Date(),
+          createdById: req.user!.id,
+        },
+      });
+    } catch (_) {}
     res.status(201).json(record);
   } catch (e: any) {
     res.status(500).json({ error: e.message || "Upload failed" });

@@ -6,13 +6,8 @@ import { dealsAPI, dealItemsAPI, procurementAPI, auditAPI, tasksAPI, dealActions
 import { cn } from "./cn";
 import toast from "react-hot-toast";
 import DocumentFormModal from "./DocumentFormModal";
-import TaskFormModal from "./TaskFormModal";
 import { Briefcase, X, ArrowLeft, ArrowRight, FileText, Shield, Edit3, Trash2, Paperclip, Upload, Save, Building2, Calendar, DollarSign, User, Phone, Mail, CreditCard, FileDown, ChevronRight, Download, Eye, Banknote, Wallet, Package, ShoppingCart, Clock, Plus } from "lucide-react";
 import { STATUS_META } from "../constants/deals";
-import { getPipelineConfig } from "./PipelineEditor";
-
-
-const PIPELINE_STAGES = getPipelineConfig();
 
 
 const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString("ru-RU") : "";
@@ -59,8 +54,6 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
   const [filesLoading, setFilesLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState<any | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -72,13 +65,6 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
 
   const linked = fullDeal || deal;
 
-  const linkedTasks = linked.tasks || [];
-
-  const createTaskMut = useMutation({
-    mutationFn: (d: any) => tasksAPI.create({ ...d, dealId: linked.id }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deal-detail", deal.id] }); toast.success("Задача создана"); setShowTaskForm(false); },
-    onError: () => toast.error("Ошибка создания задачи")
-  });
 
   const { data: auditLogs } = useQuery({
     queryKey: ["deal-audit", deal.id],
@@ -311,65 +297,16 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
               </button>
             </div>
           </div>
-
-          {/* Tab navigation */}
-          <div className="flex items-center gap-1 px-5 py-2 border-b border-gray-100 bg-gray-50/50 shrink-0">
-            {[
-              { key: "details", label: "Детали", icon: "📋" },
-              { key: "tasks", label: "Задачи", icon: "📌" },
-
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === tab.key
-                    ? "bg-white text-primary-700 shadow-sm border border-gray-200"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
-                }`}
-              >
-                <span>{tab.icon}</span>
-                {tab.label}
-                {tab.key === "tasks" && linkedTasks.length > 0 && (
-                  <span className="ml-1 w-4 h-4 rounded-full bg-primary-500 text-white text-[9px] flex items-center justify-center font-bold">{linkedTasks.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {activeTab === "details" && (
-            <>
-            {/* Pipeline tabs */}
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 overflow-x-auto">
-              {PIPELINE_STAGES.map((stage, i) => {
-                const isCurrent = linked.status === stage.key;
-                const isPast = PIPELINE_STAGES.findIndex(s => s.key === linked.status) > i;
-                const isNext = nextStatuses.includes(stage.key);
-                const isPrev = prevStatus === stage.key;
-                const canClick = isNext || isPrev;
-                
-                return (
-                  <button
-                    key={stage.key}
-                    onClick={() => canClick && onStatusChange(stage.key)}
-                    disabled={!canClick}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                      isCurrent ? "bg-white text-primary-700 shadow-sm" :
-                      isPast ? "text-gray-400" :
-                      canClick ? "text-gray-600 hover:bg-white/60 hover:text-primary-600 cursor-pointer" :
-                      "text-gray-400 cursor-not-allowed"
-                    }`}
-                    title={canClick ? (isNext ? "Перейти на этот этап" : "Вернуть на этот этап") : (isPast ? "Пройден" : "Недоступен")}
-                  >
-                    {stage.icon} {stage.label}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
 
-            {/* Document generation */}
+            {/* ===== ZONE 1: Deal Information ===== */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 bg-primary-500 rounded-full" />
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Информация о сделке</h3>
+              </div>
+{/* Document generation */}
             <div className="space-y-2">
               <button
                 onClick={() => setShowDocDrawer(true)}
@@ -684,6 +621,12 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Номер лиды</label>
                     <input value={edit.dealNumber || ""} onChange={(e) => setEdit({ ...edit, dealNumber: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Клиент</label>
+                    <input value={edit.clientName || ""} onChange={(e) => setEdit({ ...edit, clientName: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Телефон</label>
+                    <input value={edit.clientPhone || ""} onChange={(e) => setEdit({ ...edit, clientPhone: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
+                  <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">ИНН</label>
+                    <input value={edit.clientInn || ""} onChange={(e) => setEdit({ ...edit, clientInn: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30" /></div>
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Тип</label>
                     <select value={edit.dealType || "Sale"} onChange={(e) => setEdit({ ...edit, dealType: e.target.value })} className="w-full px-3 py-2.5 bg-gray-50 border-0 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/30"><option value="Sale">Продажа</option></select></div>
                   <div><label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Сумма</label>
@@ -732,6 +675,19 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
                     <span>{fmtDate(linked.createdAt)}</span>
                   </div>
                 </div>
+
+                {linked.clientName && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 border-t border-gray-100 pt-3">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-gray-700">{linked.clientName}</span>
+                  </div>
+                )}
+                {linked.clientPhone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Phone className="w-3.5 h-3.5 text-gray-400" />
+                    <a href={"tel:" + linked.clientPhone} className="text-gray-700 hover:text-primary-600 hover:underline">{linked.clientPhone}</a>
+                  </div>
+                )}
 
                 {linked.description && (
                   <div className="relative bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 border border-gray-100">
@@ -814,97 +770,22 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
                   </div>
                 )}
               </>
-            )}
-            </>
-            )}
+            )}</div>
 
-            {activeTab === "tasks" && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between"><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Прикреплённые задачи ({linkedTasks.length})</p><button onClick={() => setShowTaskForm(true)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-400 hover:text-primary-600 hover:bg-primary-50/50 rounded-lg transition-all border border-gray-200 border-dashed hover:border-primary-300 bg-white/60 hover:bg-white"><Plus className="w-3 h-3" />Добавить</button></div>
-                {linkedTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-gray-300">
-                    <FileText className="w-10 h-10 mb-2" />
-                    <p className="text-xs">Нет прикреплённых задач</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {linkedTasks.map((t: any) => (
-                      <div key={t.id} onClick={() => { onClose(); navigate("/tasks?id=" + t.id); }} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all bg-white cursor-pointer">
-                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                          t.status === "Completed" ? "bg-emerald-500" :
-                          t.status === "InProgress" ? "bg-amber-500" :
-                          t.status === "Cancelled" ? "bg-gray-300" :
-                          "bg-primary-500"
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{t.title}</p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-400 mt-0.5">
-                            {t.assignee && <span><User className="w-2.5 h-2.5 inline mr-0.5" />{t.assignee.firstName} {t.assignee.lastName}</span>}
-                            {t.dueDate && <span><Calendar className="w-2.5 h-2.5 inline mr-0.5" />{fmtDate(t.dueDate)}</span>}
-                            <span className={`px-1.5 py-0.5 rounded-full ${
-                              t.priority === "Critical" ? "bg-red-50 text-red-600" :
-                              t.priority === "High" ? "bg-amber-50 text-amber-600" :
-                              t.priority === "Low" ? "bg-gray-50 text-gray-500" :
-                              "bg-blue-50 text-blue-600"
-                            }`}>{t.priority}</span>
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-                          t.status === "Completed" ? "bg-emerald-50 text-emerald-600" :
-                          t.status === "InProgress" ? "bg-amber-50 text-amber-600" :
-                          t.status === "Cancelled" ? "bg-red-50 text-red-600" :
-                          "bg-gray-100 text-gray-600"
-                        }`}>{t.status === "Completed" ? "Выполнена" : t.status === "InProgress" ? "В работе" : t.status === "Cancelled" ? "Отменена" : "Новая"}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* ===== ZONE 2: Activity Feed ===== */}
+            <div className="bg-gray-50/80 rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-5 bg-amber-500 rounded-full" />
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Активность</h3>
               </div>
-            )}
-
-            {activeTab === "history" && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">История взаимодействия</p>
-                {!auditLogs || auditLogs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-gray-300">
-                    <Clock className="w-10 h-10 mb-2" />
-                    <p className="text-xs">История пуста</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {auditLogs.map((log: any, i: number) => (
-                      <div key={log.id || i} className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <User className="w-3 h-3 text-gray-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="font-medium text-gray-800">{log.user?.firstName || log.user?.lastName ? `${log.user.firstName || ""} ${log.user.lastName || ""}` : "Система"}</span>
-                            <span className="text-gray-300">·</span>
-                            <span className="text-gray-400">{fmtDate(log.createdAt)}</span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-0.5">{log.action?.toLowerCase().includes("create") ? "Создал(а) лид" : log.action?.toLowerCase().includes("update") ? "Обновил(а) данные" : log.action?.toLowerCase().includes("status") ? `Изменил(а) статус: ${(()=>{ try { const p=JSON.parse(log.newValue||"{}"); const s=STATUS_META[p.status]; return s?.label||p.status||log.newValue; } catch { return log.newValue||""; }})()}` : log.action === "cancel" ? `Отменил(а): ${log.newValue || ""}` : log.action}</p>
-                          {log.oldValue && log.newValue && log.action.toLowerCase().includes("update") && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">Было: {log.oldValue} → Стало: {log.newValue}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              {!edit && deal && deal.id && (
+                <ActionsWorkflow dealId={deal.id} />
+              )}
+            </div>
 
           </div>
 
-          {/* Workflow feed */}
-          {!edit && deal && deal.id && (
-            <div className="border-t border-gray-100 pt-4 mt-4">
-              <ActionsWorkflow dealId={deal.id} />
-            </div>
-          )}
-
-          {/* Edit/Delete bar */}
+{/* Edit/Delete bar */}
           {!edit && (
             <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-100 bg-gray-50/50 shrink-0">
               <button onClick={onEdit} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors">
@@ -933,20 +814,7 @@ export default function DealDetailPanel({ deal, agent, canEdit, canDelete, editD
 
         {/* ===== RIGHT COLUMN: Chat discussion ===== */}
         <div className="w-[380px] flex flex-col shrink-0 bg-gray-50/20">
-          <DealChatPanel dealId={deal.id} dealNumber={linked.dealNumber} />
-
-      {/* Task Creation Modal */}
-      {showTaskForm && (
-        <TaskFormModal
-          onClose={() => setShowTaskForm(false)}
-          users={users}
-          deals={[deal]}
-          presetDealId={deal.id}
-          onSubmit={(d: any) => createTaskMut.mutate(d)}
-          isPending={createTaskMut.isPending}
-        />
-      )}
-        </div>
+          <DealChatPanel dealId={deal.id} dealNumber={linked.dealNumber} /></div>
       </div>
 
       {/* Document Templates Drawer */}
