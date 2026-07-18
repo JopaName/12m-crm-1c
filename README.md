@@ -1,79 +1,133 @@
-# 12M CRM/ERP System
+<div align="center">
+  <h1>12M CRM / ERP</h1>
+  <p><strong>Production management system for solar panel manufacturing</strong></p>
+  <p>
+    <img src="https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript" alt="TypeScript">
+    <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React">
+    <img src="https://img.shields.io/badge/Node.js-18-339933?logo=nodedotjs" alt="Node.js">
+    <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma" alt="Prisma">
+    <img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss" alt="Tailwind">
+    <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite" alt="Vite">
+    <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite" alt="SQLite">
+  </p>
+</div>
 
-Production CRM for **NIK 12M LLC** — solar panel manufacturing, sales management, warehouse, production, and HR.
+## Overview
 
-## Stack
+12M CRM is a full-featured enterprise resource planning system built for **NIK 12M LLC**, a solar panel manufacturing company. It streamlines sales, production, warehouse, procurement, and HR operations in a single platform.
 
-| Layer | Tech |
-|-------|------|
-| Backend | Node.js, Express, TypeScript, Prisma ORM, SQLite |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, React Query, React Router 6 |
-| AI | qwen3.5-plus via OpenCode AI |
-| Deploy | VDS (95.81.114.106), PM2, Nginx |
+## Tech Stack
 
-## Modules (23 pages)
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Node.js 18, Express, TypeScript, Prisma ORM, SQLite |
+| **Frontend** | React 18, TypeScript, Vite 6, Tailwind CSS 3, React Query, React Router 6 |
+| **AI** | OpenCode AI integration |
+| **Deployment** | PM2, Nginx |
+
+## Project Structure
+
+```
+12m-crm-1c/
+├── backend/                # Express API server
+│   ├── src/
+│   │   ├── routes/         # REST API routes
+│   │   ├── services/       # Business logic
+│   │   ├── middleware/      # Auth, permissions, rate limiter
+│   │   ├── config/         # App configuration
+│   │   ├── utils/          # Helpers & logger
+│   │   └── index.ts        # Entry point
+│   ├── prisma/             # Schema & migrations
+│   └── package.json
+├── frontend/               # React SPA
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Route pages (23 modules)
+│   │   ├── api/            # API client
+│   │   ├── hooks/          # Custom hooks
+│   │   ├── context/        # Auth, chat providers
+│   │   └── main.tsx        # Entry point
+│   └── package.json
+└── database/               # Shared schema reference
+```
+
+## Modules
 
 | Module | Route | Description |
 |--------|-------|-------------|
-| Dashboard | `/` | Stats, active deals, today tasks |
-| Clients | `/clients` | CRUD, cards/table view, search |
-| Deals | `/deals` | Sales funnel, Kanban/table/cards, DealProgress (8 stages) |
-| Products | `/products` | Catalog and equipment units |
-| Warehouse | `/warehouse` | 1C-style: categories, items, receipts, transfers |
-| Production | `/production` | Orders, routes, Kanban by status |
-| Procurement | `/procurement` | Requests, suppliers, orders |
-| Rent | `/rent` | Rent contracts, billing |
-| Installation | `/installation` | Installation tasks, statuses |
-| Legal | `/legal` | Legal docs, Director/Lawyer approval |
-| Service | `/service` | Service cases, warranty |
-| Tasks | `/tasks` | Kanban, cards by status |
-| Referrals | `/referrals` | Referral tree, earnings, n8n-style workflow, invites |
+| Dashboard | `/` | KPIs, active deals, tasks |
+| Clients | `/clients` | CRM with card/table views |
+| Deals | `/deals` | Sales pipeline with Kanban board, 8-stage DealProgress bar |
+| Products | `/products` | Catalog & equipment units |
+| Warehouse | `/warehouse` | Category tree, stock items, receipts, transfers |
+| Production | `/production` | Manufacturing orders, Kanban by status |
+| Procurement | `/procurement` | Purchase requests, suppliers, orders |
+| Rent | `/rent` | Rental contracts & billing |
+| Installation | `/installation` | On-site installation tracking |
+| Legal | `/legal` | Document workflow with Director/Lawyer approval |
+| Service | `/service` | Warranty & service cases |
+| Tasks | `/tasks` | Kanban board with deal-linked tasks |
+| Referrals | `/referrals` | Multi-level tree, commissions, invite-link registration |
+| Chat | `/chat` | Internal messaging with mentions |
+| Knowledge | `/knowledge` | Company knowledge base |
 | Users | `/users` | User management |
-| Roles | `/roles` | RBAC, permissions |
-| Chat | `/chat` | Internal chat |
-| Knowledge | `/knowledge` | Company docs |
+| Roles | `/roles` | RBAC with granular permissions |
 
 ## Quick Start
 
+### Prerequisites
+- Node.js 18+
+- npm
+
+### Development
+
 ```bash
 # Backend
-cd backend && npm install && npx prisma generate && npx prisma db push && npm run dev  # port 3000
+cd backend
+npm install
+npx prisma generate
+npx prisma db push
+npm run dev          # http://localhost:3000
 
 # Frontend
-cd frontend && npm install && npm run dev  # port 5173
-
-# Production
-cd frontend && npx vite build && cp -r dist/* /opt/crm/frontend/dist/
-pm2 start backend/dist/index.js --name 12m-backend
+cd frontend
+npm install
+npm run dev          # http://localhost:5173
 ```
 
-## Key Features
+### Production Build
 
-- **Referral System**: multi-level tree, auto commission on deal close, n8n-style visual workflow, invite-link registration
-- **DealProgress**: 8-stage pipeline bar (Client→Deal→Spec→Docs→Approval→Procurement→Receipt→Handover)
-- **Document Generator**: HTML templates (Handlebars) — commercial offer, contract, invoice
-- **Legal Workflow**: create → Director approve → Lawyer approve → sign
-- **1C-style Warehouse**: category tree, item cards, receipts, transfers
-- **Notifications**: bell icon with badge, slide-in panel, 20s polling
-- **AI Assistant**: built-in chatbot (qwen3.5-plus)
+```bash
+cd frontend
+npx vite build
+# Output: frontend/dist/
+```
 
-## Test Users
+## API Overview
 
-## API
-
-Base: `http://95.81.114.106/api`
+Base URL: `/api`
 
 | Endpoint | Description |
 |----------|-------------|
-| `/auth/login` | Login |
-| `/auth/register` | Create user (admin) |
-| `/clients`, `/deals`, `/products`, `/tasks` | Full CRUD |
-| `/deals/:id/items` | Deal specification |
-| `/deals/:id/generate/:template` | Document generation (kp/dogovor/schet) |
-| `/referrals/register` | Public referral registration |
-| `/referrals/tree` | Referral tree (3 levels) |
-| `/referrals/earnings` | Referral earnings |
-| `/referrals/invite-link` | Generate invite link |
-| `/referrals/config` | Commission config (GET/PUT) |
-| `/warehouse`, `/production`, `/procurement`, `/rent`, `/installation`, `/legal`, `/service` | Full CRUD |
-| `/notifications`, `/chat`, `/files`, `/roles`, `/users` | Additional modules |
+| `POST /auth/login` | Authentication |
+| `/deals` | Sales pipeline (CRUD, items, documents, files, status transitions) |
+| `/clients`, `/products`, `/tasks` | Core CRM entities (full CRUD) |
+| `/warehouse`, `/production`, `/procurement` | Operations management |
+| `/referrals` | Referral system (tree, earnings, config, invite links) |
+| `/chat` | Internal messaging (direct, rooms, entity-linked) |
+| `/notifications` | Real-time notifications (polling-based) |
+| `/legal` | Legal document workflow |
+| `/roles` | Role-based access control |
+
+## Key Features
+
+- **Sales Pipeline**: 8-stage Kanban board (Lead → Deal → Spec → Docs → Approval → Procurement → Receipt → Handover)
+- **Referral System**: Multi-level commission tree with visual workflow builder
+- **Document Generation**: Template-based (Handlebars) — commercial offers, contracts, invoices
+- **RBAC**: Granular permission system with role-based access control
+- **Entity-linked Chat**: Messages attached to deals with @-mentions
+- **AI Assistant**: Context-aware chatbot integration
+
+## License
+
+Internal project — proprietary.
